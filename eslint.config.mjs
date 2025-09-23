@@ -7,7 +7,7 @@ export default defineConfig([
   {
     files: ["**/*.js"],
     languageOptions: {
-      sourceType: "commonjs", // Use CommonJS for backend
+      sourceType: "module",
       globals: {
         ...globals.node, // Add Node.js globals
       },
