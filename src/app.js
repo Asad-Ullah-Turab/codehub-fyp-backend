@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import loggerConfig from "./config/logger.js";
+import codeExecutionRoutes from "./routes/codeExecutionRoutes.js";
 
 const app = express();
 
@@ -19,7 +20,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/", (req, res) => {
-  res.send("Backend running with TypeScript 🚀");
+  res.send("CodeHub Backend API 🚀");
 });
+
+app.use('/api/code', codeExecutionRoutes);
 
 export default app;
