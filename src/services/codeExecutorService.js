@@ -53,42 +53,59 @@ class CodeExecutorService {
     const containerName = `codehub-container-${Date.now()}`;
 
     try {
+      // Build the Docker image
       await execAsync(`docker build -t ${imageName} -f ${dockerfilePath} ${sessionDir}`, {
         timeout: 30000
       });
 
+      // Prepare the run command
       const runCommand = input 
-        ? `docker run --rm --name ${containerName} --memory=128m --cpus=0.5 --network=none --timeout=10s ${imageName} < ${path.join(sessionDir, 'input.txt')}`
-        : `docker run --rm --name ${containerName} --memory=128m --cpus=0.5 --network=none --timeout=10s ${imageName}`;
+        ? `docker run --rm --name ${containerName} --memory=128m --cpus=0.5 --network=none ${imageName} < ${path.join(sessionDir, 'input.txt')}`
+        : `docker run --rm --name ${containerName} --memory=128m --cpus=0.5 --network=none ${imageName}`;
 
-      const { stdout, stderr } = await execAsync(runCommand, {
-        timeout: 15000,
-        maxBuffer: 1024 * 1024
-      });
+      // Execute with timeout and proper error handling
+      const startTime = Date.now();
+      
+      try {
+        const { stdout, stderr } = await execAsync(runCommand, {
+          timeout: 10000,
+          maxBuffer: 1024 * 1024
+        });
 
-      await execAsync(`docker rmi ${imageName}`).catch(() => {});
+        const executionTime = Date.now() - startTime;
 
-      return {
-        output: stdout || stderr || 'No output',
-        error: stderr ? true : false,
-        executionTime: 'N/A'
-      };
+        await execAsync(`docker rmi ${imageName}`).catch(() => {});
+
+        return {
+          output: stdout || stderr || 'No output',
+          error: stderr ? true : false,
+          executionTime: `${executionTime}ms`
+        };
+
+      } catch (execError) {
+        // Try to stop and remove the container if it's still running
+        await execAsync(`docker stop ${containerName}`).catch(() => {});
+        await execAsync(`docker rm ${containerName}`).catch(() => {});
+        
+        throw execError;
+      }
 
     } catch (error) {
+      // Clean up the image
       await execAsync(`docker rmi ${imageName}`).catch(() => {});
       
-      if (error.message.includes('timeout')) {
+      if (error.message.includes('timeout') || error.code === 'ETIMEDOUT') {
         return {
-          output: 'Error: Code execution timed out (10s limit)',
+          output: 'Error: Code execution timed out (10 second limit). Your code may have an infinite loop or is taking too long to execute.',
           error: true,
-          executionTime: 'Timeout'
+          executionTime: 'Timeout (>10s)'
         };
       }
       
       return {
-        output: `Error: ${error.message}`,
+        output: `Execution Error: ${error.message}`,
         error: true,
-        executionTime: 'N/A'
+        executionTime: 'Failed'
       };
     }
   }
