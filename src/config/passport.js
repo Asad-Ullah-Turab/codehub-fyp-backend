@@ -2,17 +2,9 @@ import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { Strategy as GitHubStrategy } from 'passport-github2';
 import User from '../models/User.js';
-import dotenv from 'dotenv';
-
-// Load environment variables
-dotenv.config();
-
-console.log('Google Client ID:', process.env.GOOGLE_CLIENT_ID ? 'Present' : 'Missing');
-console.log('Google Client Secret:', process.env.GOOGLE_CLIENT_SECRET ? 'Present' : 'Missing');
 
 // Google OAuth Strategy - only initialize if credentials are provided
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
-  console.log('Registering Google OAuth strategy...');
   passport.use(
     new GoogleStrategy(
       {
@@ -57,9 +49,6 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
     }
     )
   );
-  console.log('Google OAuth strategy registered successfully');
-} else {
-  console.log('Google OAuth strategy NOT registered - missing credentials');
 }
 
 // GitHub OAuth Strategy - only initialize if credentials are provided

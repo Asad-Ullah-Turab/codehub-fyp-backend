@@ -9,28 +9,7 @@ router.post('/signup', signup);
 router.post('/signin', signin);
 router.post('/logout', logout);
 
-// Debug route - list available auth methods
-router.get('/', (req, res) => {
-  res.json({
-    status: 'success',
-    message: 'Auth API endpoints',
-    endpoints: {
-      'POST /api/auth/signup': 'Register new user',
-      'POST /api/auth/signin': 'Login with email/password', 
-      'POST /api/auth/logout': 'Logout user',
-      'GET /api/auth/google': `Google OAuth ${process.env.GOOGLE_CLIENT_ID ? 'Available' : 'Not configured'}`,
-      'GET /api/auth/github': `GitHub OAuth ${process.env.GITHUB_CLIENT_ID ? 'Available' : 'Not configured'}`,
-      'GET /api/auth/me': 'Get current user (requires auth)'
-    }
-  });
-});
-
-// Google OAuth routes - always register, handle missing config in middleware
-console.log('Google OAuth Config:', {
-  clientId: process.env.GOOGLE_CLIENT_ID ? 'Set' : 'Missing',
-  clientSecret: process.env.GOOGLE_CLIENT_SECRET ? 'Set' : 'Missing'
-});
-
+// Google OAuth routes
 router.get('/google', (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(500).json({

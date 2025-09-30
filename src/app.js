@@ -56,23 +56,12 @@ app.get("/", (req, res) => {
   res.send("CodeHub Backend API 🚀");
 });
 
-// API health check
-app.get("/api", (req, res) => {
-  res.json({
-    status: "success",
-    message: "CodeHub API is running",
-    timestamp: new Date().toISOString(),
-    routes: ["/api/auth", "/api/code"]
-  });
-});
-
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/code", codeExecutionRoutes);
 
 // 404 handler
 app.use((req, res) => {
-  console.log(`404 - Route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     status: "error",
     message: `Route ${req.method} ${req.originalUrl} not found`
@@ -80,7 +69,7 @@ app.use((req, res) => {
 });
 
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res) => {
   console.error("Error:", err);
   res.status(err.status || 500).json({
     status: "error",
