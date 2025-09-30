@@ -1,6 +1,19 @@
 import express from 'express';
 import passport, { isStrategyAvailable } from '../config/oauthConfig.js';
-import { signup, signin, logout, protect, oauthSuccess, oauthFailure } from '../controllers/authController.js';
+import User from '../models/User.js';
+import { 
+  signup, 
+  signin, 
+  logout, 
+  protect, 
+  oauthSuccess, 
+  oauthFailure,
+  verifyEmail,
+  resendVerificationOTP,
+  requestPasswordReset,
+  verifyPasswordResetOTP,
+  resetPassword
+} from '../controllers/authController.js';
 
 const router = express.Router();
 
@@ -8,6 +21,15 @@ const router = express.Router();
 router.post('/signup', signup);
 router.post('/signin', signin);
 router.post('/logout', logout);
+
+// Email verification routes
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerificationOTP);
+
+// Password reset routes
+router.post('/forgot-password', requestPasswordReset);
+router.post('/verify-reset-otp', verifyPasswordResetOTP);
+router.post('/reset-password', resetPassword);
 
 // Google OAuth routes
 router.get('/google', (req, res, next) => {
@@ -88,5 +110,56 @@ router.get('/me', protect, (req, res) => {
     }
   });
 });
+
+// Development only endpoints
+if (process.env.NODE_ENV === 'development') {
+  // Check account status
+  router.get('/dev/account-status/:email', async (req, res) => {
+    try {
+      const { email } = req.params;
+      const user = await User.findOne({ email });
+      
+      if (user) {
+        res.json({ 
+          status: 'success', 
+          data: {
+            email: user.email,
+            name: user.name,
+            isEmailVerified: user.isEmailVerified,
+            accountStatus: user.accountStatus,
+            hasOTP: !!user.emailVerificationOTP,
+            otpExpires: user.emailVerificationOTPExpires,
+            createdAt: user.createdAt
+          }
+        });
+      } else {
+        res.status(404).json({ status: 'fail', message: 'Account not found' });
+      }
+    } catch {
+      res.status(500).json({ status: 'error', message: 'Failed to check account' });
+    }
+  });
+
+  // Delete unverified account
+  router.delete('/dev/delete-unverified/:email', async (req, res) => {
+    try {
+      const { email } = req.params;
+      const user = await User.findOne({ 
+        email, 
+        accountStatus: 'pending',
+        isEmailVerified: false 
+      });
+      
+      if (user) {
+        await User.findByIdAndDelete(user._id);
+        res.json({ status: 'success', message: 'Unverified account deleted' });
+      } else {
+        res.status(404).json({ status: 'fail', message: 'No unverified account found' });
+      }
+    } catch {
+      res.status(500).json({ status: 'error', message: 'Failed to delete account' });
+    }
+  });
+}
 
 export default router;

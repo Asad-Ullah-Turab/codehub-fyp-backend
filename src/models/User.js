@@ -51,6 +51,30 @@ const userSchema = new mongoose.Schema({
   profilePicture: {
     type: String,
     default: null
+  },
+  // Email verification OTP
+  emailVerificationOTP: {
+    type: String,
+    default: null
+  },
+  emailVerificationOTPExpires: {
+    type: Date,
+    default: null
+  },
+  // Password reset OTP
+  passwordResetOTP: {
+    type: String,
+    default: null
+  },
+  passwordResetOTPExpires: {
+    type: Date,
+    default: null
+  },
+  // Account status
+  accountStatus: {
+    type: String,
+    enum: ['pending', 'active', 'suspended'],
+    default: 'pending' // Account starts as pending until email is verified
   }
 }, {
   timestamps: true
@@ -74,6 +98,62 @@ userSchema.methods.correctPassword = async function(candidatePassword, userPassw
 // Instance method to update last login
 userSchema.methods.updateLastLogin = function() {
   this.lastLogin = new Date();
+  return this.save({ validateBeforeSave: false });
+};
+
+// Instance method to set email verification OTP
+userSchema.methods.setEmailVerificationOTP = function(otp) {
+  this.emailVerificationOTP = otp;
+  this.emailVerificationOTPExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  return this.save({ validateBeforeSave: false });
+};
+
+// Instance method to verify email OTP
+userSchema.methods.verifyEmailOTP = function(otp) {
+  if (!this.emailVerificationOTP || !this.emailVerificationOTPExpires) {
+    return false;
+  }
+  
+  if (Date.now() > this.emailVerificationOTPExpires) {
+    return false; // OTP expired
+  }
+  
+  return this.emailVerificationOTP === otp;
+};
+
+// Instance method to clear email verification OTP
+userSchema.methods.clearEmailVerificationOTP = function() {
+  this.emailVerificationOTP = null;
+  this.emailVerificationOTPExpires = null;
+  this.isEmailVerified = true;
+  this.accountStatus = 'active';
+  return this.save({ validateBeforeSave: false });
+};
+
+// Instance method to set password reset OTP
+userSchema.methods.setPasswordResetOTP = function(otp) {
+  this.passwordResetOTP = otp;
+  this.passwordResetOTPExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+  return this.save({ validateBeforeSave: false });
+};
+
+// Instance method to verify password reset OTP
+userSchema.methods.verifyPasswordResetOTP = function(otp) {
+  if (!this.passwordResetOTP || !this.passwordResetOTPExpires) {
+    return false;
+  }
+  
+  if (Date.now() > this.passwordResetOTPExpires) {
+    return false; // OTP expired
+  }
+  
+  return this.passwordResetOTP === otp;
+};
+
+// Instance method to clear password reset OTP
+userSchema.methods.clearPasswordResetOTP = function() {
+  this.passwordResetOTP = null;
+  this.passwordResetOTPExpires = null;
   return this.save({ validateBeforeSave: false });
 };
 

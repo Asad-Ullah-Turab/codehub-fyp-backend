@@ -12,6 +12,7 @@ import codeExecutionRoutes from "./routes/codeExecutionRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import connectDB from "./config/database.js";
 import passport, { initializeOAuthStrategies } from "./config/oauthConfig.js";
+import emailService from "./services/emailService.js";
 
 // Connect to MongoDB
 connectDB();
@@ -19,6 +20,9 @@ connectDB();
 // Initialize OAuth strategies
 const oauthStrategies = initializeOAuthStrategies();
 console.log('OAuth strategies initialized:', oauthStrategies);
+
+// Initialize email service
+emailService.initialize();
 
 const app = express();
 
