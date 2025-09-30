@@ -1,3 +1,8 @@
+import dotenv from "dotenv";
+
+// MUST load environment variables FIRST before importing any other modules
+dotenv.config();
+
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -6,10 +11,14 @@ import loggerConfig from "./config/logger.js";
 import codeExecutionRoutes from "./routes/codeExecutionRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import connectDB from "./config/database.js";
-import passport from "./config/passport.js";
+import passport, { initializeOAuthStrategies } from "./config/oauthConfig.js";
 
 // Connect to MongoDB
 connectDB();
+
+// Initialize OAuth strategies
+const oauthStrategies = initializeOAuthStrategies();
+console.log('OAuth strategies initialized:', oauthStrategies);
 
 const app = express();
 
