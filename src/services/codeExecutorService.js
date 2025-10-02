@@ -137,4 +137,6 @@ class CodeExecutorService {
   }
 }
 
-export default new CodeExecutorService();
+const codeExecutorService = new CodeExecutorService();
+export { CodeExecutorService };
+export default codeExecutorService;

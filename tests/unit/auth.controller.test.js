@@ -1,0 +1,347 @@
+import { describe, test, expect, beforeEach, jest } from '@jest/globals';
+import request from 'supertest';
+import express from 'express';
+import User from '../../src/models/User.js';
+import * as authController from '../../src/controllers/authController.js';
+
+import emailService from '../../src/services/emailService.js';
+
+// Create test app
+const createTestApp = () => {
+  const app = express();
+  app.use(express.json());
+  return app;
+};
+
+describe('Auth Controller Tests', () => {
+  let app;
+  let emailServiceSpy;
+
+  beforeEach(async () => {
+    app = createTestApp();
+    await User.deleteMany({});
+    
+    // Mock email service methods
+    emailServiceSpy = {
+      initialize: jest.spyOn(emailService, 'initialize').mockResolvedValue(),
+      sendVerificationOTP: jest.spyOn(emailService, 'sendVerificationOTP').mockResolvedValue(true),
+      sendPasswordResetOTP: jest.spyOn(emailService, 'sendPasswordResetOTP').mockResolvedValue(true),
+      isAvailable: jest.spyOn(emailService, 'isAvailable').mockReturnValue(true),
+      generateOTP: jest.spyOn(emailService, 'generateOTP').mockReturnValue('123456'),
+    };
+    
+    jest.clearAllMocks();
+  });
+
+  describe('Signup', () => {
+    test('should create new user and send verification email', async () => {
+      const userData = {
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'password123',
+        confirmPassword: 'password123',
+      };
+
+      app.post('/signup', authController.signup);
+
+      const response = await request(app)
+        .post('/signup')
+        .send(userData)
+        .expect(201);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('User registered successfully! Please check your email to verify your account.');
+
+      const user = await User.findOne({ email: userData.email });
+      expect(user).toBeDefined();
+      expect(user.name).toBe(userData.name);
+      expect(user.isEmailVerified).toBe(false);
+    });
+
+    test('should reject signup with mismatched passwords', async () => {
+      const userData = {
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'password123',
+        confirmPassword: 'differentpassword',
+      };
+
+      app.post('/signup', authController.signup);
+
+      const response = await request(app)
+        .post('/signup')
+        .send(userData)
+        .expect(400);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Passwords do not match');
+    });
+
+    test('should reject signup with missing fields', async () => {
+      const userData = {
+        email: 'john@example.com',
+        password: 'password123',
+      };
+
+      app.post('/signup', authController.signup);
+
+      const response = await request(app)
+        .post('/signup')
+        .send(userData)
+        .expect(400);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Please provide name, email, password, and confirm password');
+    });
+
+    test('should reject signup with existing email', async () => {
+      // Create existing user
+      await User.create({
+        name: 'Existing User',
+        email: 'john@example.com',
+        password: 'password123',
+      });
+
+      const userData = {
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'password123',
+        confirmPassword: 'password123',
+      };
+
+      app.post('/signup', authController.signup);
+
+      const response = await request(app)
+        .post('/signup')
+        .send(userData)
+        .expect(400);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Email already exists');
+    });
+  });
+
+  describe('Login', () => {
+    beforeEach(async () => {
+      // Create verified user for login tests
+      await User.create({
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123',
+        isEmailVerified: true,
+      });
+    });
+
+    test('should login user with correct credentials', async () => {
+      const loginData = {
+        email: 'test@example.com',
+        password: 'password123',
+      };
+
+      app.post('/login', authController.login);
+
+      const response = await request(app)
+        .post('/login')
+        .send(loginData)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.token).toBeDefined();
+      expect(response.body.data.user.email).toBe(loginData.email);
+      expect(response.body.data.user.password).toBeUndefined();
+    });
+
+    test('should reject login with incorrect password', async () => {
+      const loginData = {
+        email: 'test@example.com',
+        password: 'wrongpassword',
+      };
+
+      app.post('/login', authController.login);
+
+      const response = await request(app)
+        .post('/login')
+        .send(loginData)
+        .expect(401);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Incorrect email or password');
+    });
+
+    test('should reject login with non-existent email', async () => {
+      const loginData = {
+        email: 'nonexistent@example.com',
+        password: 'password123',
+      };
+
+      app.post('/login', authController.login);
+
+      const response = await request(app)
+        .post('/login')
+        .send(loginData)
+        .expect(401);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Incorrect email or password');
+    });
+
+    test('should reject login with unverified email', async () => {
+      // Create unverified user
+      await User.create({
+        name: 'Unverified User',
+        email: 'unverified@example.com',
+        password: 'password123',
+        isEmailVerified: false,
+      });
+
+      const loginData = {
+        email: 'unverified@example.com',
+        password: 'password123',
+      };
+
+      app.post('/login', authController.login);
+
+      const response = await request(app)
+        .post('/login')
+        .send(loginData)
+        .expect(401);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Please verify your email before logging in');
+    });
+
+    test('should reject login with missing fields', async () => {
+      const loginData = {
+        email: 'test@example.com',
+      };
+
+      app.post('/login', authController.login);
+
+      const response = await request(app)
+        .post('/login')
+        .send(loginData)
+        .expect(400);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Please provide email and password');
+    });
+  });
+
+  describe('Email Verification', () => {
+    test('should verify email with valid token', async () => {
+      const user = await User.create({
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123',
+      });
+
+      const verificationToken = user.createEmailVerificationToken();
+      await user.save({ validateBeforeSave: false });
+
+      app.get('/verify-email/:token', authController.verifyEmail);
+
+      const response = await request(app)
+        .get(`/verify-email/${verificationToken}`)
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Email verified successfully! You can now log in.');
+
+      const verifiedUser = await User.findById(user._id);
+      expect(verifiedUser.isEmailVerified).toBe(true);
+    });
+
+    test('should reject invalid verification token', async () => {
+      app.get('/verify-email/:token', authController.verifyEmail);
+
+      const response = await request(app)
+        .get('/verify-email/invalidtoken')
+        .expect(400);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Token is invalid or has expired');
+    });
+  });
+
+  describe('Password Reset', () => {
+    beforeEach(async () => {
+      await User.create({
+        name: 'Test User',
+        email: 'test@example.com',
+        password: 'password123',
+        isEmailVerified: true,
+      });
+    });
+
+    test('should send password reset email', async () => {
+      app.post('/forgot-password', authController.forgotPassword);
+
+      const response = await request(app)
+        .post('/forgot-password')
+        .send({ email: 'test@example.com' })
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Password reset token sent to email!');
+    });
+
+    test('should handle non-existent email for password reset', async () => {
+      app.post('/forgot-password', authController.forgotPassword);
+
+      const response = await request(app)
+        .post('/forgot-password')
+        .send({ email: 'nonexistent@example.com' })
+        .expect(404);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('There is no user with that email address.');
+    });
+
+    test('should reset password with valid token', async () => {
+      const user = await User.findOne({ email: 'test@example.com' });
+      const resetToken = user.createPasswordResetToken();
+      await user.save({ validateBeforeSave: false });
+
+      app.patch('/reset-password/:token', authController.resetPassword);
+
+      const response = await request(app)
+        .patch(`/reset-password/${resetToken}`)
+        .send({
+          password: 'newpassword123',
+          confirmPassword: 'newpassword123',
+        })
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.token).toBeDefined();
+    });
+
+    test('should reject password reset with invalid token', async () => {
+      app.patch('/reset-password/:token', authController.resetPassword);
+
+      const response = await request(app)
+        .patch('/reset-password/invalidtoken')
+        .send({
+          password: 'newpassword123',
+          confirmPassword: 'newpassword123',
+        })
+        .expect(400);
+
+      expect(response.body.status).toBe('fail');
+      expect(response.body.message).toBe('Token is invalid or has expired');
+    });
+  });
+
+  describe('Logout', () => {
+    test('should logout user successfully', async () => {
+      app.post('/logout', authController.logout);
+
+      const response = await request(app)
+        .post('/logout')
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Logged out successfully');
+    });
+  });
+});
