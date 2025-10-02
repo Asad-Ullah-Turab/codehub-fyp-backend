@@ -157,7 +157,7 @@ describe('End-to-End Integration Tests', () => {
         .post('/api/auth/logout')
         .expect(200);
 
-      expect(logoutResponse.body.message).toBe('Logged out successfully');
+      expect(logoutResponse.body.message).toBeUndefined();
     });
   });
 

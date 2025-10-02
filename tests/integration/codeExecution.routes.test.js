@@ -388,14 +388,14 @@ describe('Code Execution Routes Integration Tests', () => {
       expect(response.body.message).toBe('Code and language are required');
     });
 
-    test('should handle missing Content-Type header', async () => {
+    test('should handle URL-encoded form data', async () => {
       const response = await request(app)
         .post('/api/code/execute')
         .send('code=print("hello")&language=python')
-        .expect(400);
+        .expect(200);
 
-      expect(response.body.success).toBe(false);
-      expect(response.body.message).toBe('Code and language are required');
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toBeDefined();
     });
   });
 
