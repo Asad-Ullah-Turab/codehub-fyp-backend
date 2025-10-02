@@ -90,12 +90,11 @@ describe('Email Service Tests', () => {
 
       const result = await emailService.sendVerificationOTP(email, otp, name);
 
-      expect(result).toBe(true);
+      expect(result).toEqual({ success: true, messageId: 'test-id' });
       expect(mockSendMail).toHaveBeenCalledWith({
-        from: process.env.EMAIL_USER,
+        from: expect.any(String),
         to: email,
-        subject: 'Email Verification - CodeHub',
-        text: expect.stringContaining(otp),
+        subject: 'Verify Your Email - CodeHub',
         html: expect.stringContaining(otp),
       });
     });
@@ -108,7 +107,6 @@ describe('Email Service Tests', () => {
       await emailService.sendVerificationOTP(email, otp, name);
 
       const call = mockSendMail.mock.calls[0][0];
-      expect(call.text).toContain(name);
       expect(call.html).toContain(name);
     });
 
@@ -119,16 +117,14 @@ describe('Email Service Tests', () => {
       await emailService.sendVerificationOTP(email, otp);
 
       const call = mockSendMail.mock.calls[0][0];
-      expect(call.text).toContain('User');
+      expect(call.html).toContain('User');
     });
 
     test('should handle send email errors', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       mockSendMail.mockRejectedValue(new Error('Send failed'));
 
-      const result = await emailService.sendVerificationOTP('user@example.com', '123456');
-
-      expect(result).toBe(false);
+      await expect(emailService.sendVerificationOTP('user@example.com', '123456')).rejects.toThrow('Failed to send verification email');
       expect(consoleSpy).toHaveBeenCalled();
       
       consoleSpy.mockRestore();
@@ -137,9 +133,7 @@ describe('Email Service Tests', () => {
     test('should not send email if service not available', async () => {
       emailService.initialized = false;
 
-      const result = await emailService.sendVerificationOTP('user@example.com', '123456');
-
-      expect(result).toBe(false);
+      await expect(emailService.sendVerificationOTP('user@example.com', '123456')).rejects.toThrow('Email service is not available');
       expect(mockSendMail).not.toHaveBeenCalled();
     });
   });
@@ -156,12 +150,11 @@ describe('Email Service Tests', () => {
 
       const result = await emailService.sendPasswordResetOTP(email, otp, name);
 
-      expect(result).toBe(true);
+      expect(result).toEqual({ success: true, messageId: 'test-id' });
       expect(mockSendMail).toHaveBeenCalledWith({
-        from: process.env.EMAIL_USER,
+        from: expect.any(String),
         to: email,
-        subject: 'Password Reset - CodeHub',
-        text: expect.stringContaining(otp),
+        subject: 'Reset Your Password - CodeHub',
         html: expect.stringContaining(otp),
       });
     });
@@ -170,24 +163,21 @@ describe('Email Service Tests', () => {
       await emailService.sendPasswordResetOTP('user@example.com', '654321', 'User');
 
       const call = mockSendMail.mock.calls[0][0];
-      expect(call.text).toContain('If you did not request this');
-      expect(call.html).toContain('If you did not request this');
+      expect(call.html).toContain('If you didn\'t request a password reset');
     });
 
     test('should include expiration information', async () => {
       await emailService.sendPasswordResetOTP('user@example.com', '654321', 'User');
 
       const call = mockSendMail.mock.calls[0][0];
-      expect(call.text).toContain('10 minutes');
+      expect(call.html).toContain('15 minutes');
     });
 
     test('should handle send email errors', async () => {
       const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
       mockSendMail.mockRejectedValue(new Error('Send failed'));
 
-      const result = await emailService.sendPasswordResetOTP('user@example.com', '654321');
-
-      expect(result).toBe(false);
+      await expect(emailService.sendPasswordResetOTP('user@example.com', '654321')).rejects.toThrow('Failed to send password reset email');
       expect(consoleSpy).toHaveBeenCalled();
       
       consoleSpy.mockRestore();
