@@ -65,7 +65,7 @@ describe('Code Execution Controller Tests', () => {
         memoryUsage: 40,
       };
 
-      codeExecutorService.executeCode.mockResolvedValue(mockResult);
+      executeCodeSpy.mockResolvedValue(mockResult);
 
       app.post('/execute', codeExecutionController.executeCode);
 
@@ -88,7 +88,7 @@ describe('Code Execution Controller Tests', () => {
         memoryUsage: 60,
       };
 
-      codeExecutorService.executeCode.mockResolvedValue(mockResult);
+      executeCodeSpy.mockResolvedValue(mockResult);
 
       app.post('/execute', codeExecutionController.executeCode);
 
@@ -111,7 +111,7 @@ describe('Code Execution Controller Tests', () => {
         memoryUsage: 45,
       };
 
-      codeExecutorService.executeCode.mockResolvedValue(mockResult);
+      executeCodeSpy.mockResolvedValue(mockResult);
 
       app.post('/execute', codeExecutionController.executeCode);
 
@@ -125,7 +125,7 @@ describe('Code Execution Controller Tests', () => {
         .expect(200);
 
       expect(response.body.success).toBe(true);
-      expect(codeExecutorService.executeCode).toHaveBeenCalledWith(
+      expect(executeCodeSpy).toHaveBeenCalledWith(
         'name = input("Enter name: ")\\nprint(f"Input received: {name}")',
         'python',
         'John'
@@ -177,7 +177,7 @@ describe('Code Execution Controller Tests', () => {
 
     test('should handle execution service errors', async () => {
       const mockError = new Error('Docker container failed');
-      codeExecutorService.executeCode.mockRejectedValue(mockError);
+      executeCodeSpy.mockRejectedValue(mockError);
 
       app.post('/execute', codeExecutionController.executeCode);
 
@@ -196,7 +196,7 @@ describe('Code Execution Controller Tests', () => {
 
     test('should handle timeout errors', async () => {
       const mockError = new Error('Execution timeout');
-      codeExecutorService.executeCode.mockRejectedValue(mockError);
+      executeCodeSpy.mockRejectedValue(mockError);
 
       app.post('/execute', codeExecutionController.executeCode);
 
@@ -266,7 +266,7 @@ describe('Code Execution Controller Tests', () => {
         memoryUsage: 80,
       };
 
-      codeExecutorService.executeCode.mockResolvedValue(mockResult);
+      executeCodeSpy.mockResolvedValue(mockResult);
 
       app.post('/execute', codeExecutionController.executeCode);
 

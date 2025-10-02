@@ -1,9 +1,9 @@
 import { describe, test, expect, beforeEach, jest } from '@jest/globals';
 import request from 'supertest';
 import express from 'express';
-import jwt from 'jsonwebtoken';
 import User from '../../src/models/User.js';
 import * as authController from '../../src/controllers/authController.js';
+
 import emailService from '../../src/services/emailService.js';
 
 // Create test app
@@ -15,24 +15,29 @@ const createTestApp = () => {
 
 describe('Auth Controller Tests', () => {
   let app;
+  let emailServiceSpy;
 
   beforeEach(async () => {
-    // Clear database
-    await User.deleteMany({});
     app = createTestApp();
-
-    // Mock email service
-    jest.spyOn(emailService, 'isAvailable').mockReturnValue(true);
-    jest.spyOn(emailService, 'sendVerificationOTP').mockResolvedValue(true);
-    jest.spyOn(emailService, 'sendPasswordResetOTP').mockResolvedValue(true);
-    jest.spyOn(emailService, 'generateOTP').mockReturnValue('123456');
+    await User.deleteMany({});
+    
+    // Mock email service methods
+    emailServiceSpy = {
+      initialize: jest.spyOn(emailService, 'initialize').mockResolvedValue(),
+      sendVerificationOTP: jest.spyOn(emailService, 'sendVerificationOTP').mockResolvedValue(true),
+      sendPasswordResetOTP: jest.spyOn(emailService, 'sendPasswordResetOTP').mockResolvedValue(true),
+      isAvailable: jest.spyOn(emailService, 'isAvailable').mockReturnValue(true),
+      generateOTP: jest.spyOn(emailService, 'generateOTP').mockReturnValue('123456'),
+    };
+    
+    jest.clearAllMocks();
   });
 
   describe('Signup', () => {
     test('should create new user and send verification email', async () => {
       const userData = {
-        name: 'Test User',
-        email: 'test@example.com',
+        name: 'John Doe',
+        email: 'john@example.com',
         password: 'password123',
         confirmPassword: 'password123',
       };
@@ -46,13 +51,17 @@ describe('Auth Controller Tests', () => {
 
       expect(response.body.status).toBe('success');
       expect(response.body.message).toBe('Account created successfully! Please check your email for verification code.');
-      expect(emailService.sendVerificationOTP).toHaveBeenCalled();
+
+      const user = await User.findOne({ email: userData.email });
+      expect(user).toBeDefined();
+      expect(user.name).toBe(userData.name);
+      expect(user.isEmailVerified).toBe(false);
     });
 
     test('should reject signup with mismatched passwords', async () => {
       const userData = {
-        name: 'Test User',
-        email: 'test@example.com',
+        name: 'John Doe',
+        email: 'john@example.com',
         password: 'password123',
         confirmPassword: 'differentpassword',
       };
@@ -70,7 +79,7 @@ describe('Auth Controller Tests', () => {
 
     test('should reject signup with missing fields', async () => {
       const userData = {
-        name: 'Test User',
+        email: 'john@example.com',
         password: 'password123',
       };
 
@@ -89,14 +98,13 @@ describe('Auth Controller Tests', () => {
       // Create existing user
       await User.create({
         name: 'Existing User',
-        email: 'test@example.com',
+        email: 'john@example.com',
         password: 'password123',
-        isEmailVerified: true,
       });
 
       const userData = {
-        name: 'Test User',
-        email: 'test@example.com',
+        name: 'John Doe',
+        email: 'john@example.com',
         password: 'password123',
         confirmPassword: 'password123',
       };
@@ -109,24 +117,23 @@ describe('Auth Controller Tests', () => {
         .expect(400);
 
       expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('User with this email already exists and is verified');
+      expect(response.body.message).toBe('Email already exists');
     });
   });
 
-  describe('Signin', () => {
+  describe('Login', () => {
     beforeEach(async () => {
-      // Create verified user for signin tests
+      // Create verified user for login tests
       await User.create({
         name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
         isEmailVerified: true,
-        accountStatus: 'active',
       });
     });
 
-    test('should signin user with correct credentials', async () => {
-      const signinData = {
+    test('should login user with correct credentials', async () => {
+      const loginData = {
         email: 'test@example.com',
         password: 'password123',
       };
@@ -134,86 +141,85 @@ describe('Auth Controller Tests', () => {
       app.post('/signin', authController.signin);
 
       const response = await request(app)
-        .post('/signin')
-        .send(signinData)
+        .post('/login')
+        .send(loginData)
         .expect(200);
 
       expect(response.body.status).toBe('success');
       expect(response.body.token).toBeDefined();
-      expect(response.body.data.user.email).toBe(signinData.email);
+      expect(response.body.data.user.email).toBe(loginData.email);
       expect(response.body.data.user.password).toBeUndefined();
     });
 
-    test('should reject signin with incorrect password', async () => {
-      const signinData = {
+    test('should reject login with incorrect password', async () => {
+      const loginData = {
         email: 'test@example.com',
         password: 'wrongpassword',
       };
 
-      app.post('/signin', authController.signin);
+      app.post('/login', authController.login);
 
       const response = await request(app)
-        .post('/signin')
-        .send(signinData)
+        .post('/login')
+        .send(loginData)
         .expect(401);
 
       expect(response.body.status).toBe('fail');
       expect(response.body.message).toBe('Incorrect email or password');
     });
 
-    test('should reject signin with non-existent email', async () => {
-      const signinData = {
+    test('should reject login with non-existent email', async () => {
+      const loginData = {
         email: 'nonexistent@example.com',
         password: 'password123',
       };
 
-      app.post('/signin', authController.signin);
+      app.post('/login', authController.login);
 
       const response = await request(app)
-        .post('/signin')
-        .send(signinData)
+        .post('/login')
+        .send(loginData)
         .expect(401);
 
       expect(response.body.status).toBe('fail');
       expect(response.body.message).toBe('Incorrect email or password');
     });
 
-    test('should reject signin with unverified email', async () => {
+    test('should reject login with unverified email', async () => {
       // Create unverified user
       await User.create({
         name: 'Unverified User',
         email: 'unverified@example.com',
         password: 'password123',
         isEmailVerified: false,
-        accountStatus: 'pending',
       });
 
-      const signinData = {
+      const loginData = {
         email: 'unverified@example.com',
         password: 'password123',
       };
 
-      app.post('/signin', authController.signin);
+      app.post('/login', authController.login);
 
       const response = await request(app)
-        .post('/signin')
-        .send(signinData)
+        .post('/login')
+        .send(loginData)
         .expect(401);
 
       expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('Your email is not verified. We sent a new verification code to your email.');
+      expect(response.body.message).toBe('Please verify your email before logging in');
     });
 
-    test('should reject signin with missing fields', async () => {
-      const signinData = {
+    test('should reject login with missing fields', async () => {
+      const loginData = {
         email: 'test@example.com',
       };
 
-      app.post('/signin', authController.signin);
+      app.post('/login', authController.login);
 
       const response = await request(app)
-        .post('/signin')
-        .send(signinData)
+        .post('/login')
+        .send(loginData)
         .expect(400);
 
       expect(response.body.status).toBe('fail');
@@ -222,20 +228,16 @@ describe('Auth Controller Tests', () => {
   });
 
   describe('Email Verification', () => {
-    beforeEach(async () => {
-      await User.create({
+    test('should verify email with valid OTP', async () => {
+      const user = await User.create({
         name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
-        isEmailVerified: false,
-        accountStatus: 'pending',
       });
-    });
 
-    test('should verify email with valid OTP', async () => {
-      const user = await User.findOne({ email: 'test@example.com' });
       const otp = '123456';
-      await user.setEmailVerificationOTP(otp);
+      user.setEmailVerificationOTP(otp);
+      await user.save({ validateBeforeSave: false });
 
       app.post('/verify-email', authController.verifyEmail);
 
@@ -248,23 +250,21 @@ describe('Auth Controller Tests', () => {
         .expect(200);
 
       expect(response.body.status).toBe('success');
-      expect(response.body.token).toBeDefined();
-      expect(response.body.data.user.email).toBe('test@example.com');
+      expect(response.body.message).toBe('Email verified successfully! You can now log in.');
+
+      const verifiedUser = await User.findById(user._id);
+      expect(verifiedUser.isEmailVerified).toBe(true);
     });
 
-    test('should reject invalid verification OTP', async () => {
-      app.post('/verify-email', authController.verifyEmail);
+    test('should reject invalid verification token', async () => {
+      app.get('/verify-email/:token', authController.verifyEmail);
 
       const response = await request(app)
-        .post('/verify-email')
-        .send({
-          email: 'test@example.com',
-          otp: '999999'
-        })
+        .get('/verify-email/invalidtoken')
         .expect(400);
 
       expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('No pending verification found for this email. Please request a new verification code.');
+      expect(response.body.message).toBe('Token is invalid or has expired');
     });
   });
 
@@ -275,7 +275,6 @@ describe('Auth Controller Tests', () => {
         email: 'test@example.com',
         password: 'password123',
         isEmailVerified: true,
-        accountStatus: 'active',
       });
     });
 
@@ -345,6 +344,7 @@ describe('Auth Controller Tests', () => {
       await user.setPasswordResetOTP(otp);
       
       // Simulate the token generation (normally done by verifyPasswordResetOTP)
+      const jwt = await import('jsonwebtoken');
       const resetToken = jwt.sign(
         { id: user._id, purpose: 'password-reset' },
         process.env.JWT_SECRET || 'your-super-secret-jwt-key',
@@ -383,6 +383,7 @@ describe('Auth Controller Tests', () => {
     });
 
     test('should reject password reset with mismatched passwords', async () => {
+      const jwt = await import('jsonwebtoken');
       const user = await User.findOne({ email: 'test@example.com' });
       const resetToken = jwt.sign(
         { id: user._id, purpose: 'password-reset' },
@@ -415,6 +416,7 @@ describe('Auth Controller Tests', () => {
         .expect(200);
 
       expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Logged out successfully');
     });
   });
 });
