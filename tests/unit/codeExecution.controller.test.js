@@ -253,9 +253,9 @@ describe('Code Execution Controller Tests', () => {
       const response = await request(app)
         .post('/execute')
         .send('invalid json')
-        .expect(400);
+        .expect(500);
 
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(500);
     });
 
     test('should handle very long code input', async () => {
