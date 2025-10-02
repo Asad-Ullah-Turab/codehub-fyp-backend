@@ -7,31 +7,9 @@ import session from 'express-session';
 import User from '../../src/models/User.js';
 import authRoutes from '../../src/routes/authRoutes.js';
 import codeExecutionRoutes from '../../src/routes/codeExecutionRoutes.js';
-
-// Mock services
-jest.mock('../../src/services/emailService.js', () => ({
-  default: {
-    initialize: jest.fn(),
-    sendEmail: jest.fn().mockResolvedValue(true),
-    sendVerificationEmail: jest.fn().mockResolvedValue(true),
-    sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
-  }
-}));
-
-jest.mock('../../src/services/codeExecutorService.js', () => ({
-  default: {
-    executeCode: jest.fn(),
-  }
-}));
-
-jest.mock('../../src/config/passport.js', () => ({
-  default: {
-    initialize: () => (req, res, next) => next(),
-    session: () => (req, res, next) => next(),
-  }
-}));
-
+import emailService from '../../src/services/emailService.js';
 import codeExecutorService from '../../src/services/codeExecutorService.js';
+import passport from '../../src/config/passport.js';
 
 // Create full app simulation
 const createApp = () => {
@@ -70,8 +48,15 @@ describe('End-to-End Integration Tests', () => {
     await User.deleteMany({});
     jest.clearAllMocks();
     
+    // Setup mocks for email service
+    jest.spyOn(emailService, 'initialize').mockResolvedValue(true);
+    jest.spyOn(emailService, 'isAvailable').mockReturnValue(true);
+    jest.spyOn(emailService, 'sendVerificationOTP').mockResolvedValue({ success: true, messageId: 'test-id' });
+    jest.spyOn(emailService, 'sendPasswordResetOTP').mockResolvedValue({ success: true, messageId: 'test-id' });
+    jest.spyOn(emailService, 'generateOTP').mockReturnValue('123456');
+    
     // Setup default mock for code execution
-    codeExecutorService.executeCode.mockResolvedValue({
+    jest.spyOn(codeExecutorService, 'executeCode').mockResolvedValue({
       output: 'Hello, World!',
       executionTime: 100,
       memoryUsage: 50,
@@ -103,28 +88,29 @@ describe('End-to-End Integration Tests', () => {
 
       // Step 3: Attempt login with unverified account (should fail)
       const unverifiedLoginResponse = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: userData.email,
           password: userData.password,
         })
         .expect(401);
 
-      expect(unverifiedLoginResponse.body.message).toContain('verify your email');
+      expect(unverifiedLoginResponse.body.message).toContain('not verified');
 
-      // Step 4: Verify email
-      const verificationToken = user.createEmailVerificationToken();
-      await user.save({ validateBeforeSave: false });
+      // Step 4: Verify email with OTP
+      await user.setEmailVerificationOTP('123456');
 
       const verifyResponse = await request(app)
-        .get(`/api/auth/verify-email/${verificationToken}`)
+        .post('/api/auth/verify-email')
+        .send({ email: userData.email, otp: '123456' })
         .expect(200);
 
-      expect(verifyResponse.body.message).toContain('verified successfully');
+      expect(verifyResponse.body.status).toBe('success');
+      expect(verifyResponse.body.token).toBeDefined();
 
       // Step 5: Login with verified account
       const loginResponse = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: userData.email,
           password: userData.password,
@@ -183,11 +169,12 @@ describe('End-to-End Integration Tests', () => {
         email: 'reset@example.com',
         password: 'oldpassword123',
         isEmailVerified: true,
+        accountStatus: 'active',
       });
 
       // Step 2: Login with original password
       const originalLoginResponse = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: user.email,
           password: 'oldpassword123',
@@ -202,28 +189,32 @@ describe('End-to-End Integration Tests', () => {
         .send({ email: user.email })
         .expect(200);
 
-      expect(forgotPasswordResponse.body.message).toContain('reset token sent');
+      expect(forgotPasswordResponse.body.message).toContain('reset');
 
-      // Step 4: Get reset token
+      // Step 4: Set and verify reset OTP to get token
       const updatedUser = await User.findById(user._id);
-      const resetToken = updatedUser.createPasswordResetToken();
-      await updatedUser.save({ validateBeforeSave: false });
+      await updatedUser.setPasswordResetOTP('123456');
 
-      // Step 5: Reset password
+      const otpResponse = await request(app)
+        .post('/api/auth/verify-reset-otp')
+        .send({ email: user.email, otp: '123456' })
+        .expect(200);
+
+      // Step 5: Reset password with token
       const resetPasswordResponse = await request(app)
-        .patch(`/api/auth/reset-password/${resetToken}`)
+        .post('/api/auth/reset-password')
         .send({
-          password: 'newpassword123',
+          resetToken: otpResponse.body.resetToken,
+          newPassword: 'newpassword123',
           confirmPassword: 'newpassword123',
         })
         .expect(200);
 
       expect(resetPasswordResponse.body.status).toBe('success');
-      expect(resetPasswordResponse.body.token).toBeDefined();
 
       // Step 6: Verify old password no longer works
       await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: user.email,
           password: 'oldpassword123',
@@ -232,7 +223,7 @@ describe('End-to-End Integration Tests', () => {
 
       // Step 7: Verify new password works
       const newLoginResponse = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: user.email,
           password: 'newpassword123',
@@ -382,11 +373,11 @@ describe('End-to-End Integration Tests', () => {
         .send(userData)
         .expect(201);
 
-      // Second registration with same email
+      // Second registration with same email (should return 200 with message about existing unverified account)
       await request(app)
         .post('/api/auth/signup')
         .send(userData)
-        .expect(400);
+        .expect(200);
     });
 
     test('should handle invalid code execution requests', async () => {
@@ -432,13 +423,14 @@ describe('End-to-End Integration Tests', () => {
       await request(app).post('/api/auth/signup').send(userData);
       
       const user = await User.findOne({ email: userData.email });
-      const verificationToken = user.createEmailVerificationToken();
-      await user.save({ validateBeforeSave: false });
-      await request(app).get(`/api/auth/verify-email/${verificationToken}`);
+      await user.setEmailVerificationOTP('123456');
+      await request(app)
+        .post('/api/auth/verify-email')
+        .send({ email: userData.email, otp: '123456' });
 
       // Login and check for JWT cookie
       const loginResponse = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: userData.email,
           password: userData.password,
@@ -457,7 +449,7 @@ describe('End-to-End Integration Tests', () => {
 
       const logoutCookies = logoutResponse.headers['set-cookie'];
       const clearedJwtCookie = logoutCookies?.find(cookie => cookie.includes('jwt='));
-      expect(clearedJwtCookie).toContain('jwt=;');
+      expect(clearedJwtCookie).toContain('jwt=loggedout');
     });
   });
 

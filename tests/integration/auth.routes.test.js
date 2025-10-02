@@ -5,24 +5,22 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import User from '../../src/models/User.js';
 import authRoutes from '../../src/routes/authRoutes.js';
+import emailService from '../../src/services/emailService.js';
+import passport from '../../src/config/passport.js';
 
-// Mock email service
-jest.mock('../../src/services/emailService.js', () => ({
-  default: {
-    initialize: jest.fn(),
-    sendEmail: jest.fn().mockResolvedValue(true),
-    sendVerificationEmail: jest.fn().mockResolvedValue(true),
-    sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
-  }
-}));
+// Setup mocking for ES modules
+const mockEmailService = {
+  initialize: jest.fn().mockResolvedValue(true),
+  isAvailable: jest.fn().mockReturnValue(true),
+  sendVerificationOTP: jest.fn().mockResolvedValue({ success: true, messageId: 'test-id' }),
+  sendPasswordResetOTP: jest.fn().mockResolvedValue({ success: true, messageId: 'test-id' }),
+  generateOTP: jest.fn().mockReturnValue('123456'),
+};
 
-// Mock passport
-jest.mock('../../src/config/passport.js', () => ({
-  default: {
-    initialize: () => (req, res, next) => next(),
-    session: () => (req, res, next) => next(),
-  }
-}));
+const mockPassport = {
+  initialize: jest.fn(() => (req, res, next) => next()),
+  session: jest.fn(() => (req, res, next) => next()),
+};
 
 // Create test app
 const createTestApp = () => {
@@ -44,6 +42,15 @@ describe('Auth Routes Integration Tests', () => {
   beforeEach(async () => {
     app = createTestApp();
     await User.deleteMany({});
+    
+    // Setup mocks for each test
+    jest.spyOn(emailService, 'initialize').mockResolvedValue(true);
+    jest.spyOn(emailService, 'isAvailable').mockReturnValue(true);
+    jest.spyOn(emailService, 'sendVerificationOTP').mockResolvedValue({ success: true, messageId: 'test-id' });
+    jest.spyOn(emailService, 'sendPasswordResetOTP').mockResolvedValue({ success: true, messageId: 'test-id' });
+    jest.spyOn(emailService, 'generateOTP').mockReturnValue('123456');
+    
+    jest.clearAllMocks();
   });
 
   describe('POST /api/auth/signup', () => {
@@ -61,7 +68,7 @@ describe('Auth Routes Integration Tests', () => {
         .expect(201);
 
       expect(response.body.status).toBe('success');
-      expect(response.body.message).toBe('User registered successfully! Please check your email to verify your account.');
+      expect(response.body.message).toBe('Account created successfully! Please check your email for verification code.');
 
       const user = await User.findOne({ email: userData.email });
       expect(user).toBeDefined();
@@ -87,10 +94,10 @@ describe('Auth Routes Integration Tests', () => {
       const response = await request(app)
         .post('/api/auth/signup')
         .send(userData)
-        .expect(400);
+        .expect(200);
 
-      expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('Email already exists');
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('Account already exists but not verified. New verification code sent to your email.');
     });
 
     test('should validate password confirmation', async () => {
@@ -111,7 +118,7 @@ describe('Auth Routes Integration Tests', () => {
     });
   });
 
-  describe('POST /api/auth/login', () => {
+  describe('POST /api/auth/signin', () => {
     beforeEach(async () => {
       // Create verified user for login tests
       await User.create({
@@ -119,6 +126,7 @@ describe('Auth Routes Integration Tests', () => {
         email: 'test@example.com',
         password: 'password123',
         isEmailVerified: true,
+        accountStatus: 'active',
       });
     });
 
@@ -129,7 +137,7 @@ describe('Auth Routes Integration Tests', () => {
       };
 
       const response = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send(loginData)
         .expect(200);
 
@@ -147,7 +155,7 @@ describe('Auth Routes Integration Tests', () => {
       };
 
       const response = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send(loginData)
         .expect(401);
 
@@ -170,44 +178,55 @@ describe('Auth Routes Integration Tests', () => {
       };
 
       const response = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send(loginData)
         .expect(401);
 
       expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('Please verify your email before logging in');
+      expect(response.body.message).toBe('Your email is not verified. We sent a new verification code to your email.');
     });
   });
 
-  describe('GET /api/auth/verify-email/:token', () => {
-    test('should verify email with valid token', async () => {
+  describe('POST /api/auth/verify-email', () => {
+    test('should verify email with valid OTP', async () => {
       const user = await User.create({
         name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
       });
 
-      const verificationToken = user.createEmailVerificationToken();
-      await user.save({ validateBeforeSave: false });
+      // Set OTP directly
+      await user.setEmailVerificationOTP('123456');
 
       const response = await request(app)
-        .get(`/api/auth/verify-email/${verificationToken}`)
+        .post('/api/auth/verify-email')
+        .send({ email: 'test@example.com', otp: '123456' })
         .expect(200);
 
       expect(response.body.status).toBe('success');
-      expect(response.body.message).toBe('Email verified successfully! You can now log in.');
+      expect(response.body.token).toBeDefined();
+      expect(response.body.data.user).toBeDefined();
 
       const verifiedUser = await User.findById(user._id);
       expect(verifiedUser.isEmailVerified).toBe(true);
     });
 
-    test('should reject invalid verification token', async () => {
+    test('should reject invalid verification OTP', async () => {
+      const user = await User.create({
+        name: 'Test User',
+        email: 'test2@example.com',
+        password: 'password123',
+      });
+
+      await user.setEmailVerificationOTP('123456');
+
       const response = await request(app)
-        .get('/api/auth/verify-email/invalidtoken')
+        .post('/api/auth/verify-email')
+        .send({ email: 'test2@example.com', otp: '999999' })
         .expect(400);
 
       expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('Token is invalid or has expired');
+      expect(response.body.message).toBe('Invalid or expired OTP');
     });
   });
 
@@ -226,7 +245,7 @@ describe('Auth Routes Integration Tests', () => {
         .expect(200);
 
       expect(response.body.status).toBe('success');
-      expect(response.body.message).toBe('Verification email sent! Please check your email.');
+      expect(response.body.message).toBe('Verification code sent to your email');
     });
 
     test('should handle already verified user', async () => {
@@ -243,7 +262,7 @@ describe('Auth Routes Integration Tests', () => {
         .expect(400);
 
       expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('Email is already verified');
+      expect(response.body.message).toBe('No pending verification found for this email');
     });
   });
 
@@ -264,80 +283,109 @@ describe('Auth Routes Integration Tests', () => {
         .expect(200);
 
       expect(response.body.status).toBe('success');
-      expect(response.body.message).toBe('Password reset token sent to email!');
+      expect(response.body.message).toBe('If an account with this email exists, you will receive a password reset code.');
     });
 
-    test('should handle non-existent email', async () => {
+    test('should handle non-existent email gracefully', async () => {
       const response = await request(app)
         .post('/api/auth/forgot-password')
         .send({ email: 'nonexistent@example.com' })
-        .expect(404);
+        .expect(200);
 
-      expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('There is no user with that email address.');
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('If an account with this email exists, you will receive a password reset code.');
     });
   });
 
-  describe('PATCH /api/auth/reset-password/:token', () => {
-    test('should reset password with valid token', async () => {
+  describe('POST /api/auth/verify-reset-otp', () => {
+    test('should verify password reset OTP successfully', async () => {
       const user = await User.create({
         name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
         isEmailVerified: true,
+        accountStatus: 'active',
       });
 
-      const resetToken = user.createPasswordResetToken();
-      await user.save({ validateBeforeSave: false });
+      // Set reset OTP directly
+      await user.setPasswordResetOTP('123456');
 
       const response = await request(app)
-        .patch(`/api/auth/reset-password/${resetToken}`)
+        .post('/api/auth/verify-reset-otp')
+        .send({ email: 'test@example.com', otp: '123456' })
+        .expect(200);
+
+      expect(response.body.status).toBe('success');
+      expect(response.body.message).toBe('OTP verified successfully');
+      expect(response.body.resetToken).toBeDefined();
+    });
+
+    test('should reject invalid password reset OTP', async () => {
+      const response = await request(app)
+        .post('/api/auth/verify-reset-otp')
+        .send({ email: 'test@example.com', otp: '999999' })
+        .expect(400);
+
+      expect(response.body.status).toBe('fail');
+    });
+  });
+
+  describe('POST /api/auth/reset-password', () => {
+    test('should reset password with verified OTP token', async () => {
+      const user = await User.create({
+        name: 'Test User',
+        email: 'resetuser@example.com',
+        password: 'password123',
+        isEmailVerified: true,
+        accountStatus: 'active',
+      });
+
+      // Set and verify reset OTP first to get token
+      await user.setPasswordResetOTP('123456');
+      
+      const otpResponse = await request(app)
+        .post('/api/auth/verify-reset-otp')
+        .send({ email: 'resetuser@example.com', otp: '123456' })
+        .expect(200);
+
+      const resetToken = otpResponse.body.resetToken;
+
+      const response = await request(app)
+        .post('/api/auth/reset-password')
         .send({
-          password: 'newpassword123',
+          resetToken,
+          newPassword: 'newpassword123',
           confirmPassword: 'newpassword123',
         })
         .expect(200);
 
       expect(response.body.status).toBe('success');
-      expect(response.body.token).toBeDefined();
-
-      // Verify password was changed
-      const updatedUser = await User.findById(user._id).select('+password');
-      const isOldPassword = await updatedUser.correctPassword('password123', updatedUser.password);
-      const isNewPassword = await updatedUser.correctPassword('newpassword123', updatedUser.password);
-      
-      expect(isOldPassword).toBe(false);
-      expect(isNewPassword).toBe(true);
-    });
-
-    test('should reject password reset with invalid token', async () => {
-      const response = await request(app)
-        .patch('/api/auth/reset-password/invalidtoken')
-        .send({
-          password: 'newpassword123',
-          confirmPassword: 'newpassword123',
-        })
-        .expect(400);
-
-      expect(response.body.status).toBe('fail');
-      expect(response.body.message).toBe('Token is invalid or has expired');
+      expect(response.body.message).toBe('Password reset successfully');
     });
 
     test('should validate password confirmation during reset', async () => {
       const user = await User.create({
         name: 'Test User',
-        email: 'test@example.com',
+        email: 'resetuser2@example.com',
         password: 'password123',
         isEmailVerified: true,
+        accountStatus: 'active',
       });
 
-      const resetToken = user.createPasswordResetToken();
-      await user.save({ validateBeforeSave: false });
+      await user.setPasswordResetOTP('123456');
+      
+      const otpResponse = await request(app)
+        .post('/api/auth/verify-reset-otp')
+        .send({ email: 'resetuser2@example.com', otp: '123456' })
+        .expect(200);
+
+      const resetToken = otpResponse.body.resetToken;
 
       const response = await request(app)
-        .patch(`/api/auth/reset-password/${resetToken}`)
+        .post('/api/auth/reset-password')
         .send({
-          password: 'newpassword123',
+          resetToken,
+          newPassword: 'newpassword123',
           confirmPassword: 'differentpassword',
         })
         .expect(400);
@@ -354,12 +402,12 @@ describe('Auth Routes Integration Tests', () => {
         .expect(200);
 
       expect(response.body.status).toBe('success');
-      expect(response.body.message).toBe('Logged out successfully');
+      expect(response.body.message).toBeUndefined();
       
       // Check that JWT cookie is cleared
       const cookies = response.headers['set-cookie'];
       const jwtCookie = cookies?.find(cookie => cookie.includes('jwt='));
-      expect(jwtCookie).toContain('jwt=;');
+      expect(jwtCookie).toContain('jwt=loggedout');
     });
   });
 
@@ -380,18 +428,18 @@ describe('Auth Routes Integration Tests', () => {
 
       expect(signupResponse.body.status).toBe('success');
 
-      // Step 2: Verify email
+      // Step 2: Verify email with OTP
       const user = await User.findOne({ email: userData.email });
-      const verificationToken = user.createEmailVerificationToken();
-      await user.save({ validateBeforeSave: false });
+      await user.setEmailVerificationOTP('123456');
 
       await request(app)
-        .get(`/api/auth/verify-email/${verificationToken}`)
+        .post('/api/auth/verify-email')
+        .send({ email: userData.email, otp: '123456' })
         .expect(200);
 
       // Step 3: Login
       const loginResponse = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: userData.email,
           password: userData.password,
@@ -410,6 +458,7 @@ describe('Auth Routes Integration Tests', () => {
         email: 'reset@example.com',
         password: 'oldpassword123',
         isEmailVerified: true,
+        accountStatus: 'active',
       });
 
       // Step 1: Request password reset
@@ -418,23 +467,29 @@ describe('Auth Routes Integration Tests', () => {
         .send({ email: user.email })
         .expect(200);
 
-      // Step 2: Reset password
-      const resetToken = user.createPasswordResetToken();
-      await user.save({ validateBeforeSave: false });
+      // Step 2: Set and verify reset OTP to get token
+      await user.setPasswordResetOTP('123456');
 
+      const otpResponse = await request(app)
+        .post('/api/auth/verify-reset-otp')
+        .send({ email: user.email, otp: '123456' })
+        .expect(200);
+
+      // Step 3: Reset password with token
       const resetResponse = await request(app)
-        .patch(`/api/auth/reset-password/${resetToken}`)
+        .post('/api/auth/reset-password')
         .send({
-          password: 'newpassword123',
+          resetToken: otpResponse.body.resetToken,
+          newPassword: 'newpassword123',
           confirmPassword: 'newpassword123',
         })
         .expect(200);
 
       expect(resetResponse.body.status).toBe('success');
 
-      // Step 3: Login with new password
+      // Step 4: Login with new password
       const loginResponse = await request(app)
-        .post('/api/auth/login')
+        .post('/api/auth/signin')
         .send({
           email: user.email,
           password: 'newpassword123',

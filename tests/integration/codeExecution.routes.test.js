@@ -4,13 +4,6 @@ import express from 'express';
 import cors from 'cors';
 import codeExecutionRoutes from '../../src/routes/codeExecutionRoutes.js';
 
-// Mock code executor service
-jest.mock('../../src/services/codeExecutorService.js', () => ({
-  default: {
-    executeCode: jest.fn(),
-  }
-}));
-
 import codeExecutorService from '../../src/services/codeExecutorService.js';
 
 // Create test app
@@ -38,6 +31,17 @@ const createTestApp = () => {
 
 describe('Code Execution Routes Integration Tests', () => {
   let app;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    
+    // Mock codeExecutorService
+    jest.spyOn(codeExecutorService, 'executeCode').mockResolvedValue({
+      output: 'Mock output',
+      executionTime: 100,
+      memoryUsage: 50,
+    });
+  });
 
   beforeEach(() => {
     app = createTestApp();
