@@ -1,4 +1,4 @@
-import codeExecutorService from '../services/codeExecutorService.js';
+import codeExecutorWSService from '../services/codeExecutorWSService.js';
 
 class CodeExecutionController {
   async executeCode(req, res) {
@@ -20,7 +20,8 @@ class CodeExecutionController {
         });
       }
 
-      const result = await codeExecutorService.executeCode(code, language, input);
+      // Execute code with pre-provided input
+      const result = await codeExecutorWSService.executeCode(code, language, input);
 
       res.status(200).json({
         success: true,

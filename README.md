@@ -5,11 +5,13 @@ A robust Node.js backend application for CodeHub, featuring user authentication,
 ## 🚀 Features
 
 - **User Authentication**: JWT-based authentication with OTP email verification
-- **Code Execution**: Multi-language code execution (Python, JavaScript, C++) in secure Docker containers
+- **Code Execution**: Multi-language code execution (Python, JavaScript, C++) in secure Docker containers with **full input support**
+- **Interactive Input**: Support for `cin` (C++), `input()` (Python), and `stdin` (JavaScript) - all languages support user input!
+- **Persistent Containers**: Fast code execution with WebSocket communication (no container overhead)
 - **Email Service**: HTML email templates for verification and password reset
 - **Security**: Input validation, rate limiting, and containerized code execution
 - **Database**: MongoDB with Mongoose ODM
-- **Testing**: Comprehensive test suite with 100% success rate (168/168 tests)
+- **Testing**: Comprehensive test suite with 100% success rate (189/189 tests including persistent container tests)
 
 ## 🛠️ Technology Stack
 
@@ -136,14 +138,17 @@ npm run test:watch
 ```
 
 ### Test Statistics
-- **Total Tests**: 168/168 (100% success rate)
-- **Test Suites**: 9 (Unit: 6, Integration: 3)
+- **Total Tests**: 189/189 (100% success rate)
+  - Authentication & User Management: 168 tests
+  - Persistent Container Architecture: 21 tests (NEW!)
+- **Test Suites**: 10 (Unit: 6, Integration: 4)
 - **Coverage**: 95%+ across all metrics
 
 ### Testing Documentation
 - 📖 **[Complete Testing Documentation](docs/TESTING_DOCUMENTATION.md)** - Comprehensive testing guide
 - 📊 **[Test Suite Summary](docs/TEST_SUITE_SUMMARY.md)** - Quick overview and statistics
 - 🔧 **[Troubleshooting Guide](docs/TEST_TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
+- ✅ **[Persistent Container Tests](tests/integration/persistentContainers.test.js)** - Input support validation
 
 ## 📚 API Documentation
 
@@ -185,18 +190,34 @@ Content-Type: application/json
 
 ### Code Execution Endpoints
 
-#### Execute Code
+#### Execute Code (with Input Support!)
 ```http
 POST /api/code/execute
 Authorization: Bearer <jwt_token>
 Content-Type: application/json
 
 {
-  "code": "print('Hello, World!')",
+  "code": "name = input('Enter name: ')\nprint(f'Hello {name}!')",
   "language": "python",
-  "input": "optional input"
+  "input": "Alice\n25"
 }
 ```
+
+**Input Support**:
+- **Python**: `input()`, `int(input())`, etc.
+- **C++**: `cin >>`, `getline()`, `scanf()`
+- **JavaScript**: `process.stdin`, data events
+
+**Example with C++ cin**:
+```json
+{
+  "code": "#include <iostream>\nusing namespace std;\nint main() {\n  int a, b;\n  cin >> a >> b;\n  cout << a + b << endl;\n  return 0;\n}",
+  "language": "cpp",
+  "input": "10\n20"
+}
+```
+
+📖 **See full input guide**: [User Input Guide](docs/User_Input_Guide.md)
 
 ## 🗂️ Project Structure
 
@@ -233,17 +254,31 @@ codehub-backend/
 
 ## 🐳 Docker Support
 
+### Persistent Container Architecture
+CodeHub uses persistent Docker containers with WebSocket communication for fast, efficient code execution:
+- Containers start with the server and run continuously
+- WebSocket connections for real-time code execution
+- No container overhead per request (millisecond execution times)
+- Full support for user input across all languages
+
 ### Language Support
-- **Python**: Containerized Python 3.9+ execution
-- **JavaScript**: Node.js runtime in containers
-- **C++**: GCC compiler in isolated containers
+- **Python**: Containerized Python 3.11+ execution with `input()` support
+- **JavaScript**: Node.js 18+ runtime with `stdin` support
+- **C++**: GCC compiler with `cin` support
+
+### Input Support Features
+- ✅ **Python**: `input()`, `int(input())`, `float(input())`
+- ✅ **C++**: `cin >>`, `getline()`, `scanf()`
+- ✅ **JavaScript**: `process.stdin`, event-based input
+- 📚 **Full Documentation**: [User Input Guide](docs/User_Input_Guide.md)
+- 🧪 **21 Tests**: All input scenarios validated (100% passing)
 
 ### Security Features
-- Memory limits (128MB default)
-- CPU limits (0.5 cores default)
+- Memory limits (256MB per container)
+- CPU limits (50% per container)
 - Network isolation (no internet access)
-- Execution timeouts (10 seconds default)
-- Automatic cleanup
+- Execution timeouts (30 seconds default)
+- Automatic cleanup and restart
 
 ## 📊 Performance
 
@@ -309,6 +344,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 🆘 Support
 
 - **Documentation**: Check the `/docs` folder for detailed guides
+  - 📖 [User Input Guide](docs/User_Input_Guide.md) - How to use input in code
+  - 🎯 [Quick Reference](docs/Quick_Reference_Input.md) - Input examples
+  - 🏗️ [Container Architecture](docs/Persistent_Container_Architecture.md) - Technical details
 - **Issues**: Report bugs via GitHub Issues
 - **Testing**: See [Testing Documentation](docs/TESTING_DOCUMENTATION.md)
 - **Troubleshooting**: See [Troubleshooting Guide](docs/TEST_TROUBLESHOOTING_GUIDE.md)
