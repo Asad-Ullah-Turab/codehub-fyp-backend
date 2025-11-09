@@ -1,20 +1,60 @@
+import jwt from 'jsonwebtoken';
+import User from '../models/User.js';
+
 /**
  * Authentication Middleware
- * Verifies user is authenticated before accessing protected routes
+ * Verifies user is authenticated via JWT token in Authorization header or via Passport session
  */
-
-export const auth = (req, res, next) => {
+export const auth = async (req, res, next) => {
   try {
-    // Check if user is authenticated via session or JWT
-    if (!req.user) {
-      return res.status(401).json({
-        success: false,
-        message: 'Authentication required. Please log in first.'
-      });
+    let user = null;
+
+    // Check for JWT token in Authorization header (Bearer token)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7); // Remove 'Bearer ' prefix
+      
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key');
+        
+        // Fetch user from database to ensure they still exist
+        user = await User.findById(decoded.id);
+        
+        if (!user) {
+          return res.status(401).json({
+            success: false,
+            message: 'User not found. Please log in again.'
+          });
+        }
+
+        // Attach user to request
+        req.user = user;
+        return next();
+      } catch (tokenError) {
+        if (tokenError.name === 'TokenExpiredError') {
+          return res.status(401).json({
+            success: false,
+            message: 'Token expired. Please log in again.'
+          });
+        }
+        console.error('Token verification error:', tokenError.message);
+        return res.status(401).json({
+          success: false,
+          message: 'Invalid token. Please log in again.'
+        });
+      }
     }
-    
-    // User is authenticated, proceed to next middleware/route
-    next();
+
+    // Fallback to Passport session authentication
+    if (req.user) {
+      return next();
+    }
+
+    // No authentication found
+    return res.status(401).json({
+      success: false,
+      message: 'Authentication required. Please log in first.'
+    });
   } catch (error) {
     console.error('Auth middleware error:', error);
     res.status(500).json({
@@ -28,16 +68,30 @@ export const auth = (req, res, next) => {
  * Optional Auth Middleware
  * Allows anonymous users but attaches user info if authenticated
  */
-export const optionalAuth = (req, res, next) => {
+export const optionalAuth = async (req, res, next) => {
   try {
-    // If user exists, continue. If not, that's OK too.
+    // Check for JWT token in Authorization header
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key');
+        const user = await User.findById(decoded.id);
+        if (user) {
+          req.user = user;
+        }
+      } catch (tokenError) {
+        console.error('Token verification error:', tokenError.message);
+        // Continue without user if token is invalid
+      }
+    }
+
+    // Continue to next middleware/route
     next();
   } catch (error) {
     console.error('Optional auth middleware error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Authentication error'
-    });
+    next(); // Continue even if there's an error
   }
 };
 
