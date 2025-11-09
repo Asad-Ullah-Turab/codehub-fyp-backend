@@ -11,6 +11,7 @@ import loggerConfig from "./config/logger.js";
 import codeExecutionRoutes from "./routes/codeExecutionRoutes.js";
 import authRoutes from "./routes/authRoutes.js";
 import tutorialRoutes from "./routes/tutorialRoutes.js";
+import adminRoutes from "./routes/adminRoutes.js";
 import connectDB from "./config/database.js";
 import passport, { initializeOAuthStrategies } from "./config/oauthConfig.js";
 import emailService from "./services/emailService.js";
@@ -74,6 +75,7 @@ app.get("/", (req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/code", codeExecutionRoutes);
 app.use("/api/tutorials", tutorialRoutes);
+app.use("/api/admin", adminRoutes);
 
 // 404 handler
 app.use((req, res) => {

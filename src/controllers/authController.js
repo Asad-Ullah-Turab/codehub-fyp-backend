@@ -420,6 +420,14 @@ export const protect = async (req, res, next) => {
       });
     }
 
+    // Check if account is suspended
+    if (currentUser.accountStatus === 'suspended') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Your account has been suspended. Please contact support.'
+      });
+    }
+
     // Grant access to protected route
     req.user = currentUser;
     next();
