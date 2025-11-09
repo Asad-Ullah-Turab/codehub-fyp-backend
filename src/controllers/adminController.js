@@ -265,16 +265,19 @@ export const deleteTutorial = async (req, res) => {
 // Create new tutorial (by admin)
 export const createTutorial = async (req, res) => {
   try {
-    const { title, language, concept, content, difficulty, codeExamples, tags } = req.body;
+    const { title, description, language, concept, content, difficulty, codeExamples, tags, notes, tips } = req.body;
 
     const tutorial = await Tutorial.create({
       title,
+      description,
       language,
       concept,
       content,
       difficulty,
       codeExamples,
       tags,
+      notes,
+      tips,
       createdBy: req.user._id,
     });
 
@@ -284,6 +287,7 @@ export const createTutorial = async (req, res) => {
       data: tutorial,
     });
   } catch (error) {
+    console.error("Error creating tutorial:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
