@@ -11,7 +11,7 @@ const courseSchema = new mongoose.Schema(
     description: {
       type: String,
       required: [true, "Course description is required"],
-      maxlength: [1000, "Description cannot exceed 1000 characters"],
+      maxlength: [2000, "Description cannot exceed 2000 characters"],
     },
     shortDescription: {
       type: String,
@@ -46,18 +46,24 @@ const courseSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    // Course content
+    // Course content - sections contain lessons and quizzes
     sections: [
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "CourseSection",
       },
     ],
-    // Assessment
+    // Final assessment
     finalQuiz: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quiz",
       default: null,
+    },
+    // Certificate
+    certificateTemplate: {
+      type: String,
+      default: "standard",
+      enum: ["standard", "distinguished", "excellence"],
     },
     // Metadata
     thumbnail: {
@@ -81,15 +87,19 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    completedCount: {
+      type: Number,
+      default: 0,
+    },
     averageRating: {
       type: Number,
       min: 0,
       max: 5,
       default: 0,
     },
-    certificateTemplate: {
-      type: String,
-      default: "standard",
+    ratingCount: {
+      type: Number,
+      default: 0,
     },
     // Status
     isPublished: {
@@ -111,10 +121,11 @@ const courseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Indexes
+// Indexes for better query performance
 courseSchema.index({ language: 1, category: 1 });
 courseSchema.index({ instructor: 1 });
 courseSchema.index({ isPublished: 1, isArchived: 1 });
+courseSchema.index({ category: 1, difficulty: 1 });
 
 const Course = mongoose.model("Course", courseSchema);
 export default Course;

@@ -1,5 +1,6 @@
 import Tutorial from '../models/Tutorial.js';
 import UserSavedTutorial from '../models/UserSavedTutorial.js';
+import Feedback from '../models/Feedback.js';
 
 class TutorialController {
   // Get all pre-generated tutorials, optionally filtered by language
