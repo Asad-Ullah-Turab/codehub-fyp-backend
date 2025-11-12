@@ -61,8 +61,14 @@ const userSchema = new mongoose.Schema(
     enrolledTutorials: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Tutorial" },
     ],
+    enrolledCourses: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "CourseEnrollment" },
+    ],
     savedCodes: [{ type: mongoose.Schema.Types.ObjectId, ref: "CodeSnippet" }],
     progress: [{ type: mongoose.Schema.Types.ObjectId, ref: "Progress" }],
+    certificates: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Certificate" },
+    ],
 
     // Recent AI chat messages
     recentAIChats: [
