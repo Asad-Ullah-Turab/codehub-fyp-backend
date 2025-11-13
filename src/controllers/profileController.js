@@ -152,15 +152,14 @@ export const getDashboardStats = async (req, res) => {
   try {
     const userId = req.user._id;
 
+    // Import UserSavedTutorial dynamically to avoid circular dependencies
+    const UserSavedTutorial = (await import("../models/UserSavedTutorial.js")).default;
+
     // Get counts
-    const [enrolledCoursesCount, completedTutorials, certificates, recentProgress] = await Promise.all([
+    const [enrolledCoursesCount, certificates, savedTutorialsCount] = await Promise.all([
       CourseEnrollment.countDocuments({ user: userId }),
-      Progress.countDocuments({ user: userId, completionPercent: 100 }),
       Certificate.countDocuments({ user: userId }),
-      Progress.find({ user: userId })
-        .populate("tutorial", "title language")
-        .sort({ lastAccessed: -1 })
-        .limit(5)
+      UserSavedTutorial.countDocuments({ user: userId })
     ]);
 
     // Get course completion stats
@@ -187,20 +186,19 @@ export const getDashboardStats = async (req, res) => {
 
     const averageCourseProgress = enrolledCoursesCount > 0 ? Math.round(totalCourseProgress / enrolledCoursesCount) : 0;
 
-    // Calculate total time spent
+    // Calculate total time spent (from course progress only)
     const totalTimeSpent = await Progress.aggregate([
-      { $match: { user: userId } },
+      { $match: { user: userId, course: { $exists: true } } }, // Only course progress
       { $group: { _id: null, totalTime: { $sum: "$timeSpentMinutes" } } }
     ]);
 
     const stats = {
       enrolledCourses: enrolledCoursesCount,
       completedCourses,
-      completedTutorials,
       certificates,
       averageCourseProgress,
       totalTimeSpentMinutes: totalTimeSpent[0]?.totalTime || 0,
-      recentActivity: recentProgress,
+      savedTutorials: savedTutorialsCount,
     };
 
     res.status(200).json({

@@ -10,7 +10,6 @@ router.put("/", auth, profileController.updateProfile);
 
 // ========== PROGRESS TRACKING ==========
 router.get("/progress/courses", auth, profileController.getCourseProgress);
-router.get("/progress/tutorials", auth, profileController.getTutorialProgress);
 router.get("/dashboard", auth, profileController.getDashboardStats);
 
 // ========== ENROLLMENT MANAGEMENT ==========
