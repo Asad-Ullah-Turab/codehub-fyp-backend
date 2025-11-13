@@ -96,7 +96,7 @@ class TutorialController {
       }
       
       const tutorials = await Tutorial.find(filter)
-        .select('title concept difficulty language codeExamples')
+        .select('title description content concept difficulty language codeExamples notes tips tags')
         .sort({ difficulty: 1, concept: 1 })
         .lean();
       
