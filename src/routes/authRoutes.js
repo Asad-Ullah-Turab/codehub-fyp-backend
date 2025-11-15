@@ -62,8 +62,26 @@ router.get('/google/callback', (req, res, next) => {
     return res.redirect(`${process.env.FRONTEND_URL}/signin?error=oauth_strategy_unavailable`);
   }
   
-  passport.authenticate('google', { failureRedirect: '/api/auth/failure' })(req, res, next);
-}, oauthSuccess);
+  passport.authenticate('google', (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      // Check if it's a suspended account
+      if (info && info.message === 'Account is suspended') {
+        return res.redirect(`${process.env.FRONTEND_URL}/signin?error=account_suspended`);
+      }
+      return res.redirect('/api/auth/failure');
+    }
+    // Manually log in the user
+    req.logIn(user, (loginErr) => {
+      if (loginErr) {
+        return next(loginErr);
+      }
+      return oauthSuccess(req, res);
+    });
+  })(req, res, next);
+});
 
 // GitHub OAuth routes
 router.get('/github', (req, res, next) => {
@@ -95,8 +113,26 @@ router.get('/github/callback', (req, res, next) => {
     return res.redirect(`${process.env.FRONTEND_URL}/signin?error=oauth_strategy_unavailable`);
   }
   
-  passport.authenticate('github', { failureRedirect: '/api/auth/failure' })(req, res, next);
-}, oauthSuccess);
+  passport.authenticate('github', (err, user, info) => {
+    if (err) {
+      return next(err);
+    }
+    if (!user) {
+      // Check if it's a suspended account
+      if (info && info.message === 'Account is suspended') {
+        return res.redirect(`${process.env.FRONTEND_URL}/signin?error=account_suspended`);
+      }
+      return res.redirect('/api/auth/failure');
+    }
+    // Manually log in the user
+    req.logIn(user, (loginErr) => {
+      if (loginErr) {
+        return next(loginErr);
+      }
+      return oauthSuccess(req, res);
+    });
+  })(req, res, next);
+});
 
 // OAuth failure route
 router.get('/failure', oauthFailure);
