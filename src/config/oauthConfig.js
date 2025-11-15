@@ -35,12 +35,28 @@ export const initializeGoogleStrategy = () => {
           });
 
           if (user) {
-            // User exists, update Google ID if not set
+            // User exists, ensure they are verified and active
+            let needsUpdate = false;
+            
             if (!user.googleId) {
               user.googleId = profile.id;
+              needsUpdate = true;
+            }
+            
+            if (!user.isEmailVerified) {
               user.isEmailVerified = true;
+              needsUpdate = true;
+            }
+            
+            if (user.accountStatus !== 'active') {
+              user.accountStatus = 'active';
+              needsUpdate = true;
+            }
+            
+            if (needsUpdate) {
               await user.save();
             }
+            
             return done(null, user);
           }
 
@@ -50,6 +66,7 @@ export const initializeGoogleStrategy = () => {
             name: profile.displayName,
             email: profile.emails[0].value,
             isEmailVerified: true,
+            accountStatus: 'active',
             profilePicture: profile.photos[0]?.value || null,
           });
 
@@ -90,21 +107,40 @@ export const initializeGitHubStrategy = () => {
           });
 
           if (user) {
-            // User exists, update GitHub ID if not set
+            // User exists, ensure they are verified and active
+            let needsUpdate = false;
+            
             if (!user.githubId) {
               user.githubId = profile.id;
+              needsUpdate = true;
+            }
+            
+            // GitHub OAuth authentication verifies identity, mark as verified
+            if (!user.isEmailVerified) {
               user.isEmailVerified = true;
+              needsUpdate = true;
+            }
+            
+            // Activate account for GitHub OAuth users
+            if (user.accountStatus !== 'active') {
+              user.accountStatus = 'active';
+              needsUpdate = true;
+            }
+            
+            if (needsUpdate) {
               await user.save();
             }
+            
             return done(null, user);
           }
 
-          // Create new user
+          // Create new user - GitHub OAuth authentication verifies identity
           user = await User.create({
             githubId: profile.id,
             name: profile.displayName || profile.username,
             email: profile.emails?.[0]?.value || `${profile.username}@github.local`,
-            isEmailVerified: profile.emails?.[0]?.value ? true : false,
+            isEmailVerified: true, // OAuth authentication verifies identity
+            accountStatus: 'active', // Allow access for all GitHub OAuth users
             profilePicture: profile.photos?.[0]?.value || null,
           });
 
