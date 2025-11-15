@@ -8,8 +8,10 @@ import Course from "../models/Course.js";
 // Submit quiz answers
 export const submitQuizAnswers = async (req, res) => {
   try {
+    console.log('Submit quiz request body:', req.body);
     const { quizId, courseId, sectionId, answers } = req.body;
     const userId = req.user._id;
+    console.log('Quiz submission - userId:', userId, 'quizId:', quizId, 'courseId:', courseId, 'sectionId:', sectionId);
 
     // Validate quiz and get it with full details
     const quiz = await Quiz.findById(quizId);
@@ -52,9 +54,7 @@ export const submitQuizAnswers = async (req, res) => {
           break;
 
         case "true-false":
-          const correctTFOption = question.options.find(
-            (opt) => opt.isCorrect
-          );
+          const correctTFOption = question.options.find((opt) => opt.isCorrect);
           isCorrect = userAnswer === correctTFOption.text;
           break;
 
@@ -72,8 +72,7 @@ export const submitQuizAnswers = async (req, res) => {
           // In a real scenario, this would execute the code and test against test cases
           // For now, we'll mark it as pending review
           isCorrect = false; // TODO: Implement code execution
-          explanation =
-            "Coding answer submitted for review by instructor";
+          explanation = "Coding answer submitted for review by instructor";
           break;
       }
 
@@ -94,9 +93,12 @@ export const submitQuizAnswers = async (req, res) => {
     const scorePercentage = Math.round((earnedPoints / totalPoints) * 100);
     const passed = scorePercentage >= quiz.passingScore;
 
+    // Declare sectionProgress outside the if block
+    let sectionProgress = null;
+
     // Update enrollment based on quiz type
     if (quiz.type === "section-quiz" && sectionId) {
-      let sectionProgress = enrollment.sectionProgress.find(
+      sectionProgress = enrollment.sectionProgress.find(
         (sp) => sp.section.toString() === sectionId
       );
 
@@ -287,8 +289,8 @@ export const getQuizLeaderboard = async (req, res) => {
         if (enrollment.finalQuizScore?.quizId?.toString() === quizId) {
           score = enrollment.finalQuizScore;
         } else {
-          const sectionProgress = enrollment.sectionProgress.find((sp) =>
-            sp.sectionQuizScore?.quizId?.toString() === quizId
+          const sectionProgress = enrollment.sectionProgress.find(
+            (sp) => sp.sectionQuizScore?.quizId?.toString() === quizId
           );
           score = sectionProgress?.sectionQuizScore;
         }

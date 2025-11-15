@@ -10,6 +10,12 @@ const codeExampleSchema = new mongoose.Schema({
   order: Number,
 });
 
+const resourceSchema = new mongoose.Schema({
+  title: String,
+  url: String,
+  type: String, // e.g., "documentation", "article", "video"
+}, { _id: false });
+
 const courseLessonSchema = new mongoose.Schema(
   {
     section: {
@@ -52,13 +58,7 @@ const courseLessonSchema = new mongoose.Schema(
     ],
     notes: [String],
     tips: [String],
-    resources: [
-      {
-        title: String,
-        url: String,
-        type: String, // e.g., "documentation", "article", "video"
-      },
-    ],
+    resources: [resourceSchema],
     difficulty: {
       type: String,
       enum: ["beginner", "intermediate", "advanced"],

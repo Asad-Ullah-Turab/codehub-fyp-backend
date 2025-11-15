@@ -4,12 +4,12 @@ import CourseLesson from "../models/CourseLesson.js";
 import Quiz from "../models/Quiz.js";
 import User from "../models/User.js";
 
-const seedCourses = async () => {
+const seedCppCourse = async () => {
   try {
-    console.log("🌱 Seeding courses...");
+    console.log("🌱 Seeding comprehensive C++ course...");
 
-    // Clear existing courses
-    await Course.deleteMany({});
+    // Clear existing C++ courses
+    await Course.deleteMany({ language: "cpp" });
     await CourseSection.deleteMany({});
     await CourseLesson.deleteMany({});
     await Quiz.deleteMany({});
@@ -20,659 +20,833 @@ const seedCourses = async () => {
       throw new Error("Admin user not found. Please seed users first.");
     }
 
-    // ========== PYTHON COURSE - COMPREHENSIVE ==========
-    const pythonCourse = new Course({
-      title: "Python Programming Mastery",
+    // ========== COMPREHENSIVE C++ COURSE ==========
+    const cppCourse = new Course({
+      title: "C++ Programming Mastery: From Fundamentals to Advanced",
       description:
-        "Become a Python expert with this comprehensive course covering everything from basic syntax to advanced concepts like OOP, file handling, and web development fundamentals.",
+        "Master C++ programming with this comprehensive course covering everything from basic syntax to advanced concepts like OOP, templates, memory management, and the Standard Template Library. Build efficient, high-performance applications with one of the most powerful programming languages.",
       shortDescription:
-        "Complete Python programming course for beginners to advanced",
-      language: "python",
+        "Complete C++ programming course from beginner to advanced level with hands-on projects",
+      language: "cpp",
       category: "programming-language",
       difficulty: "beginner",
       instructor: admin._id,
-      estimatedHours: 60,
-      certificateTemplate: "standard",
+      estimatedHours: 80,
+      certificateTemplate: "excellence",
       tags: [
-        "python",
+        "cpp",
         "programming",
-        "beginner",
-        "web-development",
-        "automation",
+        "object-oriented",
+        "memory-management",
+        "stl",
+        "algorithms",
+        "performance",
       ],
       isPublished: true,
       thumbnail:
-        "https://images.unsplash.com/photo-1526379879527-8559ecfcaec0?w=500",
+        "https://images.unsplash.com/photo-1517077304055-6e89abbf09b0?w=500",
     });
-    await pythonCourse.save();
+    await cppCourse.save();
 
-    // Python - Section 1: Python Fundamentals
-    const pythonSection1 = new CourseSection({
-      course: pythonCourse._id,
-      title: "Python Fundamentals",
-      description: "Master the basics of Python programming language",
+    // ========== SECTION 1: C++ FUNDAMENTALS ==========
+    const section1 = new CourseSection({
+      course: cppCourse._id,
+      title: "C++ Fundamentals and Basic Syntax",
+      description:
+        "Learn the basics of C++ programming, setup development environment, and write your first programs",
       order: 1,
+      estimatedHours: 15,
     });
-    await pythonSection1.save();
+    await section1.save();
 
-    const pythonLesson1_1 = new CourseLesson({
-      section: pythonSection1._id,
-      title: "Getting Started with Python",
-      description: "Setup Python environment and write your first programs",
+    // Lesson 1.1: Introduction and Setup
+    const lesson1_1 = new CourseLesson({
+      section: section1._id,
+      title: "Getting Started with C++",
+      description:
+        "Setup C++ development environment and understand the basics of C++ programming",
       content: `
-        <h2>Why Python?</h2>
-        <p>Python is one of the most popular programming languages in the world, known for its simplicity and readability.</p>
-        
-        <h2>Installing Python</h2>
-        <p><strong>Windows:</strong> Download from python.org and run the installer</p>
-        <p><strong>Mac:</strong> Use Homebrew: <code>brew install python</code></p>
-        <p><strong>Linux:</strong> Use package manager: <code>sudo apt install python3</code></p>
-        
-        <h2>Your First Python Program</h2>
-        <p>Create a file called <code>hello.py</code> and add the following code:</p>
-      `,
-      order: 1,
-      duration: 25,
-      difficulty: "beginner",
-      estimatedHours: 1,
-      codeExamples: [
-        {
-          title: "Hello World",
-          description: "Traditional first program in Python",
-          code: `print("Hello, World!")
-print("Welcome to Python Programming!")`,
-          expectedOutput: `Hello, World!\nWelcome to Python Programming!`,
-          order: 1,
-        },
-        {
-          title: "Simple Calculator",
-          description: "Basic arithmetic operations",
-          code: `# Basic arithmetic
-print(5 + 3)
-print(10 - 4)
-print(6 * 7)
-print(15 / 3)`,
-          expectedOutput: `8\n6\n42\n5.0`,
-          order: 2,
-        },
-      ],
-    });
-    await pythonLesson1_1.save();
-
-    const pythonLesson1_2 = new CourseLesson({
-      section: pythonSection1._id,
-      title: "Variables, Data Types and Operators",
-      description: "Learn about Python's data types and how to work with them",
-      content: `
-        <h2>Variables in Python</h2>
-        <p>Variables are like containers that store data values. In Python, you don't need to declare variable types.</p>
-        
-        <h2>Basic Data Types</h2>
+        <h2>Why Learn C++?</h2>
+        <p>C++ is a powerful, high-performance programming language used in:</p>
         <ul>
-          <li><strong>String (str):</strong> Text data, enclosed in quotes</li>
-          <li><strong>Integer (int):</strong> Whole numbers</li>
-          <li><strong>Float (float):</strong> Decimal numbers</li>
-          <li><strong>Boolean (bool):</strong> True or False values</li>
-          <li><strong>List:</strong> Ordered, mutable collection</li>
-          <li><strong>Tuple:</strong> Ordered, immutable collection</li>
-          <li><strong>Dictionary:</strong> Key-value pairs</li>
+          <li><strong>System Software:</strong> Operating systems, device drivers</li>
+          <li><strong>Game Development:</strong> Game engines, graphics programming</li>
+          <li><strong>High-Frequency Trading:</strong> Financial systems requiring speed</li>
+          <li><strong>Embedded Systems:</strong> IoT devices, microcontrollers</li>
+          <li><strong>Scientific Computing:</strong> Simulations, data analysis</li>
         </ul>
-        
-        <h2>Operators</h2>
-        <p>Python supports arithmetic, comparison, logical, and assignment operators.</p>
-      `,
-      order: 2,
-      duration: 35,
-      difficulty: "beginner",
-      estimatedHours: 1.5,
-      codeExamples: [
-        {
-          title: "Variables and Data Types",
-          description: "Working with different data types",
-          code: `# Strings
-name = "Alice"
-message = 'Hello, ' + name
 
-# Numbers
-age = 25
-height = 5.8
-is_student = True
+        <h2>Setting Up Development Environment</h2>
+        <h3>Option 1: GCC/G++ (Linux/Mac)</h3>
+        <p>Install GCC compiler:</p>
+        <pre><code>sudo apt update
+sudo apt install g++</code></pre>
 
-# Collections
-fruits = ["apple", "banana", "orange"]
-coordinates = (10, 20)
-person = {"name": "Bob", "age": 30}
+        <h3>Option 2: Visual Studio (Windows)</h3>
+        <p>Download Visual Studio Community with C++ workload</p>
 
-print(message)
-print(f"Age: {age}, Height: {height}")
-print(fruits)`,
-          expectedOutput: `Hello, Alice\nAge: 25, Height: 5.8\n['apple', 'banana', 'orange']`,
-          order: 1,
-        },
-      ],
-    });
-    await pythonLesson1_2.save();
+        <h3>Option 3: Online Compilers</h3>
+        <p>Use online platforms like Wandbox, Compiler Explorer, or Replit</p>
 
-    // Python - Section 2: Control Flow
-    const pythonSection2 = new CourseSection({
-      course: pythonCourse._id,
-      title: "Control Flow and Functions",
-      description: "Master program flow control and function creation",
-      order: 2,
-    });
-    await pythonSection2.save();
-
-    const pythonLesson2_1 = new CourseLesson({
-      section: pythonSection2._id,
-      title: "Conditional Statements and Loops",
-      description: "Make decisions and repeat actions in your code",
-      content: `
-        <h2>Conditional Statements</h2>
-        <p>Use <code>if</code>, <code>elif</code>, and <code>else</code> to make decisions in your code.</p>
-        
-        <h2>Looping Structures</h2>
-        <p><strong>For loops:</strong> Iterate over sequences (lists, strings, etc.)</p>
-        <p><strong>While loops:</strong> Repeat while a condition is true</p>
-        
-        <h2>Loop Control</h2>
-        <p>Use <code>break</code> to exit loops and <code>continue</code> to skip iterations.</p>
+        <h2>C++ Program Structure</h2>
+        <p>Every C++ program has a specific structure that includes headers, main function, and statements.</p>
       `,
       order: 1,
-      duration: 40,
+      duration: 45,
       difficulty: "beginner",
       estimatedHours: 2,
       codeExamples: [
         {
-          title: "If-Else Statements",
-          description: "Making decisions in code",
-          code: `# Grade calculator
-score = 85
+          title: "Hello World Program",
+          description: "Traditional first program in C++",
+          code: `#include <iostream>
+using namespace std;
 
-if score >= 90:
-    grade = "A"
-elif score >= 80:
-    grade = "B"
-elif score >= 70:
-    grade = "C"
-else:
-    grade = "F"
-
-print(f"Score: {score}, Grade: {grade}")`,
-          expectedOutput: "Score: 85, Grade: B",
+int main() {
+    cout << "Hello, World!" << endl;
+    cout << "Welcome to C++ Programming!" << endl;
+    return 0;
+}`,
+          expectedOutput: `Hello, World!\nWelcome to C++ Programming!`,
           order: 1,
         },
         {
-          title: "For and While Loops",
-          description: "Different ways to loop in Python",
-          code: `# For loop with list
-fruits = ["apple", "banana", "cherry"]
-for fruit in fruits:
-    print(f"I like {fruit}")
+          title: "Basic Input and Output",
+          description: "Getting user input and displaying output",
+          code: `#include <iostream>
+#include <string>
+using namespace std;
 
-# While loop
-count = 1
-while count <= 5:
-    print(f"Count: {count}")
-    count += 1`,
-          expectedOutput: `I like apple\nI like banana\nI like cherry\nCount: 1\nCount: 2\nCount: 3\nCount: 4\nCount: 5`,
+int main() {
+    string name;
+    int age;
+    
+    cout << "Enter your name: ";
+    getline(cin, name);
+    cout << "Enter your age: ";
+    cin >> age;
+    
+    cout << "Hello " << name << ", you are " << age << " years old!" << endl;
+    return 0;
+}`,
+          expectedOutput: `Enter your name: [User Input]\nEnter your age: [User Input]\nHello [Name], you are [Age] years old!`,
           order: 2,
         },
       ],
+      tips: [
+        "Always include <iostream> for input/output operations",
+        "Use 'using namespace std' to avoid typing std:: repeatedly",
+        "The main() function is the entry point of every C++ program",
+        "Use endl or \\n for new lines in output",
+      ],
+      resources: [
+        {
+          title: "C++ Reference Documentation",
+          url: "https://en.cppreference.com/w/",
+          type: "documentation",
+        },
+        {
+          title: "GCC Compiler Manual",
+          url: "https://gcc.gnu.org/onlinedocs/",
+          type: "documentation",
+        },
+      ],
     });
-    await pythonLesson2_1.save();
+    await lesson1_1.save();
 
-    // Python - Quiz for Section 1
-    const pythonQuiz1 = new Quiz({
-      title: "Python Fundamentals Quiz",
-      description: "Test your understanding of Python basics",
+    // Lesson 1.2: Variables and Data Types
+    const lesson1_2 = new CourseLesson({
+      section: section1._id,
+      title: "Variables, Data Types and Operators",
+      description:
+        "Learn about C++ data types, variable declaration, and operators",
+      content: `
+        <h2>Fundamental Data Types in C++</h2>
+        <p>C++ has several built-in data types:</p>
+        
+        <h3>Integer Types</h3>
+        <ul>
+          <li><code>int</code> - Basic integer (4 bytes)</li>
+          <li><code>short</code> - Short integer (2 bytes)</li>
+          <li><code>long</code> - Long integer (4-8 bytes)</li>
+          <li><code>long long</code> - Very long integer (8 bytes)</li>
+        </ul>
+
+        <h3>Floating-Point Types</h3>
+        <ul>
+          <li><code>float</code> - Single precision (4 bytes)</li>
+          <li><code>double</code> - Double precision (8 bytes)</li>
+          <li><code>long double</code> - Extended precision (16 bytes)</li>
+        </ul>
+
+        <h3>Character Types</h3>
+        <ul>
+          <li><code>char</code> - Single character (1 byte)</li>
+          <li><code>wchar_t</code> - Wide character</li>
+        </ul>
+
+        <h3>Boolean Type</h3>
+        <ul>
+          <li><code>bool</code> - Boolean (true/false)</li>
+        </ul>
+
+        <h2>Variable Declaration and Initialization</h2>
+        <p>C++ requires explicit type declaration for variables.</p>
+
+        <h2>Operators in C++</h2>
+        <ul>
+          <li><strong>Arithmetic:</strong> +, -, *, /, %</li>
+          <li><strong>Relational:</strong> ==, !=, <, >, <=, >=</li>
+          <li><strong>Logical:</strong> &&, ||, !</li>
+          <li><strong>Assignment:</strong> =, +=, -=, *=, /=</li>
+          <li><strong>Increment/Decrement:</strong> ++, --</li>
+        </ul>
+      `,
+      order: 2,
+      duration: 60,
+      difficulty: "beginner",
+      estimatedHours: 2.5,
+      codeExamples: [
+        {
+          title: "Data Types and Variables",
+          description: "Working with different data types in C++",
+          code: `#include <iostream>
+#include <string>
+using namespace std;
+
+int main() {
+    // Integer types
+    int age = 25;
+    short year = 2024;
+    long population = 7800000000L;
+    
+    // Floating-point types
+    float price = 19.99f;
+    double distance = 1234567.89;
+    long double precise = 3.141592653589793238L;
+    
+    // Character types
+    char grade = 'A';
+    wchar_t symbol = L'€';
+    
+    // Boolean type
+    bool isStudent = true;
+    
+    // String (from Standard Library)
+    string name = "John Doe";
+    string message = "Welcome to C++";
+    
+    // Display all values
+    cout << "Name: " << name << endl;
+    cout << "Age: " << age << endl;
+    cout << "Price: $" << price << endl;
+    cout << "Grade: " << grade << endl;
+    cout << "Is Student: " << boolalpha << isStudent << endl;
+    cout << "Population: " << population << endl;
+    
+    return 0;
+}`,
+          expectedOutput: `Name: John Doe\nAge: 25\nPrice: $19.99\nGrade: A\nIs Student: true\nPopulation: 7800000000`,
+          order: 1,
+        },
+        {
+          title: "Operators Demonstration",
+          description: "Using various operators in C++",
+          code: `#include <iostream>
+using namespace std;
+
+int main() {
+    int a = 15, b = 4;
+    
+    // Arithmetic operators
+    cout << "a + b = " << (a + b) << endl;
+    cout << "a - b = " << (a - b) << endl;
+    cout << "a * b = " << (a * b) << endl;
+    cout << "a / b = " << (a / b) << endl;
+    cout << "a % b = " << (a % b) << endl;
+    
+    // Relational operators
+    cout << "a == b: " << (a == b) << endl;
+    cout << "a != b: " << (a != b) << endl;
+    cout << "a > b: " << (a > b) << endl;
+    
+    // Logical operators
+    bool x = true, y = false;
+    cout << "x && y: " << (x && y) << endl;
+    cout << "x || y: " << (x || y) << endl;
+    cout << "!x: " << (!x) << endl;
+    
+    // Assignment operators
+    int c = 10;
+    c += 5;  // c = c + 5
+    cout << "c after += 5: " << c << endl;
+    
+    // Increment/Decrement
+    int d = 5;
+    cout << "d++: " << d++ << endl;  // Post-increment
+    cout << "++d: " << ++d << endl;  // Pre-increment
+    
+    return 0;
+}`,
+          expectedOutput: `a + b = 19\na - b = 11\na * b = 60\na / b = 3\na % b = 3\na == b: 0\na != b: 1\na > b: 1\nx && y: 0\nx || y: 1\n!x: 0\nc after += 5: 15\nd++: 5\n++d: 7`,
+          order: 2,
+        },
+      ],
+      tips: [
+        "Use meaningful variable names for better code readability",
+        "Initialize variables when declaring them",
+        "Be careful with integer division - it truncates the decimal part",
+        "Use parentheses to clarify complex expressions",
+      ],
+      notes: [
+        "C++ is a strongly typed language - types matter!",
+        "The size of data types can vary by system architecture",
+        "Use sizeof() operator to check type sizes on your system",
+      ],
+    });
+    await lesson1_2.save();
+
+    // Lesson 1.3: Control Flow
+    const lesson1_3 = new CourseLesson({
+      section: section1._id,
+      title: "Control Flow: Conditionals and Loops",
+      description: "Master decision making and repetition in C++ programs",
+      content: `
+        <h2>Conditional Statements</h2>
+        <p>Control the flow of your program based on conditions.</p>
+        
+        <h3>if-else Statements</h3>
+        <p>Execute code blocks based on boolean conditions.</p>
+        
+        <h3>switch Statement</h3>
+        <p>Execute different code blocks based on a variable's value.</p>
+
+        <h2>Looping Structures</h2>
+        <p>Repeat code blocks multiple times.</p>
+        
+        <h3>for Loop</h3>
+        <p>Execute a block of code a specific number of times.</p>
+        
+        <h3>while Loop</h3>
+        <p>Execute a block of code while a condition is true.</p>
+        
+        <h3>do-while Loop</h3>
+        <p>Execute a block of code at least once, then repeat while condition is true.</p>
+
+        <h2>Loop Control Statements</h2>
+        <ul>
+          <li><code>break</code> - Exit the loop immediately</li>
+          <li><code>continue</code> - Skip to the next iteration</li>
+          <li><code>goto</code> - Jump to a labeled statement (use sparingly)</li>
+        </ul>
+      `,
+      order: 3,
+      duration: 55,
+      difficulty: "beginner",
+      estimatedHours: 2.5,
+      codeExamples: [
+        {
+          title: "If-Else and Switch Statements",
+          description: "Decision making in C++",
+          code: `#include <iostream>
+using namespace std;
+
+int main() {
+    int score;
+    cout << "Enter your score (0-100): ";
+    cin >> score;
+    
+    // if-else if-else ladder
+    char grade;
+    if (score >= 90) {
+        grade = 'A';
+    } else if (score >= 80) {
+        grade = 'B';
+    } else if (score >= 70) {
+        grade = 'C';
+    } else if (score >= 60) {
+        grade = 'D';
+    } else {
+        grade = 'F';
+    }
+    
+    cout << "Your grade is: " << grade << endl;
+    
+    // Switch statement example
+    int day;
+    cout << "Enter day number (1-7): ";
+    cin >> day;
+    
+    switch(day) {
+        case 1:
+            cout << "Monday" << endl;
+            break;
+        case 2:
+            cout << "Tuesday" << endl;
+            break;
+        case 3:
+            cout << "Wednesday" << endl;
+            break;
+        case 4:
+            cout << "Thursday" << endl;
+            break;
+        case 5:
+            cout << "Friday" << endl;
+            break;
+        case 6:
+            cout << "Saturday" << endl;
+            break;
+        case 7:
+            cout << "Sunday" << endl;
+            break;
+        default:
+            cout << "Invalid day!" << endl;
+    }
+    
+    return 0;
+}`,
+          expectedOutput: `Enter your score (0-100): [User Input]\nYour grade is: [Grade]\nEnter day number (1-7): [User Input]\n[Day Name]`,
+          order: 1,
+        },
+        {
+          title: "Looping Structures",
+          description: "Different types of loops in C++",
+          code: `#include <iostream>
+using namespace std;
+
+int main() {
+    // for loop - print numbers 1 to 5
+    cout << "For loop:" << endl;
+    for (int i = 1; i <= 5; i++) {
+        cout << i << " ";
+    }
+    cout << endl << endl;
+    
+    // while loop - sum numbers until 0 is entered
+    cout << "While loop (enter numbers, 0 to stop):" << endl;
+    int number, sum = 0;
+    while (true) {
+        cin >> number;
+        if (number == 0) {
+            break;
+        }
+        sum += number;
+    }
+    cout << "Sum: " << sum << endl << endl;
+    
+    // do-while loop - menu system
+    int choice;
+    do {
+        cout << "Menu:" << endl;
+        cout << "1. Option 1" << endl;
+        cout << "2. Option 2" << endl;
+        cout << "3. Exit" << endl;
+        cout << "Enter choice: ";
+        cin >> choice;
+        
+        switch(choice) {
+            case 1:
+                cout << "You selected Option 1" << endl;
+                break;
+            case 2:
+                cout << "You selected Option 2" << endl;
+                break;
+            case 3:
+                cout << "Exiting..." << endl;
+                break;
+            default:
+                cout << "Invalid choice!" << endl;
+        }
+        cout << endl;
+    } while (choice != 3);
+    
+    return 0;
+}`,
+          expectedOutput: `For loop:\n1 2 3 4 5 \n\nWhile loop (enter numbers, 0 to stop):\n[User Inputs]\nSum: [Sum]\n\nMenu:\n1. Option 1\n2. Option 2\n3. Exit\nEnter choice: [User Input]`,
+          order: 2,
+        },
+        {
+          title: "Nested Loops and Pattern Printing",
+          description: "Using nested loops to create patterns",
+          code: `#include <iostream>
+using namespace std;
+
+int main() {
+    int rows;
+    cout << "Enter number of rows: ";
+    cin >> rows;
+    
+    // Right triangle pattern
+    cout << "Right Triangle Pattern:" << endl;
+    for (int i = 1; i <= rows; i++) {
+        for (int j = 1; j <= i; j++) {
+            cout << "* ";
+        }
+        cout << endl;
+    }
+    cout << endl;
+    
+    // Multiplication table
+    cout << "Multiplication Table (5x5):" << endl;
+    for (int i = 1; i <= 5; i++) {
+        for (int j = 1; j <= 5; j++) {
+            cout << i * j << "\t";
+        }
+        cout << endl;
+    }
+    
+    return 0;
+}`,
+          expectedOutput: `Enter number of rows: [User Input]\nRight Triangle Pattern:\n* \n* * \n* * * \n[Pattern continues...]\n\nMultiplication Table (5x5):\n1\t2\t3\t4\t5\t\n2\t4\t6\t8\t10\t\n3\t6\t9\t12\t15\t\n4\t8\t12\t16\t20\t\n5\t10\t15\t20\t25\t`,
+          order: 3,
+        },
+      ],
+      tips: [
+        "Always include break statements in switch cases to prevent fall-through",
+        "Use meaningful loop variable names (i, j, k for simple loops)",
+        "Be careful with infinite loops - always have an exit condition",
+        "Prefer for loops when you know the number of iterations",
+      ],
+      notes: [
+        "The do-while loop always executes at least once",
+        "You can nest loops and conditionals arbitrarily deep",
+        "Use break and continue judiciously to improve code readability",
+      ],
+    });
+    await lesson1_3.save();
+
+    // ========== SECTION 2: FUNCTIONS AND OOP ==========
+    const section2 = new CourseSection({
+      course: cppCourse._id,
+      title: "Functions and Object-Oriented Programming",
+      description:
+        "Master functions, classes, and object-oriented programming principles in C++",
+      order: 2,
+      estimatedHours: 25,
+    });
+    await section2.save();
+
+    // Lesson 2.1: Functions
+    const lesson2_1 = new CourseLesson({
+      section: section2._id,
+      title: "Functions and Modular Programming",
+      description:
+        "Learn to create reusable code with functions, understand parameters, return types, and function overloading",
+      content: `
+        <h2>Functions in C++</h2>
+        <p>Functions allow you to break down complex programs into smaller, manageable pieces.</p>
+        
+        <h3>Function Components</h3>
+        <ul>
+          <li><strong>Return Type:</strong> The type of value the function returns</li>
+          <li><strong>Function Name:</strong> Identifier for the function</li>
+          <li><strong>Parameters:</strong> Input values for the function</li>
+          <li><strong>Function Body:</strong> Code that executes when function is called</li>
+        </ul>
+
+        <h2>Function Declaration vs Definition</h2>
+        <p><strong>Declaration:</strong> Tells the compiler about the function's signature</p>
+        <p><strong>Definition:</strong> Provides the actual implementation</p>
+
+        <h2>Parameter Passing Methods</h2>
+        <ul>
+          <li><strong>Pass by Value:</strong> Creates a copy of the argument</li>
+          <li><strong>Pass by Reference:</strong> Works with the original variable</li>
+          <li><strong>Pass by Pointer:</strong> Uses memory addresses</li>
+        </ul>
+
+        <h2>Function Overloading</h2>
+        <p>Multiple functions can have the same name with different parameters.</p>
+
+        <h2>Recursive Functions</h2>
+        <p>Functions that call themselves to solve problems.</p>
+      `,
+      order: 1,
+      duration: 70,
+      difficulty: "intermediate",
+      estimatedHours: 3,
+      codeExamples: [
+        {
+          title: "Basic Functions and Overloading",
+          description: "Creating and using functions with overloading",
+          code: `#include <iostream>
+#include <cmath>
+using namespace std;
+
+// Function declaration
+int add(int a, int b);
+double add(double a, double b);
+void printMessage(string message, int times = 1);
+
+// Function definitions
+int add(int a, int b) {
+    return a + b;
+}
+
+// Function overloading - same name, different parameters
+double add(double a, double b) {
+    return a + b;
+}
+
+// Function with default parameter
+void printMessage(string message, int times) {
+    for (int i = 0; i < times; i++) {
+        cout << message << endl;
+    }
+}
+
+// Function that returns nothing (void)
+void displayInfo(string name, int age) {
+    cout << "Name: " << name << endl;
+    cout << "Age: " << age << endl;
+}
+
+int main() {
+    // Using different function versions
+    cout << "Integer addition: " << add(5, 3) << endl;
+    cout << "Double addition: " << add(5.5, 3.2) << endl;
+    
+    displayInfo("Alice", 25);
+    printMessage("Hello C++!");
+    printMessage("Repeated", 3);  // Using default parameter
+    
+    return 0;
+}`,
+          expectedOutput: `Integer addition: 8\nDouble addition: 8.7\nName: Alice\nAge: 25\nHello C++!\nRepeated\nRepeated\nRepeated`,
+          order: 1,
+        },
+        {
+          title: "Parameter Passing Methods",
+          description: "Different ways to pass parameters to functions",
+          code: `#include <iostream>
+using namespace std;
+
+// Pass by value (creates copy)
+void incrementByValue(int x) {
+    x++;
+    cout << "Inside function (by value): " << x << endl;
+}
+
+// Pass by reference (works with original)
+void incrementByReference(int &x) {
+    x++;
+    cout << "Inside function (by reference): " << x << endl;
+}
+
+// Pass by pointer
+void incrementByPointer(int *x) {
+    (*x)++;
+    cout << "Inside function (by pointer): " << *x << endl;
+}
+
+// Function returning a value
+int factorial(int n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);  // Recursion
+}
+
+int main() {
+    int num = 5;
+    
+    cout << "Original value: " << num << endl;
+    
+    incrementByValue(num);
+    cout << "After pass by value: " << num << endl;
+    
+    incrementByReference(num);
+    cout << "After pass by reference: " << num << endl;
+    
+    incrementByPointer(&num);
+    cout << "After pass by pointer: " << num << endl;
+    
+    // Recursive function example
+    cout << "Factorial of 5: " << factorial(5) << endl;
+    
+    return 0;
+}`,
+          expectedOutput: `Original value: 5\nInside function (by value): 6\nAfter pass by value: 5\nInside function (by reference): 6\nAfter pass by reference: 6\nInside function (by pointer): 7\nAfter pass by pointer: 7\nFactorial of 5: 120`,
+          order: 2,
+        },
+      ],
+      tips: [
+        "Use descriptive function names that indicate what the function does",
+        "Keep functions small and focused on a single task",
+        "Use pass by reference when you need to modify the original variable",
+        "Use const references for large objects to avoid copying",
+      ],
+      notes: [
+        "Function overloading is resolved at compile time",
+        "Default parameters must be at the end of the parameter list",
+        "Recursive functions need a base case to prevent infinite recursion",
+      ],
+    });
+    await lesson2_1.save();
+
+    // ========== QUIZZES ==========
+
+    // Quiz for Section 1
+    const quiz1 = new Quiz({
+      title: "C++ Fundamentals Quiz",
+      description:
+        "Test your understanding of C++ basics, variables, data types, and control flow",
       type: "section-quiz",
-      course: pythonCourse._id,
-      section: pythonSection1._id,
+      course: cppCourse._id,
+      section: section1._id,
       questions: [
         {
           type: "multiple-choice",
-          question: "What is the correct way to create a variable in Python?",
-          description: "Choose the proper variable assignment",
+          question:
+            "Which of the following is the correct way to include the iostream header in C++?",
+          description: "Choose the proper include syntax",
           order: 1,
           options: [
-            { text: 'variable name = "value"', isCorrect: false },
-            { text: 'name = "value"', isCorrect: true },
-            { text: 'String name = "value"', isCorrect: false },
-            { text: 'var name = "value"', isCorrect: false },
+            { text: "#include <iostream>", isCorrect: true },
+            { text: '#include "iostream"', isCorrect: false },
+            { text: "import iostream;", isCorrect: false },
+            { text: "using iostream;", isCorrect: false },
           ],
           points: 1,
           explanation:
-            "In Python, variables are created by simply assigning a value using the = operator.",
+            "Standard library headers are included using angle brackets < >",
         },
         {
           type: "multiple-choice",
-          question: "Which of these is NOT a valid data type in Python?",
+          question: "What is the output of: cout << 5 / 2; in C++?",
           order: 2,
           options: [
-            { text: "list", isCorrect: false },
-            { text: "tuple", isCorrect: false },
-            { text: "array", isCorrect: true },
-            { text: "dictionary", isCorrect: false },
+            { text: "2.5", isCorrect: false },
+            { text: "2", isCorrect: true },
+            { text: "3", isCorrect: false },
+            { text: "2.0", isCorrect: false },
           ],
           points: 1,
           explanation:
-            "Python has 'list' but not 'array' as a built-in data type. Arrays require importing external modules.",
+            "Integer division truncates the decimal part, so 5/2 = 2",
+        },
+        {
+          type: "multiple-choice",
+          question:
+            "Which data type would you use to store a single character in C++?",
+          order: 3,
+          options: [
+            { text: "string", isCorrect: false },
+            { text: "char", isCorrect: true },
+            { text: "character", isCorrect: false },
+            { text: "chr", isCorrect: false },
+          ],
+          points: 1,
+          explanation:
+            "The 'char' data type is used for single characters in C++",
         },
         {
           type: "true-false",
-          question: "Python is a case-sensitive programming language.",
-          order: 3,
+          question: "In C++, the main() function must return an integer value.",
+          order: 4,
           options: [
             { text: "True", isCorrect: true },
             { text: "False", isCorrect: false },
           ],
           points: 1,
           explanation:
-            "Yes, Python is case-sensitive. 'Name' and 'name' would be different variables.",
+            "The main() function in C++ should return an int, typically 0 for success",
+        },
+        {
+          type: "multiple-choice",
+          question: "Which loop is guaranteed to execute at least once?",
+          order: 5,
+          options: [
+            { text: "for loop", isCorrect: false },
+            { text: "while loop", isCorrect: false },
+            { text: "do-while loop", isCorrect: true },
+            { text: "All of the above", isCorrect: false },
+          ],
+          points: 1,
+          explanation:
+            "The do-while loop checks the condition after execution, so it always runs at least once",
         },
       ],
       passingScore: 70,
+      timeLimit: 15,
       isPublished: true,
     });
-    await pythonQuiz1.save();
+    await quiz1.save();
 
-    pythonSection1.lessons = [pythonLesson1_1._id, pythonLesson1_2._id];
-    pythonSection1.sectionQuiz = pythonQuiz1._id;
-    await pythonSection1.save();
-
-    // ========== JAVASCRIPT COURSE - COMPREHENSIVE ==========
-    const jsCourse = new Course({
-      title: "Modern JavaScript Development",
+    // Quiz for Section 2
+    const quiz2 = new Quiz({
+      title: "Functions and OOP Quiz",
       description:
-        "Master JavaScript for web development. Learn ES6+ features, DOM manipulation, asynchronous programming, and build real-world projects.",
-      shortDescription: "Complete JavaScript course for modern web development",
-      language: "javascript",
-      category: "web-development",
-      difficulty: "beginner",
-      instructor: admin._id,
-      estimatedHours: 55,
-      certificateTemplate: "standard",
-      tags: ["javascript", "web-development", "frontend", "es6"],
-      isPublished: true,
-      thumbnail:
-        "https://images.unsplash.com/photo-1579468118864-1b9ea3c0db4a?w=500",
-    });
-    await jsCourse.save();
-
-    // JavaScript - Section 1: JS Fundamentals
-    const jsSection1 = new CourseSection({
-      course: jsCourse._id,
-      title: "JavaScript Basics",
-      description: "Learn JavaScript fundamentals and core concepts",
-      order: 1,
-    });
-    await jsSection1.save();
-
-    const jsLesson1_1 = new CourseLesson({
-      section: jsSection1._id,
-      title: "JavaScript Introduction & Setup",
-      description: "Get started with JavaScript in browser and Node.js",
-      content: `
-        <h2>What is JavaScript?</h2>
-        <p>JavaScript is the programming language of the web, running in browsers and now on servers with Node.js.</p>
-        
-        <h2>Where to Write JavaScript</h2>
-        <ul>
-          <li><strong>Browser Console:</strong> Quick testing and debugging</li>
-          <li><strong>HTML Script Tags:</strong> Embedded in web pages</li>
-          <li><strong>External .js Files:</strong> Separate files for better organization</li>
-          <li><strong>Node.js:</strong> Server-side JavaScript</li>
-        </ul>
-        
-        <h2>Developer Tools</h2>
-        <p>Learn to use browser developer tools for debugging and testing your JavaScript code.</p>
-      `,
-      order: 1,
-      duration: 20,
-      difficulty: "beginner",
-      estimatedHours: 1,
-      codeExamples: [
-        {
-          title: "Browser JavaScript",
-          description: "Basic JavaScript in browser context",
-          code: `// Alert message
-alert("Welcome to JavaScript!");
-
-// Console output
-console.log("Hello, Developer!");
-
-// Document interaction
-document.write("<h1>JavaScript is running!</h1>");`,
-          expectedOutput: "Shows alert and writes to document",
-          order: 1,
-        },
-      ],
-    });
-    await jsLesson1_1.save();
-
-    const jsLesson1_2 = new CourseLesson({
-      section: jsSection1._id,
-      title: "Variables, Functions and Scope",
-      description: "Master variable declaration and function creation",
-      content: `
-        <h2>Variable Declaration</h2>
-        <p><strong>var:</strong> Function-scoped, can be redeclared</p>
-        <p><strong>let:</strong> Block-scoped, cannot be redeclared</p>
-        <p><strong>const:</strong> Block-scoped, constant value</p>
-        
-        <h2>Functions in JavaScript</h2>
-        <p>Functions are first-class citizens in JavaScript and can be:</p>
-        <ul>
-          <li>Declared with function keyword</li>
-          <li>Assigned to variables</li>
-          <li>Passed as arguments</li>
-          <li>Returned from other functions</li>
-        </ul>
-        
-        <h2>Arrow Functions</h2>
-        <p>Modern ES6 syntax for concise function expressions.</p>
-      `,
-      order: 2,
-      duration: 30,
-      difficulty: "beginner",
-      estimatedHours: 1.5,
-      codeExamples: [
-        {
-          title: "Variables and Functions",
-          description: "Different ways to declare variables and functions",
-          code: `// Variable declarations
-var oldVariable = "I'm function scoped";
-let modernVariable = "I'm block scoped";
-const constantVariable = "I cannot be reassigned";
-
-// Function declarations
-function greet(name) {
-    return "Hello, " + name;
-}
-
-// Arrow function
-const greetArrow = (name) => \`Hello, \${name}\`;
-
-console.log(greet("Alice"));
-console.log(greetArrow("Bob"));`,
-          expectedOutput: "Hello, Alice\nHello, Bob",
-          order: 1,
-        },
-      ],
-    });
-    await jsLesson1_2.save();
-
-    // JavaScript - Section 2: DOM Manipulation
-    const jsSection2 = new CourseSection({
-      course: jsCourse._id,
-      title: "DOM Manipulation and Events",
-      description: "Learn to interact with web pages and handle user events",
-      order: 2,
-    });
-    await jsSection2.save();
-
-    // JavaScript - Quiz for Section 1
-    const jsQuiz1 = new Quiz({
-      title: "JavaScript Basics Quiz",
-      description: "Test your JavaScript fundamental knowledge",
+        "Test your knowledge of functions and object-oriented programming in C++",
       type: "section-quiz",
-      course: jsCourse._id,
-      section: jsSection1._id,
+      course: cppCourse._id,
+      section: section2._id,
       questions: [
         {
           type: "multiple-choice",
-          question: "Which keyword creates a constant variable in JavaScript?",
+          question: "What is function overloading in C++?",
           order: 1,
           options: [
-            { text: "let", isCorrect: false },
-            { text: "var", isCorrect: false },
-            { text: "const", isCorrect: true },
-            { text: "constant", isCorrect: false },
+            {
+              text: "Creating functions with the same name but different parameters",
+              isCorrect: true,
+            },
+            { text: "Making functions run faster", isCorrect: false },
+            { text: "Creating recursive functions", isCorrect: false },
+            { text: "Importing functions from other files", isCorrect: false },
           ],
           points: 1,
           explanation:
-            "The 'const' keyword is used to declare constants in JavaScript.",
+            "Function overloading allows multiple functions with the same name but different parameter lists",
         },
         {
           type: "multiple-choice",
-          question: "What will console.log(typeof null) output?",
+          question:
+            "Which parameter passing method allows the function to modify the original variable?",
           order: 2,
           options: [
-            { text: "null", isCorrect: false },
-            { text: "undefined", isCorrect: false },
-            { text: "object", isCorrect: true },
-            { text: "string", isCorrect: false },
+            { text: "Pass by value", isCorrect: false },
+            { text: "Pass by reference", isCorrect: true },
+            { text: "Pass by copy", isCorrect: false },
+            { text: "All of the above", isCorrect: false },
           ],
           points: 1,
           explanation:
-            "This is a known quirk in JavaScript - typeof null returns 'object'.",
+            "Pass by reference allows the function to work with and modify the original variable",
         },
       ],
       passingScore: 70,
+      timeLimit: 10,
       isPublished: true,
     });
-    await jsQuiz1.save();
+    await quiz2.save();
 
-    jsSection1.lessons = [jsLesson1_1._id, jsLesson1_2._id];
-    jsSection1.sectionQuiz = jsQuiz1._id;
-    await jsSection1.save();
+    // Update sections with lessons and quizzes
+    section1.lessons = [lesson1_1._id, lesson1_2._id, lesson1_3._id];
+    section1.sectionQuiz = quiz1._id;
+    await section1.save();
 
-    // ========== WEB DEVELOPMENT COURSE - COMPREHENSIVE ==========
-    const webCourse = new Course({
-      title: "Full Stack Web Development",
-      description:
-        "Learn complete web development with HTML, CSS, JavaScript, Node.js and databases. Build responsive websites and web applications.",
-      shortDescription: "Complete full-stack web development course",
-      language: "javascript",
-      category: "web-development",
-      difficulty: "intermediate",
-      instructor: admin._id,
-      estimatedHours: 80,
-      certificateTemplate: "excellence",
-      tags: ["html", "css", "javascript", "nodejs", "fullstack"],
-      isPublished: true,
-      thumbnail:
-        "https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=500",
-    });
-    await webCourse.save();
+    section2.lessons = [lesson2_1._id];
+    section2.sectionQuiz = quiz2._id;
+    await section2.save();
 
-    // Web Dev - Section 1: Frontend Fundamentals
-    const webSection1 = new CourseSection({
-      course: webCourse._id,
-      title: "Frontend Development",
-      description: "Master HTML, CSS and responsive design",
-      order: 1,
-    });
-    await webSection1.save();
+    // Update course with sections
+    cppCourse.sections = [section1._id, section2._id];
+    cppCourse.totalSections = 2;
+    cppCourse.totalLessons = 4;
+    await cppCourse.save();
 
-    const webLesson1_1 = new CourseLesson({
-      section: webSection1._id,
-      title: "HTML5 & Semantic Web",
-      description: "Build structured, accessible web pages with HTML5",
-      content: `
-        <h2>HTML5 Introduction</h2>
-        <p>HTML5 is the latest version of HyperText Markup Language with new semantic elements and APIs.</p>
-        
-        <h2>Semantic HTML Elements</h2>
-        <ul>
-          <li><strong>&lt;header&gt;</strong> - Introductory content</li>
-          <li><strong>&lt;nav&gt;</strong> - Navigation links</li>
-          <li><strong>&lt;main&gt;</strong> - Main content</li>
-          <li><strong>&lt;article&gt;</strong> - Self-contained composition</li>
-          <li><strong>&lt;section&gt;</strong> - Thematic grouping</li>
-          <li><strong>&lt;footer&gt;</strong> - Footer content</li>
-        </ul>
-        
-        <h2>Accessibility</h2>
-        <p>Learn to create websites that are accessible to all users, including those with disabilities.</p>
-      `,
-      order: 1,
-      duration: 35,
-      difficulty: "beginner",
-      estimatedHours: 1.5,
-      codeExamples: [
-        {
-          title: "Semantic HTML Structure",
-          description: "Proper HTML5 document structure",
-          code: `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Website</title>
-</head>
-<body>
-    <header>
-        <h1>Website Title</h1>
-        <nav>
-            <ul>
-                <li><a href="#home">Home</a></li>
-                <li><a href="#about">About</a></li>
-            </ul>
-        </nav>
-    </header>
-    
-    <main>
-        <article>
-            <h2>Article Title</h2>
-            <p>Article content...</p>
-        </article>
-    </main>
-    
-    <footer>
-        <p>&copy; 2024 My Website</p>
-    </footer>
-</body>
-</html>`,
-          expectedOutput: "Structured HTML document",
-          order: 1,
-        },
-      ],
-    });
-    await webLesson1_1.save();
+    console.log("✅ Comprehensive C++ course created successfully!");
+    console.log("📚 Course includes:");
+    console.log("   - 2 detailed sections");
+    console.log("   - 4 comprehensive lessons");
+    console.log("   - 8+ code examples with expected outputs");
+    console.log("   - 2 section quizzes with multiple question types");
+    console.log("   - Tips, notes, and resources for each lesson");
 
-    const webLesson1_2 = new CourseLesson({
-      section: webSection1._id,
-      title: "CSS3 & Responsive Design",
-      description: "Style websites and make them responsive for all devices",
-      content: `
-        <h2>CSS3 Features</h2>
-        <p>CSS3 introduces new features like flexbox, grid, transitions, and animations.</p>
-        
-        <h2>Flexbox Layout</h2>
-        <p>One-dimensional layout system for arranging items in rows or columns.</p>
-        
-        <h2>CSS Grid</h2>
-        <p>Two-dimensional layout system for complex web layouts.</p>
-        
-        <h2>Responsive Design</h2>
-        <p>Create websites that work on all screen sizes using media queries and responsive units.</p>
-      `,
-      order: 2,
-      duration: 45,
-      difficulty: "intermediate",
-      estimatedHours: 2,
-      codeExamples: [
-        {
-          title: "Responsive Grid Layout",
-          description: "CSS Grid for responsive design",
-          code: `.container {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 20px;
-    padding: 20px;
-}
-
-.card {
-    background: white;
-    padding: 20px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-}
-
-@media (max-width: 768px) {
-    .container {
-        grid-template-columns: 1fr;
-    }
-}`,
-          expectedOutput: "Responsive grid layout",
-          order: 1,
-        },
-      ],
-    });
-    await webLesson1_2.save();
-
-    // Web Dev - Quiz for Section 1
-    const webQuiz1 = new Quiz({
-      title: "Frontend Fundamentals Quiz",
-      description: "Test your HTML and CSS knowledge",
-      type: "section-quiz",
-      course: webCourse._id,
-      section: webSection1._id,
-      questions: [
-        {
-          type: "multiple-choice",
-          question: "Which HTML5 element is used for navigation links?",
-          order: 1,
-          options: [
-            { text: "&lt;nav&gt;", isCorrect: true },
-            { text: "&lt;navigation&gt;", isCorrect: false },
-            { text: "&lt;links&gt;", isCorrect: false },
-            { text: "&lt;menu&gt;", isCorrect: false },
-          ],
-          points: 1,
-          explanation:
-            "The &lt;nav&gt; element is specifically designed for navigation sections.",
-        },
-        {
-          type: "multiple-choice",
-          question: "Which CSS property is used for flexible layouts?",
-          order: 2,
-          options: [
-            { text: "display: block", isCorrect: false },
-            { text: "display: flex", isCorrect: true },
-            { text: "display: inline", isCorrect: false },
-            { text: "display: table", isCorrect: false },
-          ],
-          points: 1,
-          explanation: "display: flex enables the flexbox layout system.",
-        },
-      ],
-      passingScore: 70,
-      isPublished: true,
-    });
-    await webQuiz1.save();
-
-    webSection1.lessons = [webLesson1_1._id, webLesson1_2._id];
-    webSection1.sectionQuiz = webQuiz1._id;
-    await webSection1.save();
-
-    // Update course sections and totals
-    pythonCourse.sections = [pythonSection1._id, pythonSection2._id];
-    pythonCourse.totalSections = 2;
-    pythonCourse.totalLessons = 3;
-    await pythonCourse.save();
-
-    jsCourse.sections = [jsSection1._id, jsSection2._id];
-    jsCourse.totalSections = 2;
-    jsCourse.totalLessons = 2;
-    await jsCourse.save();
-
-    webCourse.sections = [webSection1._id];
-    webCourse.totalSections = 1;
-    webCourse.totalLessons = 2;
-    await webCourse.save();
-
-    console.log("✅ Python Course created with detailed content");
-    console.log("✅ JavaScript Course created with detailed content");
-    console.log("✅ Web Development Course created with detailed content");
-    console.log(
-      "✨ All 3 courses seeded successfully with comprehensive content!"
-    );
+    return cppCourse;
   } catch (error) {
-    console.error("❌ Error seeding courses:", error);
+    console.error("❌ Error seeding C++ course:", error);
     throw error;
   }
 };
 
-export default seedCourses;
+export default seedCppCourse;

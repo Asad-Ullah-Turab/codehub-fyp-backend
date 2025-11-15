@@ -57,9 +57,10 @@ export const getCourseById = async (req, res) => {
       .populate("instructor", "name email profilePicture")
       .populate({
         path: "sections",
-        populate: {
-          path: "lessons",
-        },
+        populate: [
+          { path: "lessons" },
+          { path: "sectionQuiz" }
+        ],
       })
       .populate("finalQuiz");
 
