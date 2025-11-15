@@ -15,6 +15,7 @@ import adminRoutes from "./routes/adminRoutes.js";
 import courseRoutes from "./routes/courseRoutes.js";
 import adminCourseRoutes from "./routes/adminCourseRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
+import codeSnippetRoutes from "./routes/codeSnippetRoutes.js";
 import connectDB from "./config/database.js";
 import passport, { initializeOAuthStrategies } from "./config/oauthConfig.js";
 import emailService from "./services/emailService.js";
@@ -83,6 +84,7 @@ app.use("/api/code", codeExecutionRoutes);
 app.use("/api/tutorials", tutorialRoutes);
 app.use("/api/courses", courseRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/snippets", codeSnippetRoutes);
 app.use("/api/admin/courses", adminCourseRoutes);
 app.use("/api/admin", adminRoutes);
 
