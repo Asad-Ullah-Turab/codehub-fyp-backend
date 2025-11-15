@@ -364,8 +364,10 @@ export const notifyUserStatusChange = async (user, accountStatus, reason = "") =
       subject = "Your Account Has Been Activated - CodeHub";
       message = `
         <p>Dear ${user.name},</p>
-        <p>Good news! Your CodeHub account has been activated.</p>
-        <p>You can now access all features of the platform.</p>
+        <p>Good news! Your CodeHub account has been reactivated and is now fully operational.</p>
+        <p>You can now log in and access all features of the platform.</p>
+        ${reason ? `<p><strong>Note:</strong> ${reason}</p>` : ""}
+        <p>Thank you for being part of our community!</p>
         <p>Best regards,<br>CodeHub Team</p>
       `;
     }
