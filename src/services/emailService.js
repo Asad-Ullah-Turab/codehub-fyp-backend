@@ -194,6 +194,102 @@ class EmailService {
     </html>
     `;
   }
+
+  // Send custom email (for admin notifications)
+  async sendCustomEmail(email, subject, htmlMessage, name = 'User') {
+    if (!this.isAvailable()) {
+      throw new Error('Email service is not available');
+    }
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      to: email,
+      subject: subject,
+      html: this.getCustomEmailTemplate(name, htmlMessage),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('📧 Custom email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Failed to send custom email:', error);
+      throw new Error('Failed to send custom email');
+    }
+  }
+
+  // Custom email template
+  getCustomEmailTemplate(name, message) {
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Message from CodeHub</title>
+      <style>
+        body {
+          margin: 0;
+          padding: 0;
+          font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+          background-color: #f5f5f5;
+        }
+        .container {
+          max-width: 600px;
+          margin: 20px auto;
+          background-color: #ffffff;
+          border-radius: 8px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        .header {
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          color: white;
+          padding: 30px;
+          text-align: center;
+        }
+        .content {
+          padding: 30px;
+          color: #333;
+          line-height: 1.6;
+        }
+        .message {
+          background-color: #f8f9fa;
+          border-left: 4px solid #667eea;
+          padding: 15px;
+          margin: 20px 0;
+        }
+        .footer {
+          background-color: #f8f9fa;
+          padding: 20px;
+          text-align: center;
+          color: #666;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1 style="margin: 0;">CodeHub</h1>
+          <p style="margin: 10px 0 0;">Message from CodeHub Team</p>
+        </div>
+        
+        <div class="content">
+          <p>Dear ${name},</p>
+          <div class="message">
+            ${message}
+          </div>
+        </div>
+        
+        <div class="footer">
+          <p><strong>CodeHub Team</strong><br>
+          Your Online Code Editor & Executor</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+  }
 }
 
 // Create singleton instance

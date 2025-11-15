@@ -140,7 +140,7 @@ export const getAllUsers = async (req, res) => {
 export const updateUserStatus = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { accountStatus } = req.body;
+    const { accountStatus, reason } = req.body;
 
     if (!["pending", "active", "suspended"].includes(accountStatus)) {
       return res.status(400).json({
@@ -158,6 +158,9 @@ export const updateUserStatus = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
+
+    // Send notification email
+    await notifyUserStatusChange(user, accountStatus, reason);
 
     res.status(200).json({
       success: true,
@@ -235,6 +238,143 @@ export const deleteUser = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get single user details
+export const getUserDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findById(userId).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update user details (admin edit)
+export const updateUserDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, bio, profilePicture, skills, programmingLanguages, interests, experience } = req.body;
+
+    const updateData = {};
+    if (name) updateData.name = name;
+    if (email) updateData.email = email;
+    if (bio !== undefined) updateData.bio = bio;
+    if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+    if (skills) updateData.skills = skills;
+    if (programmingLanguages) updateData.programmingLanguages = programmingLanguages;
+    if (interests) updateData.interests = interests;
+    if (experience && experience !== "") updateData.experience = experience;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    ).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Send email to user
+export const sendEmailToUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { subject, message } = req.body;
+
+    if (!subject || !message) {
+      return res.status(400).json({
+        success: false,
+        message: "Subject and message are required",
+      });
+    }
+
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // Import email service
+    const emailService = (await import('../services/emailService.js')).default;
+
+    if (!emailService.isAvailable()) {
+      return res.status(503).json({
+        success: false,
+        message: "Email service is not available",
+      });
+    }
+
+    // Send custom email
+    await emailService.sendCustomEmail(user.email, subject, message, user.name);
+
+    res.status(200).json({
+      success: true,
+      message: "Email sent successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Send notification email on account status change
+export const notifyUserStatusChange = async (user, accountStatus, reason = "") => {
+  try {
+    const emailService = (await import('../services/emailService.js')).default;
+    
+    if (!emailService.isAvailable()) {
+      console.log("Email service not available, skipping notification");
+      return;
+    }
+
+    let subject = "";
+    let message = "";
+
+    if (accountStatus === "suspended") {
+      subject = "Your Account Has Been Suspended - CodeHub";
+      message = `
+        <p>Dear ${user.name},</p>
+        <p>Your CodeHub account has been suspended.</p>
+        ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ""}
+        <p>If you believe this is an error, please contact our support team.</p>
+        <p>Best regards,<br>CodeHub Team</p>
+      `;
+    } else if (accountStatus === "active") {
+      subject = "Your Account Has Been Activated - CodeHub";
+      message = `
+        <p>Dear ${user.name},</p>
+        <p>Good news! Your CodeHub account has been activated.</p>
+        <p>You can now access all features of the platform.</p>
+        <p>Best regards,<br>CodeHub Team</p>
+      `;
+    }
+
+    if (subject && message) {
+      await emailService.sendCustomEmail(user.email, subject, message, user.name);
+    }
+  } catch (error) {
+    console.error("Failed to send notification email:", error);
   }
 };
 

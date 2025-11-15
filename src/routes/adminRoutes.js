@@ -7,6 +7,9 @@ import {
   updateUserStatus,
   changeUserRole,
   deleteUser,
+  getUserDetails,
+  updateUserDetails,
+  sendEmailToUser,
   getAllTutorials,
   updateTutorial,
   deleteTutorial,
@@ -27,8 +30,11 @@ router.get("/stats", getDashboardStats);
 // User management
 router.get("/users", getAllUsers);
 router.get("/users/search", searchUsers);
+router.get("/users/:userId", getUserDetails);
+router.put("/users/:userId", updateUserDetails);
 router.put("/users/:userId/status", updateUserStatus);
 router.put("/users/:userId/role", changeUserRole);
+router.post("/users/:userId/send-email", sendEmailToUser);
 router.delete("/users/:userId", deleteUser);
 
 // Tutorial management
