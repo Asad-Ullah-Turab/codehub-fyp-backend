@@ -159,7 +159,7 @@ export const getDashboardStats = async (req, res) => {
     const [enrolledCoursesCount, certificates, savedTutorialsCount] = await Promise.all([
       CourseEnrollment.countDocuments({ user: userId }),
       Certificate.countDocuments({ user: userId }),
-      UserSavedTutorial.countDocuments({ user: userId })
+      UserSavedTutorial.countDocuments({ userId: userId })
     ]);
 
     // Get course completion stats

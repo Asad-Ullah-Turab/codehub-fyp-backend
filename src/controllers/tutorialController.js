@@ -204,15 +204,22 @@ class TutorialController {
       const savedTutorials = await UserSavedTutorial.find(filter)
         .populate({
           path: 'tutorialId',
-          select: 'title concept language difficulty codeExamples'
+          select: 'title concept language difficulty codeExamples description'
         })
         .sort({ savedAt: -1 })
         .lean();
       
+      // Transform tutorialId to tutorial for frontend compatibility
+      const transformedTutorials = savedTutorials.map(saved => ({
+        _id: saved._id,
+        savedAt: saved.savedAt,
+        tutorial: saved.tutorialId // Rename tutorialId to tutorial
+      }));
+      
       res.status(200).json({
         success: true,
-        count: savedTutorials.length,
-        data: savedTutorials
+        count: transformedTutorials.length,
+        data: transformedTutorials
       });
     } catch (error) {
       console.error('Error fetching saved tutorials:', error);
