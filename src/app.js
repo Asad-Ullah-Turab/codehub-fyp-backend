@@ -14,6 +14,7 @@ import tutorialRoutes from "./routes/tutorialRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
 import courseRoutes from "./routes/courseRoutes.js";
 import adminCourseRoutes from "./routes/adminCourseRoutes.js";
+import adminTutorialRoutes from "./routes/adminTutorialRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import codeSnippetRoutes from "./routes/codeSnippetRoutes.js";
 import connectDB from "./config/database.js";
@@ -86,6 +87,7 @@ app.use("/api/courses", courseRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/snippets", codeSnippetRoutes);
 app.use("/api/admin/courses", adminCourseRoutes);
+app.use("/api/admin/tutorials", adminTutorialRoutes);
 app.use("/api/admin", adminRoutes);
 
 // 404 handler

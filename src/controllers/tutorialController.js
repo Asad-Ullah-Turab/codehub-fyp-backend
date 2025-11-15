@@ -367,6 +367,177 @@ class TutorialController {
     }
   }
 
+  // Admin: Create pre-generated tutorial
+  async adminCreateTutorial(req, res) {
+    try {
+      const { title, description, content, language, concept, difficulty, codeExamples, notes, tips, tags } = req.body;
+      
+      // Validate required fields
+      if (!title || !content || !language || !concept) {
+        return res.status(400).json({
+          success: false,
+          message: 'Title, content, language, and concept are required'
+        });
+      }
+      
+      const tutorial = new Tutorial({
+        title,
+        description,
+        content,
+        language: language.toLowerCase(),
+        concept,
+        difficulty: difficulty || 'beginner',
+        codeExamples: codeExamples || [],
+        notes: notes || [],
+        tips: tips || [],
+        tags: tags || [],
+        createdBy: req.user._id,
+        isPreGenerated: true,
+        isAIgenerated: false
+      });
+      
+      await tutorial.save();
+      
+      res.status(201).json({
+        success: true,
+        message: 'Tutorial created successfully',
+        data: tutorial
+      });
+    } catch (error) {
+      console.error('Error creating tutorial:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error creating tutorial',
+        error: error.message
+      });
+    }
+  }
+
+  // Admin: Update tutorial
+  async adminUpdateTutorial(req, res) {
+    try {
+      const { id } = req.params;
+      const updates = req.body;
+      
+      // If language is provided, normalize it
+      if (updates.language) {
+        updates.language = updates.language.toLowerCase();
+      }
+      
+      const tutorial = await Tutorial.findByIdAndUpdate(
+        id,
+        updates,
+        { new: true, runValidators: true }
+      );
+      
+      if (!tutorial) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tutorial not found'
+        });
+      }
+      
+      res.status(200).json({
+        success: true,
+        message: 'Tutorial updated successfully',
+        data: tutorial
+      });
+    } catch (error) {
+      console.error('Error updating tutorial:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error updating tutorial',
+        error: error.message
+      });
+    }
+  }
+
+  // Admin: Delete tutorial
+  async adminDeleteTutorial(req, res) {
+    try {
+      const { id } = req.params;
+      
+      const tutorial = await Tutorial.findByIdAndDelete(id);
+      
+      if (!tutorial) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tutorial not found'
+        });
+      }
+      
+      // Also delete associated saved tutorials
+      await UserSavedTutorial.deleteMany({ tutorial: id });
+      
+      res.status(200).json({
+        success: true,
+        message: 'Tutorial deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting tutorial:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error deleting tutorial',
+        error: error.message
+      });
+    }
+  }
+
+  // Admin: Get all tutorials (including drafts)
+  async adminGetAllTutorials(req, res) {
+    try {
+      const { page = 1, limit = 20, language, difficulty, search } = req.query;
+      
+      const filter = {};
+      
+      if (language) {
+        filter.language = language.toLowerCase();
+      }
+      
+      if (difficulty) {
+        filter.difficulty = difficulty.toLowerCase();
+      }
+      
+      if (search) {
+        filter.$or = [
+          { title: new RegExp(search, 'i') },
+          { concept: new RegExp(search, 'i') },
+          { description: new RegExp(search, 'i') }
+        ];
+      }
+      
+      const skip = (page - 1) * limit;
+      
+      const [tutorials, total] = await Promise.all([
+        Tutorial.find(filter)
+          .populate('createdBy', 'name email')
+          .sort({ createdAt: -1 })
+          .skip(skip)
+          .limit(parseInt(limit))
+          .lean(),
+        Tutorial.countDocuments(filter)
+      ]);
+      
+      res.status(200).json({
+        success: true,
+        data: tutorials,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / limit)
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching tutorials:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching tutorials',
+        error: error.message
+      });
+    }
+  }
+
   // Get distinct concepts for a language
   async getConceptsByLanguage(req, res) {
     try {
@@ -398,6 +569,25 @@ class TutorialController {
       res.status(500).json({
         success: false,
         message: 'Error fetching concepts',
+        error: error.message
+      });
+    }
+  }
+
+  // Get all available languages
+  async getLanguages(req, res) {
+    try {
+      const languages = await Tutorial.distinct('language');
+      
+      res.status(200).json({
+        success: true,
+        data: languages.sort()
+      });
+    } catch (error) {
+      console.error('Error fetching languages:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching languages',
         error: error.message
       });
     }

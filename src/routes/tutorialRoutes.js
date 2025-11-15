@@ -6,6 +6,7 @@ const router = express.Router();
 
 // Public routes - view tutorials
 router.get('/', tutorialController.getAllTutorials);
+router.get('/languages', tutorialController.getLanguages);
 router.get('/language/:language', tutorialController.getTutorialsByLanguage);
 router.get('/concepts/:language', tutorialController.getConceptsByLanguage);
 router.get('/:id', tutorialController.getTutorialById);
