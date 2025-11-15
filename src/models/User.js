@@ -130,7 +130,11 @@ userSchema.methods.clearEmailVerificationOTP = function () {
   this.emailVerificationOTP = null;
   this.emailVerificationOTPExpires = null;
   this.isEmailVerified = true;
-  this.accountStatus = "active";
+  // Only set to active if account is currently pending
+  // Don't override suspended or other statuses
+  if (this.accountStatus === "pending") {
+    this.accountStatus = "active";
+  }
   return this.save({ validateBeforeSave: false });
 };
 userSchema.methods.setPasswordResetOTP = function (otp) {

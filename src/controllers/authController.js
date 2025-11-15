@@ -369,9 +369,11 @@ export const signin = async (req, res) => {
 
     // Check if account is suspended
     if (user.accountStatus === 'suspended') {
-      return res.status(401).json({
+      return res.status(403).json({
         status: 'fail',
-        message: 'Your account has been suspended. Please contact support.'
+        message: 'Your account has been suspended. Please contact support for more information.',
+        accountStatus: 'suspended',
+        isSuspended: true
       });
     }
 
@@ -455,6 +457,11 @@ export const oauthSuccess = (req, res) => {
   
   if (!user) {
     return res.redirect(`${process.env.FRONTEND_URL}/signin?error=oauth_failed`);
+  }
+
+  // Check if account is suspended
+  if (user.accountStatus === 'suspended') {
+    return res.redirect(`${process.env.FRONTEND_URL}/signin?error=account_suspended`);
   }
 
   // Update last login

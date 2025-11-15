@@ -21,11 +21,24 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
           });
 
           if (user) {
-            // User exists, update Google ID if not set
+            // Check if account is suspended
+            if (user.accountStatus === 'suspended') {
+              return done(null, false, { message: 'Account is suspended' });
+            }
+            
+            // User exists, update Google ID if not set (without triggering save)
             if (!user.googleId) {
+              // Use findByIdAndUpdate to avoid triggering default values
+              await User.findByIdAndUpdate(
+                user._id,
+                { 
+                  googleId: profile.id,
+                  isEmailVerified: true
+                },
+                { new: false } // Don't return the updated doc, just update
+              );
               user.googleId = profile.id;
               user.isEmailVerified = true;
-              await user.save();
             }
             return done(null, user);
           }
@@ -72,11 +85,24 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
           });
 
           if (user) {
-            // User exists, update GitHub ID if not set
+            // Check if account is suspended
+            if (user.accountStatus === 'suspended') {
+              return done(null, false, { message: 'Account is suspended' });
+            }
+            
+            // User exists, update GitHub ID if not set (without triggering save)
             if (!user.githubId) {
+              // Use findByIdAndUpdate to avoid triggering default values
+              await User.findByIdAndUpdate(
+                user._id,
+                { 
+                  githubId: profile.id,
+                  isEmailVerified: true
+                },
+                { new: false } // Don't return the updated doc, just update
+              );
               user.githubId = profile.id;
               user.isEmailVerified = true;
-              await user.save();
             }
             return done(null, user);
           }
