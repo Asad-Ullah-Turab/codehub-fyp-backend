@@ -2,6 +2,8 @@ import User from "../models/User.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Progress from "../models/Progress.js";
 import Certificate from "../models/Certificate.js";
+import fs from "fs";
+import path from "path";
 
 // ========== PROFILE MANAGEMENT ==========
 
@@ -39,34 +41,157 @@ export const getProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { name, profilePicture, preferences } = req.body;
+    const { 
+      name, 
+      profilePicture, 
+      dateOfBirth,
+      bio,
+      location,
+      github,
+      linkedin,
+      website,
+      programmingLanguages,
+      skills,
+      interests,
+      experience,
+      preferences 
+    } = req.body;
 
     const updateData = {};
-    if (name) updateData.name = name;
-    if (profilePicture) updateData.profilePicture = profilePicture;
-    if (preferences) updateData.preferences = { ...preferences };
+    if (name !== undefined && name !== "") updateData.name = name;
+    if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+    if (dateOfBirth !== undefined && dateOfBirth !== "") updateData.dateOfBirth = dateOfBirth;
+    if (bio !== undefined) updateData.bio = bio;
+    if (location !== undefined) updateData.location = location;
+    if (github !== undefined) updateData.github = github;
+    if (linkedin !== undefined) updateData.linkedin = linkedin;
+    if (website !== undefined) updateData.website = website;
+    if (programmingLanguages !== undefined) updateData.programmingLanguages = programmingLanguages;
+    if (skills !== undefined) updateData.skills = skills;
+    if (interests !== undefined) updateData.interests = interests;
+    // Only set experience if it has a valid value (not empty string)
+    if (experience !== undefined && experience !== "") updateData.experience = experience;
+    if (preferences !== undefined) updateData.preferences = preferences;
 
-    const user = await User.findByIdAndUpdate(userId, updateData, {
+    // First update the user
+    const updatedUser = await User.findByIdAndUpdate(userId, updateData, {
       new: true,
       runValidators: true,
     }).select("-password -emailVerificationOTP -passwordResetOTP");
 
-    if (!user) {
+    if (!updatedUser) {
       return res.status(404).json({
         success: false,
         message: "User not found",
       });
     }
 
+    // Check if profile is complete with the updated data
+    const isComplete = !!(
+      updatedUser.name &&
+      updatedUser.profilePicture &&
+      updatedUser.dateOfBirth &&
+      updatedUser.bio &&
+      updatedUser.programmingLanguages?.length > 0 &&
+      updatedUser.skills?.length > 0
+    );
+    
+    // Update isProfileComplete if it changed
+    if (updatedUser.isProfileComplete !== isComplete) {
+      updatedUser.isProfileComplete = isComplete;
+      await updatedUser.save();
+    }
+
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
+      data: updatedUser,
+    });
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating profile",
+      error: error.message,
+    });
+  }
+};
+
+// Mark profile completion prompt as shown
+export const markPromptShown = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { profileCompletionPromptShown: true },
+      { new: true }
+    ).select("-password -emailVerificationOTP -passwordResetOTP");
+
+    res.status(200).json({
+      success: true,
       data: user,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: "Error updating profile",
+      message: "Error updating prompt status",
+      error: error.message,
+    });
+  }
+};
+
+// Upload profile picture
+export const uploadProfilePicture = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "No file uploaded",
+      });
+    }
+
+    // Delete old profile picture if it exists and is a local file
+    const user = await User.findById(userId);
+    if (user.profilePicture && user.profilePicture.startsWith("/uploads/")) {
+      const oldFilePath = path.join(process.cwd(), user.profilePicture);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+      }
+    }
+
+    // Generate the URL for the uploaded file
+    const fileUrl = `/uploads/profile-pictures/${req.file.filename}`;
+
+    // Update user's profile picture
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { profilePicture: fileUrl },
+      { new: true }
+    ).select("-password -emailVerificationOTP -passwordResetOTP");
+
+    res.status(200).json({
+      success: true,
+      message: "Profile picture uploaded successfully",
+      data: {
+        user: updatedUser,
+        fileUrl: fileUrl,
+      },
+    });
+  } catch (error) {
+    // Delete uploaded file if there was an error
+    if (req.file) {
+      const filePath = req.file.path;
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Error uploading profile picture",
       error: error.message,
     });
   }

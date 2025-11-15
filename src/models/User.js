@@ -32,6 +32,28 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     lastLogin: { type: Date, default: null },
     profilePicture: { type: String, default: null },
+    
+    // Profile Information
+    dateOfBirth: { type: Date, default: null },
+    bio: { type: String, maxlength: [500, "Bio cannot exceed 500 characters"], default: null },
+    location: { type: String, maxlength: [100, "Location cannot exceed 100 characters"], default: null },
+    github: { type: String, default: null },
+    linkedin: { type: String, default: null },
+    website: { type: String, default: null },
+    
+    // Skills and Interests
+    programmingLanguages: [{ type: String }],
+    skills: [{ type: String }],
+    interests: [{ type: String }],
+    experience: { 
+      type: String, 
+      enum: ["beginner", "intermediate", "advanced", "expert", null],
+      default: null 
+    },
+    
+    // Profile Completion
+    isProfileComplete: { type: Boolean, default: false },
+    profileCompletionPromptShown: { type: Boolean, default: false },
 
     // OTPs
     emailVerificationOTP: { type: String, default: null },
@@ -48,13 +70,7 @@ const userSchema = new mongoose.Schema(
 
     // Preferences
     preferences: {
-      theme: { type: String, enum: ["light", "dark"], default: "light" },
-      fontSize: {
-        type: String,
-        enum: ["small", "medium", "large"],
-        default: "medium",
-      },
-      notifications: { type: Boolean, default: true },
+      emailNotifications: { type: Boolean, default: true },
     },
 
     // Linked data

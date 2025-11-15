@@ -1,12 +1,15 @@
 import express from "express";
 import * as profileController from "../controllers/profileController.js";
 import auth from "../middleware/authMiddleware.js";
+import upload from "../middleware/uploadMiddleware.js";
 
 const router = express.Router();
 
 // ========== PROFILE MANAGEMENT ==========
 router.get("/", auth, profileController.getProfile);
 router.put("/", auth, profileController.updateProfile);
+router.post("/prompt-shown", auth, profileController.markPromptShown);
+router.post("/upload-picture", auth, upload.single("profilePicture"), profileController.uploadProfilePicture);
 
 // ========== PROGRESS TRACKING ==========
 router.get("/progress/courses", auth, profileController.getCourseProgress);

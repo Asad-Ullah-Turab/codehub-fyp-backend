@@ -51,6 +51,9 @@ app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
 
+// Serve uploaded files as static assets
+app.use("/uploads", express.static("uploads"));
+
 // Session configuration for OAuth
 app.use(
   session({
