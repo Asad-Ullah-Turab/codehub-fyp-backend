@@ -2,6 +2,8 @@ import User from "../models/User.js";
 import Tutorial from "../models/Tutorial.js";
 import AIChat from "../models/AIChat.js";
 import Progress from "../models/Progress.js";
+import Course from "../models/Course.js";
+import CourseEnrollment from "../models/CourseEnrollment.js";
 
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {
@@ -12,12 +14,63 @@ export const getDashboardStats = async (req, res) => {
     const suspendedUsers = await User.countDocuments({ accountStatus: "suspended" });
     const totalTutorials = await Tutorial.countDocuments();
     const totalChats = await AIChat.countDocuments();
+    const totalCourses = await Course.countDocuments();
+    const totalEnrollments = await CourseEnrollment.countDocuments();
 
     // Get user registration trend (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const newUsersLast30Days = await User.countDocuments({
       createdAt: { $gte: thirtyDaysAgo },
     });
+
+    // Calculate previous period for growth rate
+    const sixtyDaysAgo = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
+    const previousPeriodUsers = await User.countDocuments({
+      createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+    });
+
+    const userGrowthRate = previousPeriodUsers > 0 
+      ? (((newUsersLast30Days - previousPeriodUsers) / previousPeriodUsers) * 100).toFixed(1)
+      : "0.0";
+
+    // Get recent enrollments (last 30 days)
+    const recentEnrollments = await CourseEnrollment.countDocuments({
+      enrolledAt: { $gte: thirtyDaysAgo },
+    });
+
+    const previousEnrollments = await CourseEnrollment.countDocuments({
+      enrolledAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+    });
+
+    const enrollmentGrowthRate = previousEnrollments > 0
+      ? (((recentEnrollments - previousEnrollments) / previousEnrollments) * 100).toFixed(1)
+      : "0.0";
+
+    // Get recent tutorials (last 30 days)
+    const recentTutorials = await Tutorial.countDocuments({
+      createdAt: { $gte: thirtyDaysAgo },
+    });
+
+    const previousTutorials = await Tutorial.countDocuments({
+      createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+    });
+
+    const tutorialGrowthRate = previousTutorials > 0
+      ? (((recentTutorials - previousTutorials) / previousTutorials) * 100).toFixed(1)
+      : "0.0";
+
+    // Get recent AI chats (last 30 days)
+    const recentChats = await AIChat.countDocuments({
+      createdAt: { $gte: thirtyDaysAgo },
+    });
+
+    const previousChats = await AIChat.countDocuments({
+      createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
+    });
+
+    const chatGrowthRate = previousChats > 0
+      ? (((recentChats - previousChats) / previousChats) * 100).toFixed(1)
+      : "0.0";
 
     res.status(200).json({
       success: true,
@@ -28,8 +81,14 @@ export const getDashboardStats = async (req, res) => {
         suspendedUsers,
         totalTutorials,
         totalChats,
+        totalCourses,
+        totalEnrollments,
         newUsersLast30Days,
         suspensionRate: ((suspendedUsers / totalUsers) * 100).toFixed(2),
+        userGrowthRate,
+        enrollmentGrowthRate,
+        tutorialGrowthRate,
+        chatGrowthRate,
       },
     });
   } catch (error) {
@@ -356,6 +415,86 @@ export const searchUsers = async (req, res) => {
     res.status(200).json({
       success: true,
       data: users,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get recent activity
+export const getRecentActivity = async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    // Get recent users
+    const recentUsers = await User.find()
+      .select("name createdAt")
+      .sort({ createdAt: -1 })
+      .limit(3);
+
+    // Get recent tutorials
+    const recentTutorials = await Tutorial.find()
+      .select("title createdAt updatedAt")
+      .sort({ createdAt: -1 })
+      .limit(3);
+
+    // Get recently updated tutorials
+    const updatedTutorials = await Tutorial.find()
+      .select("title createdAt updatedAt")
+      .sort({ updatedAt: -1 })
+      .limit(2);
+
+    // Get recent courses
+    const recentCourses = await Course.find()
+      .select("title createdAt")
+      .sort({ createdAt: -1 })
+      .limit(2);
+
+    // Combine and format activities
+    const activities = [];
+
+    recentUsers.forEach((user) => {
+      activities.push({
+        type: "user_signup",
+        text: `${user.name} signed up.`,
+        timestamp: user.createdAt,
+      });
+    });
+
+    recentTutorials.forEach((tutorial) => {
+      activities.push({
+        type: "tutorial_created",
+        text: `Tutorial "${tutorial.title}" was published.`,
+        timestamp: tutorial.createdAt,
+      });
+    });
+
+    updatedTutorials.forEach((tutorial) => {
+      if (tutorial.updatedAt > tutorial.createdAt) {
+        activities.push({
+          type: "content_updated",
+          text: `Content "${tutorial.title}" was updated.`,
+          timestamp: tutorial.updatedAt,
+        });
+      }
+    });
+
+    recentCourses.forEach((course) => {
+      activities.push({
+        type: "course_created",
+        text: `Course "${course.title}" was created.`,
+        timestamp: course.createdAt,
+      });
+    });
+
+    // Sort by timestamp and limit
+    const sortedActivities = activities
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, parseInt(limit));
+
+    res.status(200).json({
+      success: true,
+      data: sortedActivities,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

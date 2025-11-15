@@ -13,6 +13,7 @@ import {
   createTutorial,
   getAnalytics,
   searchUsers,
+  getRecentActivity,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -38,5 +39,8 @@ router.delete("/tutorials/:tutorialId", deleteTutorial);
 
 // Analytics
 router.get("/analytics", getAnalytics);
+
+// Recent Activity
+router.get("/recent-activity", getRecentActivity);
 
 export default router;
