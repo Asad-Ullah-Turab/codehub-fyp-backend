@@ -195,6 +195,222 @@ class EmailService {
     `;
   }
 
+  // Send contact form confirmation email
+  async sendContactConfirmation(email, name, subject) {
+    if (!this.isAvailable()) {
+      console.log('⚠️  Email service not available - skipping contact confirmation email');
+      return;
+    }
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'We Received Your Message - CodeHub',
+      html: this.getContactConfirmationTemplate(name, subject),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('📧 Contact confirmation email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Failed to send contact confirmation email:', error);
+      throw error;
+    }
+  }
+
+  // Send contact form notification to admin
+  async sendContactNotification({ fullName, email, subject, message, contactId }) {
+    if (!this.isAvailable()) {
+      console.log('⚠️  Email service not available - skipping admin notification');
+      return;
+    }
+
+    const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
+    
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      to: adminEmail,
+      subject: `New Contact Form Submission: ${subject}`,
+      html: this.getContactNotificationTemplate(fullName, email, subject, message, contactId),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('📧 Contact notification email sent to admin:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Failed to send contact notification email:', error);
+      throw error;
+    }
+  }
+
+  // Send contact form response to user
+  async sendContactResponse(email, name, subject, response) {
+    if (!this.isAvailable()) {
+      console.log('⚠️  Email service not available - skipping contact response email');
+      return;
+    }
+
+    const mailOptions = {
+      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `Re: ${subject}`,
+      html: this.getContactResponseTemplate(name, subject, response),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log('📧 Contact response email sent:', info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error('❌ Failed to send contact response email:', error);
+      throw error;
+    }
+  }
+
+  // Contact confirmation email template
+  getContactConfirmationTemplate(name, subject) {
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Message Received</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background-color: #f9f9f9; padding: 30px; border-radius: 10px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: bold; color: #456DE6; margin-bottom: 10px; }
+        .success-box { background-color: #27ae60; color: white; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CodeHub</div>
+          <h2>We Received Your Message!</h2>
+        </div>
+        
+        <p>Hello ${name},</p>
+        
+        <p>Thank you for contacting CodeHub! We've successfully received your message regarding:</p>
+        
+        <div class="success-box">
+          <strong>${subject}</strong>
+        </div>
+        
+        <p>Our team will review your message and get back to you as soon as possible, typically within 24-48 hours.</p>
+        
+        <p>If your matter is urgent, please feel free to reach out to us directly at support@codehub.io</p>
+        
+        <div class="footer">
+          <p><strong>CodeHub Team</strong><br>
+          Your Online Code Editor & Executor</p>
+          <p style="font-size: 12px;">This is an automated message. Please do not reply to this email.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+  }
+
+  // Contact notification email template for admin
+  getContactNotificationTemplate(fullName, email, subject, message, contactId) {
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>New Contact Form Submission</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background-color: #f9f9f9; padding: 30px; border-radius: 10px; }
+        .header { text-align: center; margin-bottom: 30px; background-color: #456DE6; color: white; padding: 20px; border-radius: 8px; }
+        .info-box { background-color: white; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #456DE6; }
+        .message-box { background-color: #f0f0f0; padding: 15px; border-radius: 8px; margin: 20px 0; }
+        .label { font-weight: bold; color: #456DE6; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h2>New Contact Form Submission</h2>
+        </div>
+        
+        <div class="info-box">
+          <p><span class="label">From:</span> ${fullName}</p>
+          <p><span class="label">Email:</span> ${email}</p>
+          <p><span class="label">Subject:</span> ${subject}</p>
+          <p><span class="label">Contact ID:</span> ${contactId}</p>
+        </div>
+        
+        <div class="message-box">
+          <p class="label">Message:</p>
+          <p>${message.replace(/\n/g, '<br>')}</p>
+        </div>
+        
+        <p style="text-align: center; margin-top: 30px;">
+          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/contacts/${contactId}" 
+             style="background-color: #456DE6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
+            View in Admin Panel
+          </a>
+        </p>
+      </div>
+    </body>
+    </html>
+    `;
+  }
+
+  // Contact response email template
+  getContactResponseTemplate(name, subject, response) {
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Response to Your Inquiry</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background-color: #f9f9f9; padding: 30px; border-radius: 10px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: bold; color: #456DE6; margin-bottom: 10px; }
+        .response-box { background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border: 2px solid #456DE6; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CodeHub</div>
+          <h2>Response to Your Inquiry</h2>
+        </div>
+        
+        <p>Hello ${name},</p>
+        
+        <p>Thank you for your patience. We're writing in response to your inquiry regarding: <strong>${subject}</strong></p>
+        
+        <div class="response-box">
+          ${response.replace(/\n/g, '<br>')}
+        </div>
+        
+        <p>If you have any additional questions or need further assistance, please don't hesitate to reach out to us again.</p>
+        
+        <div class="footer">
+          <p><strong>CodeHub Team</strong><br>
+          Your Online Code Editor & Executor</p>
+          <p>Email: support@codehub.io</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+  }
+
   // Send custom email (for admin notifications)
   async sendCustomEmail(email, subject, htmlMessage, name = 'User') {
     if (!this.isAvailable()) {
