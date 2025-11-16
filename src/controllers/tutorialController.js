@@ -214,6 +214,7 @@ class TutorialController {
       const transformedTutorials = savedTutorials.map(saved => ({
         _id: saved._id,
         savedAt: saved.savedAt,
+        progress: saved.progress,
         tutorial: saved.tutorialId // Rename tutorialId to tutorial
       }));
       
@@ -286,6 +287,9 @@ class TutorialController {
       // Update progress
       if (isCompleted !== undefined) {
         savedTutorial.progress.isCompleted = isCompleted;
+        if (isCompleted) {
+          savedTutorial.progress.completedAt = new Date();
+        }
       }
       
       if (rating) {

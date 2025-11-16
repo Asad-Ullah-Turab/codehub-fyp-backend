@@ -72,12 +72,20 @@ const tutorialSchema = new mongoose.Schema(
       type: Boolean, 
       default: false 
     },
+    isPublished: {
+      type: Boolean,
+      default: false
+    },
     
     // Metadata
     tags: [String],
     averageRating: { 
       type: Number, 
       default: 0 
+    },
+    viewCount: {
+      type: Number,
+      default: 0
     },
     feedbacks: [{ 
       type: mongoose.Schema.Types.ObjectId, 

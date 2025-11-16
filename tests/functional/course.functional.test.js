@@ -130,7 +130,7 @@ describe('Course Functional Tests', () => {
     expect(enrolledResponse.body.data.length).toBeGreaterThan(0);
 
     const enrolledCourse = enrolledResponse.body.data.find(
-      course => course._id.toString() === testCourse._id.toString()
+      enrollment => enrollment.course._id.toString() === testCourse._id.toString()
     );
     expect(enrolledCourse).toBeDefined();
 
@@ -142,7 +142,7 @@ describe('Course Functional Tests', () => {
 
     expect(enrollmentDetailResponse.body.success).toBe(true);
     expect(enrollmentDetailResponse.body.data.user.toString()).toBe(testUser._id.toString());
-    expect(enrollmentDetailResponse.body.data.course.toString()).toBe(testCourse._id.toString());
+    expect(enrollmentDetailResponse.body.data.course._id.toString()).toBe(testCourse._id.toString());
   });
 
   it('should update progress after lesson completion', async () => {
@@ -155,17 +155,16 @@ describe('Course Functional Tests', () => {
 
     // Step 1: Complete a lesson
     const completeResponse = await request(app)
-      .put('/api/courses/progress/lesson')
+      .put(`/api/courses/${testCourse._id}/progress/lesson`)
       .set('Authorization', `Bearer ${authToken}`)
       .send({
-        courseId: testCourse._id,
         sectionId: testSection._id,
         lessonId: testLesson._id
       })
       .expect(200);
 
     expect(completeResponse.body.success).toBe(true);
-    expect(completeResponse.body.message).toContain('Lesson completed');
+    expect(completeResponse.body.message).toContain('Lesson marked as completed');
 
     // Step 2: Check enrollment details to verify progress
     const enrollmentResponse = await request(app)

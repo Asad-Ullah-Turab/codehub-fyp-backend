@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Course from "../models/Course.js";
 import CourseSection from "../models/CourseSection.js";
 import CourseLesson from "../models/CourseLesson.js";
@@ -256,73 +257,8 @@ export const getEnrollmentDetails = async (req, res) => {
       });
     }
 
-    res.status(200).json({
-      success: true,
-      data: enrollment,
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Error fetching enrollment details",
-      error: error.message,
-    });
-  }
-};
-
-// Mark lesson as completed
-export const completeLessonProgress = async (req, res) => {
-  try {
-    const { courseId, sectionId, lessonId } = req.body;
-    const userId = req.user._id;
-
-    const enrollment = await CourseEnrollment.findOne({
-      user: userId,
-      course: courseId,
-    });
-
-    if (!enrollment) {
-      return res.status(404).json({
-        success: false,
-        message: "Enrollment not found",
-      });
-    }
-
-    // Find or create section progress
-    let sectionProgress = enrollment.sectionProgress.find(
-      (sp) => sp.section.toString() === sectionId
-    );
-
-    if (!sectionProgress) {
-      sectionProgress = {
-        section: sectionId,
-        lessons: [],
-      };
-      enrollment.sectionProgress.push(sectionProgress);
-    }
-
-    // Find or create lesson progress
-    let lessonProgress = sectionProgress.lessons.find(
-      (lp) => lp.lesson.toString() === lessonId
-    );
-
-    if (!lessonProgress) {
-      lessonProgress = {
-        lesson: lessonId,
-        isCompleted: true,
-        completedAt: new Date(),
-      };
-      sectionProgress.lessons.push(lessonProgress);
-    } else {
-      lessonProgress.isCompleted = true;
-      lessonProgress.completedAt = new Date();
-    }
-
-    // Update timestamps
-    sectionProgress.lastAccessedAt = new Date();
-    enrollment.lastAccessedAt = new Date();
-
-    // Calculate overall progress
-    const course = await Course.findById(courseId).populate("sections");
+    // Calculate progress information
+    const course = enrollment.course;
     let totalLessons = 0;
     let completedLessons = 0;
 
@@ -343,16 +279,174 @@ export const completeLessonProgress = async (req, res) => {
       }
     }
 
-    enrollment.overallProgress = Math.round(
-      (completedLessons / totalLessons) * 100
+    res.status(200).json({
+      success: true,
+      data: enrollment,
+      progress: {
+        completedLessons,
+        totalLessons,
+        overallProgress: enrollment.overallProgress,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching enrollment details",
+      error: error.message,
+    });
+  }
+};
+
+// Mark lesson as completed
+export const completeLessonProgress = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { sectionId, lessonId } = req.body;
+    const userId = req.user._id;
+
+    // First, check if enrollment exists
+    const enrollment = await CourseEnrollment.findOne({
+      user: userId,
+      course: courseId,
+    });
+
+    if (!enrollment) {
+      return res.status(404).json({
+        success: false,
+        message: "Enrollment not found",
+      });
+    }
+
+    // Check if section progress exists
+    const sectionExists = enrollment.sectionProgress.some(
+      (sp) => sp.section.toString() === sectionId
     );
 
-    await enrollment.save();
+    if (!sectionExists) {
+      // Add new section progress with lesson
+      await CourseEnrollment.updateOne(
+        { user: userId, course: courseId },
+        {
+          $push: {
+            sectionProgress: {
+              section: sectionId,
+              lessons: [{
+                lesson: lessonId,
+                isCompleted: true,
+                completedAt: new Date(),
+              }],
+              isCompleted: false,
+              lastAccessedAt: new Date(),
+            },
+          },
+          $set: {
+            lastAccessedAt: new Date(),
+          },
+        }
+      );
+    } else {
+      // Check if lesson progress exists
+      const sectionProgress = enrollment.sectionProgress.find(
+        (sp) => sp.section.toString() === sectionId
+      );
+
+      const lessonExists = sectionProgress.lessons.some(
+        (lp) => lp.lesson.toString() === lessonId
+      );
+
+      if (!lessonExists) {
+        // Add new lesson progress
+        await CourseEnrollment.updateOne(
+          {
+            user: userId,
+            course: courseId,
+            "sectionProgress.section": sectionId,
+          },
+          {
+            $push: {
+              "sectionProgress.$.lessons": {
+                lesson: lessonId,
+                isCompleted: true,
+                completedAt: new Date(),
+              },
+            },
+            $set: {
+              "sectionProgress.$.lastAccessedAt": new Date(),
+              lastAccessedAt: new Date(),
+            },
+          }
+        );
+      } else {
+        // Update existing lesson progress
+        await CourseEnrollment.updateOne(
+          {
+            user: userId,
+            course: courseId,
+            "sectionProgress.section": sectionId,
+            "sectionProgress.lessons.lesson": lessonId,
+          },
+          {
+            $set: {
+              "sectionProgress.$[sp].lessons.$[lp].isCompleted": true,
+              "sectionProgress.$[sp].lessons.$[lp].completedAt": new Date(),
+              "sectionProgress.$[sp].lastAccessedAt": new Date(),
+              lastAccessedAt: new Date(),
+            },
+          },
+          {
+            arrayFilters: [
+              { "sp.section": sectionId },
+              { "lp.lesson": lessonId },
+            ],
+          }
+        );
+      }
+    }
+
+    // Recalculate overall progress
+    const updatedEnrollment = await CourseEnrollment.findOne({
+      user: userId,
+      course: courseId,
+    });
+
+    const course = await Course.findById(courseId).populate("sections");
+    let totalLessons = 0;
+    let completedLessons = 0;
+
+    for (const section of course.sections) {
+      const sectionLesson = await CourseLesson.countDocuments({
+        section: section._id,
+      });
+      totalLessons += sectionLesson;
+
+      const userSectionProgress = updatedEnrollment.sectionProgress.find(
+        (sp) => sp.section.toString() === section._id.toString()
+      );
+
+      if (userSectionProgress) {
+        completedLessons += userSectionProgress.lessons.filter(
+          (lp) => lp.isCompleted
+        ).length;
+      }
+    }
+
+    const overallProgress = Math.round((completedLessons / totalLessons) * 100);
+
+    await CourseEnrollment.updateOne(
+      { user: userId, course: courseId },
+      { $set: { overallProgress } }
+    );
+
+    // Return updated enrollment
+    const finalEnrollment = await CourseEnrollment.findOne({
+      user: userId,
+      course: courseId,
+    });
 
     res.status(200).json({
       success: true,
       message: "Lesson marked as completed",
-      data: enrollment,
+      data: finalEnrollment,
     });
   } catch (error) {
     res.status(500).json({

@@ -106,11 +106,14 @@ describe('Tutorial Functional Tests', () => {
       .expect(200);
 
     expect(pythonTutorialsResponse.body.success).toBe(true);
-    expect(Array.isArray(pythonTutorialsResponse.body.data)).toBe(true);
+    expect(pythonTutorialsResponse.body.language).toBe('python');
+    expect(typeof pythonTutorialsResponse.body.tutorials).toBe('object');
 
     // Verify all returned tutorials are Python
-    pythonTutorialsResponse.body.data.forEach(tutorial => {
-      expect(tutorial.language).toBe('python');
+    Object.values(pythonTutorialsResponse.body.tutorials).forEach(conceptTutorials => {
+      conceptTutorials.forEach(tutorial => {
+        expect(tutorial.language).toBe('python');
+      });
     });
 
     // Step 3: Filter by JavaScript language
@@ -119,11 +122,13 @@ describe('Tutorial Functional Tests', () => {
       .expect(200);
 
     expect(jsTutorialsResponse.body.success).toBe(true);
-    expect(Array.isArray(jsTutorialsResponse.body.data)).toBe(true);
+    expect(typeof jsTutorialsResponse.body.tutorials).toBe('object');
 
-    // Verify all returned tutorials are JavaScript
-    jsTutorialsResponse.body.data.forEach(tutorial => {
-      expect(tutorial.language).toBe('javascript');
+    // Verify all returned tutorials are JavaScript (flatten the grouped structure)
+    Object.values(jsTutorialsResponse.body.tutorials).forEach(conceptTutorials => {
+      conceptTutorials.forEach(tutorial => {
+        expect(tutorial.language).toBe('javascript');
+      });
     });
 
     // Step 4: Get available languages
@@ -168,8 +173,8 @@ describe('Tutorial Functional Tests', () => {
     expect(savedTutorialsResponse.body.data.length).toBe(1);
 
     const savedTutorial = savedTutorialsResponse.body.data[0];
-    expect(savedTutorial.tutorialId._id.toString()).toBe(testTutorial1._id.toString());
-    expect(savedTutorial.tutorialId.title).toBe(testTutorial1.title);
+    expect(savedTutorial.tutorial._id.toString()).toBe(testTutorial1._id.toString());
+    expect(savedTutorial.tutorial.title).toBe(testTutorial1.title);
 
     // Step 4: Try to save the same tutorial again (should fail)
     const duplicateSaveResponse = await request(app)
@@ -248,7 +253,7 @@ describe('Tutorial Functional Tests', () => {
 
     expect(savedResponse.body.data.length).toBe(2);
 
-    const savedIds = savedResponse.body.data.map(item => item.tutorialId._id.toString());
+    const savedIds = savedResponse.body.data.map(item => item.tutorial._id.toString());
     expect(savedIds).toContain(testTutorial1._id.toString());
     expect(savedIds).toContain(testTutorial2._id.toString());
 
@@ -265,7 +270,7 @@ describe('Tutorial Functional Tests', () => {
       .expect(200);
 
     expect(updatedSavedResponse.body.data.length).toBe(1);
-    expect(updatedSavedResponse.body.data[0].tutorialId._id.toString()).toBe(testTutorial2._id.toString());
+    expect(updatedSavedResponse.body.data[0].tutorial._id.toString()).toBe(testTutorial2._id.toString());
   });
 
   it('should filter tutorials by concept', async () => {
@@ -275,8 +280,8 @@ describe('Tutorial Functional Tests', () => {
       .expect(200);
 
     expect(conceptsResponse.body.success).toBe(true);
-    expect(Array.isArray(conceptsResponse.body.data)).toBe(true);
-    expect(conceptsResponse.body.data).toContain('Variables');
+    expect(Array.isArray(conceptsResponse.body.concepts)).toBe(true);
+    expect(conceptsResponse.body.concepts).toContain('Variables');
 
     // Filter tutorials by concept
     const conceptTutorialsResponse = await request(app)
@@ -313,7 +318,7 @@ describe('Tutorial Functional Tests', () => {
       .expect(200);
 
     expect(progressResponse.body.success).toBe(true);
-    expect(progressResponse.body.message).toContain('Progress updated successfully');
+    expect(progressResponse.body.message).toContain('Tutorial progress updated');
 
     // Verify progress is saved
     const savedTutorialsResponse = await request(app)

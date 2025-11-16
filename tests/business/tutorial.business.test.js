@@ -23,14 +23,16 @@ describe('Tutorial Business Rules', () => {
     const tutorial1 = await Tutorial.create({
       title: 'Duplicate Title',
       description: 'First tutorial with this title',
+      content: 'This is the content for the first tutorial about variables.',
       language: 'python',
+      concept: 'Variables',
       category: 'programming-language',
       difficulty: 'beginner',
       instructor: instructor._id,
       codeExamples: [{
         title: 'Example 1',
         code: 'print("Hello World")',
-        explanation: 'Basic print statement'
+        description: 'Basic print statement'
       }],
       isPublished: true
     });
@@ -43,7 +45,9 @@ describe('Tutorial Business Rules', () => {
     const tutorial2 = await Tutorial.create({
       title: 'Duplicate Title', // Same title
       description: 'Second tutorial with same title',
+      content: 'This is the content for the second tutorial about functions.',
       language: 'javascript',
+      concept: 'Functions',
       category: 'programming-language',
       difficulty: 'intermediate',
       instructor: instructor._id,
@@ -76,14 +80,16 @@ describe('Tutorial Business Rules', () => {
     const publishedTutorial = await Tutorial.create({
       title: 'Published Tutorial',
       description: 'This tutorial is published',
+      content: 'This is the content for the published tutorial.',
       language: 'python',
+      concept: 'Basics',
       category: 'programming-language',
       difficulty: 'beginner',
       instructor: instructor._id,
       codeExamples: [{
         title: 'Example 1',
         code: 'print("Hello")',
-        explanation: 'Print hello'
+        description: 'Print hello'
       }],
       isPublished: true
     });
@@ -91,14 +97,16 @@ describe('Tutorial Business Rules', () => {
     const draftTutorial = await Tutorial.create({
       title: 'Draft Tutorial',
       description: 'This tutorial is a draft',
+      content: 'This is the content for the draft tutorial.',
       language: 'python',
+      concept: 'Draft Concept',
       category: 'programming-language',
       difficulty: 'beginner',
       instructor: instructor._id,
       codeExamples: [{
         title: 'Example 1',
         code: 'print("Draft")',
-        explanation: 'Draft example'
+        description: 'Draft example'
       }],
       isPublished: false
     });
@@ -134,7 +142,9 @@ describe('Tutorial Business Rules', () => {
     const validTutorial = await Tutorial.create({
       title: 'Valid Tutorial',
       description: 'Tutorial with proper code examples',
+      content: 'This tutorial covers JavaScript functions and arrays.',
       language: 'javascript',
+      concept: 'Functions and Arrays',
       category: 'programming-language',
       difficulty: 'intermediate',
       instructor: instructor._id,
@@ -142,12 +152,12 @@ describe('Tutorial Business Rules', () => {
         {
           title: 'Basic Function',
           code: 'function greet(name) { return "Hello " + name; }',
-          explanation: 'A simple function that greets a person'
+          description: 'A simple function that greets a person'
         },
         {
           title: 'Array Methods',
           code: 'const numbers = [1, 2, 3]; const doubled = numbers.map(n => n * 2);',
-          explanation: 'Using map to double array elements'
+          description: 'Using map to double array elements'
         }
       ],
       isPublished: true
@@ -157,7 +167,7 @@ describe('Tutorial Business Rules', () => {
     expect(validTutorial).toBeTruthy();
     expect(validTutorial.codeExamples).toHaveLength(2);
     expect(validTutorial.codeExamples[0].title).toBe('Basic Function');
-    expect(validTutorial.codeExamples[1].explanation).toBe('Using map to double array elements');
+    expect(validTutorial.codeExamples[1].description).toBe('Using map to double array elements');
   });
 
   it('should track tutorial view counts', async () => {
@@ -173,14 +183,16 @@ describe('Tutorial Business Rules', () => {
     const tutorial = await Tutorial.create({
       title: 'Popular Tutorial',
       description: 'This will be very popular',
+      content: 'This is content for a popular tutorial.',
       language: 'python',
+      concept: 'Popularity',
       category: 'programming-language',
       difficulty: 'beginner',
       instructor: instructor._id,
       codeExamples: [{
         title: 'Example',
         code: 'print("Popular!")',
-        explanation: 'Popular example'
+        description: 'Popular example'
       }],
       isPublished: true,
       viewCount: 0
@@ -212,31 +224,37 @@ describe('Tutorial Business Rules', () => {
       {
         title: 'Python Beginner',
         description: 'Python for beginners',
+        content: 'This is content for Python beginners.',
         language: 'python',
+        concept: 'Python Basics',
         category: 'programming-language',
         difficulty: 'beginner',
         instructor: instructor._id,
-        codeExamples: [{ title: 'Example', code: 'print("Python")', explanation: 'Python example' }],
+        codeExamples: [{ title: 'Example', code: 'print("Python")', description: 'Python example' }],
         isPublished: true
       },
       {
         title: 'Python Advanced',
         description: 'Python for advanced users',
+        content: 'This is content for advanced Python users.',
         language: 'python',
+        concept: 'Advanced Python',
         category: 'programming-language',
         difficulty: 'advanced',
         instructor: instructor._id,
-        codeExamples: [{ title: 'Example', code: 'print("Advanced Python")', explanation: 'Advanced example' }],
+        codeExamples: [{ title: 'Example', code: 'print("Advanced Python")', description: 'Advanced example' }],
         isPublished: true
       },
       {
         title: 'JavaScript Beginner',
         description: 'JavaScript for beginners',
+        content: 'This is content for JavaScript beginners.',
         language: 'javascript',
+        concept: 'JavaScript Basics',
         category: 'programming-language',
         difficulty: 'beginner',
         instructor: instructor._id,
-        codeExamples: [{ title: 'Example', code: 'console.log("JS")', explanation: 'JS example' }],
+        codeExamples: [{ title: 'Example', code: 'console.log("JS")', description: 'JS example' }],
         isPublished: true
       }
     ]);

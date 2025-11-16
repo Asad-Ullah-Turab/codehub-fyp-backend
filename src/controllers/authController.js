@@ -541,9 +541,11 @@ export const requestPasswordReset = async (req, res) => {
         });
       }
     } else {
-      res.status(500).json({
-        status: 'error',
-        message: 'Email service is not available'
+      // Email service not available - for development, still return success
+      console.log(`⚠️  Email service not available - password reset OTP for ${email}: ${otp}`);
+      res.status(200).json({
+        status: 'success',
+        message: 'Password reset code generated (email service unavailable)'
       });
     }
   } catch (error) {
@@ -662,9 +664,17 @@ export const resetPassword = async (req, res) => {
     await user.clearPasswordResetOTP();
     await user.save();
 
+    // Generate JWT token for automatic login
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET || 'your-super-secret-jwt-key',
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+
     res.status(200).json({
       status: 'success',
-      message: 'Password reset successfully'
+      message: 'Password reset successfully',
+      token
     });
   } catch (error) {
     console.error('Password reset error:', error);

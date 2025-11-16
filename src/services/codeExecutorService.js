@@ -124,6 +124,11 @@ class CodeExecutorService {
     return configs[language];
   }
 
+  isLanguageSupported(language) {
+    const supportedLanguages = ['python', 'cpp', 'javascript'];
+    return supportedLanguages.includes(language);
+  }
+
   generateSessionId() {
     return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   }

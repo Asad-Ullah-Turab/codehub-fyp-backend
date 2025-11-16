@@ -22,6 +22,7 @@ const userSavedTutorialSchema = new mongoose.Schema(
         type: Boolean,
         default: false
       },
+      completedAt: Date,
       completedCodeExamples: [
         {
           exampleId: mongoose.Schema.Types.ObjectId,

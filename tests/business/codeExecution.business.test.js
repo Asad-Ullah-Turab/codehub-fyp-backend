@@ -55,7 +55,11 @@ describe('Code Execution Business Rules', () => {
 
     // Act & Assert: invalid parameters should fail validation
     for (const params of invalidParams) {
-      const isValid = params.language && params.code && params.sessionId;
+      const isValid = CodeExecutorService.isLanguageSupported(params.language) &&
+                     Boolean(params.code) &&
+                     params.code.trim().length > 0 &&
+                     Boolean(params.sessionId) &&
+                     params.sessionId.trim().length > 0;
       expect(isValid).toBe(false);
     }
   });
