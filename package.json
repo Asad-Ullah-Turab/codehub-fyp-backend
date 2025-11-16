@@ -14,6 +14,8 @@
     "test:coverage": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest --coverage",
     "test:unit": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest tests/unit",
     "test:integration": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest tests/integration",
+    "test:business": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest tests/business",
+    "test:functional": "cross-env NODE_ENV=test NODE_OPTIONS='--experimental-vm-modules' jest tests/functional",
     "seed:courses": "node scripts/seedCourses.js"
   },
   "dependencies": {

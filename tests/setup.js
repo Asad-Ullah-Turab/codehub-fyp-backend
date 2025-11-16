@@ -13,8 +13,13 @@ beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   const mongoUri = mongoServer.getUri();
 
-  // Connect to the in-memory database
-  await mongoose.connect(mongoUri);
+  // Set the MONGODB_URI environment variable so the app connects to in-memory DB
+  process.env.MONGODB_URI = mongoUri;
+
+  // Connect to the in-memory database (for unit tests that don't start the app)
+  if (mongoose.connection.readyState === 0) {
+    await mongoose.connect(mongoUri);
+  }
 });
 
 afterAll(async () => {

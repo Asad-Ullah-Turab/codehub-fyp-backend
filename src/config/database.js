@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 
-dotenv.config();
+// Only load .env if MONGODB_URI is not already set (e.g., by test setup)
+if (!process.env.MONGODB_URI) {
+  dotenv.config();
+}
 
 const connectDB = async () => {
   try {
