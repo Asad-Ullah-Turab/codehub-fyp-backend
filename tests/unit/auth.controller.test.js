@@ -1,4 +1,6 @@
 // Unit tests for Authentication Controller
+import { jest } from '@jest/globals';
+
 import {
   signup,
   signin,
@@ -12,14 +14,9 @@ import {
   verifyPasswordResetOTP,
   resetPassword
 } from '../../src/controllers/authController.js';
-// Mock email service
-// jest.mock('../../src/services/emailService.js', () => ({
-//   sendVerificationEmail: jest.fn(),
-//   sendPasswordResetEmail: jest.fn(),
-// }));
-
 import User from '../../src/models/User.js';
 // import emailService from '../../src/services/emailService.js';
+import jwt from 'jsonwebtoken';
 
 // Mock request and response objects
 const mockRequest = (body = {}, params = {}, query = {}, user = null, headers = {}) => ({
@@ -43,6 +40,11 @@ const mockResponse = () => {
   res.clearCookie = function(name) {
     this.clearedCookies = this.clearedCookies || [];
     this.clearedCookies.push(name);
+    return this;
+  };
+  res.redirect = function(url) {
+    this.redirectedTo = url;
+    this.statusCode = 302; // Default redirect status
     return this;
   };
   return res;
@@ -212,7 +214,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(403);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Your account has been suspended');
+      expect(res.responseData.message).toBe('Your account has been suspended. Please contact support for more information.');
     });
   });
 
@@ -246,12 +248,13 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.responseData.status).toBe('success');
-      expect(res.responseData.message).toBe('Email verified successfully');
+      expect(res.responseData.token).toBeDefined();
+      expect(res.responseData.data.user).toBeDefined();
 
       // Verify user was updated
       const user = await User.findById(userId);
       expect(user.isEmailVerified).toBe(true);
-      expect(user.emailVerificationOTP).toBeUndefined();
+      expect(user.emailVerificationOTP).toBeNull();
     });
 
     it('should reject verification with wrong OTP', async () => {
@@ -265,7 +268,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Invalid or expired verification code');
+      expect(res.responseData.message).toBe('Invalid or expired OTP');
     });
 
     it('should reject verification with expired OTP', async () => {
@@ -284,7 +287,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Invalid or expired verification code');
+      expect(res.responseData.message).toBe('Invalid or expired OTP');
     });
 
     it('should reject verification for non-existent email', async () => {
@@ -296,9 +299,9 @@ describe('Authentication Controller', () => {
 
       await verifyEmail(req, res);
 
-      expect(res.statusCode).toBe(404);
+      expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('User not found');
+      expect(res.responseData.message).toBe('Invalid email address');
     });
   });
 
@@ -343,7 +346,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Email is already verified');
+      expect(res.responseData.message).toBe('No pending verification found for this email');
     });
 
     it('should reject resend for non-existent email', async () => {
@@ -354,9 +357,9 @@ describe('Authentication Controller', () => {
 
       await resendVerificationOTP(req, res);
 
-      expect(res.statusCode).toBe(404);
+      expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('User not found');
+      expect(res.responseData.message).toBe('No pending verification found for this email');
     });
   });
 
@@ -382,7 +385,6 @@ describe('Authentication Controller', () => {
       const res = mockResponse();
 
       // Mock jwt.verify
-      const jwt = require('jsonwebtoken');
       jwt.verify = jest.fn().mockReturnValue({ id: userId });
 
       await protect(req, res, mockNext);
@@ -400,14 +402,13 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(401);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('You are not logged in. Please log in to get access.');
+      expect(res.responseData.message).toBe('You are not logged in! Please log in to get access.');
     });
 
     it('should reject access with invalid token', async () => {
       const req = mockRequest({}, {}, {}, null, { authorization: 'Bearer invalidtoken' });
       const res = mockResponse();
 
-      const jwt = require('jsonwebtoken');
       jwt.verify = jest.fn().mockImplementation(() => {
         throw new Error('Invalid token');
       });
@@ -416,7 +417,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(401);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Invalid token');
+      expect(res.responseData.message).toBe('Invalid token. Please log in again!');
     });
 
     it('should reject access for suspended user', async () => {
@@ -427,14 +428,13 @@ describe('Authentication Controller', () => {
       const req = mockRequest({}, {}, {}, null, { authorization: `Bearer ${token}` });
       const res = mockResponse();
 
-      const jwt = require('jsonwebtoken');
       jwt.verify = jest.fn().mockReturnValue({ id: userId });
 
       await protect(req, res, mockNext);
 
       expect(res.statusCode).toBe(403);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Your account has been suspended');
+      expect(res.responseData.message).toBe('Your account has been suspended. Please contact support.');
     });
   });
 
@@ -447,20 +447,20 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.responseData.status).toBe('success');
-      expect(res.clearedCookies).toContain('jwt');
+      expect(res.cookies.jwt.value).toBe('loggedout');
     });
   });
 
   describe('oauthSuccess', () => {
     it('should handle OAuth success', async () => {
-      const req = mockRequest({}, {}, {}, { _id: 'user123', name: 'OAuth User' });
+      const user = { _id: 'user123', name: 'OAuth User', updateLastLogin: jest.fn() };
+      const req = mockRequest({}, {}, {}, user);
       const res = mockResponse();
 
       await oauthSuccess(req, res);
 
-      expect(res.statusCode).toBe(200);
-      expect(res.responseData.status).toBe('success');
-      expect(res.responseData.data.user).toBeDefined();
+      expect(res.statusCode).toBe(302);
+      expect(res.redirectedTo).toContain('/auth/success?token=');
     });
 
     it('should handle OAuth success without user', async () => {
@@ -469,9 +469,8 @@ describe('Authentication Controller', () => {
 
       await oauthSuccess(req, res);
 
-      expect(res.statusCode).toBe(401);
-      expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Authentication failed');
+      expect(res.statusCode).toBe(302);
+      expect(res.redirectedTo).toBe(`${process.env.FRONTEND_URL}/signin?error=oauth_failed`);
     });
   });
 
@@ -482,9 +481,8 @@ describe('Authentication Controller', () => {
 
       await oauthFailure(req, res);
 
-      expect(res.statusCode).toBe(401);
-      expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Authentication failed');
+      expect(res.statusCode).toBe(302);
+      expect(res.redirectedTo).toBe(`${process.env.FRONTEND_URL}/signin?error=oauth_failed`);
     });
   });
 
@@ -524,9 +522,9 @@ describe('Authentication Controller', () => {
 
       await requestPasswordReset(req, res);
 
-      expect(res.statusCode).toBe(404);
-      expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('User not found');
+      expect(res.statusCode).toBe(200);
+      expect(res.responseData.status).toBe('success');
+      expect(res.responseData.message).toBe('If an account with this email exists, you will receive a password reset code.');
     });
 
     it('should reject password reset for unverified email', async () => {
@@ -540,9 +538,9 @@ describe('Authentication Controller', () => {
 
       await requestPasswordReset(req, res);
 
-      expect(res.statusCode).toBe(400);
-      expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Please verify your email first');
+      expect(res.statusCode).toBe(200);
+      expect(res.responseData.status).toBe('success');
+      expect(res.responseData.message).toBe('If an account with this email exists, you will receive a password reset code.');
     });
   });
 
@@ -556,6 +554,7 @@ describe('Authentication Controller', () => {
         name: 'Test User',
         email: 'test@example.com',
         password: 'password123',
+        accountStatus: 'active',
         passwordResetOTP: '654321',
         passwordResetOTPExpires: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes from now
         isEmailVerified: true
@@ -590,7 +589,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Invalid or expired reset code');
+      expect(res.responseData.message).toBe('Invalid or expired OTP');
     });
 
     it('should reject verification with expired OTP', async () => {
@@ -609,7 +608,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Invalid or expired reset code');
+      expect(res.responseData.message).toBe('Invalid or expired OTP');
     });
   });
 
@@ -634,9 +633,17 @@ describe('Authentication Controller', () => {
     });
 
     it('should reset password with correct OTP and matching passwords', async () => {
-      const req = mockRequest({
+      // First verify the OTP to get resetToken
+      const verifyReq = mockRequest({
         email: 'test@example.com',
-        otp: resetOTP,
+        otp: resetOTP
+      });
+      const verifyRes = mockResponse();
+      await verifyPasswordResetOTP(verifyReq, verifyRes);
+      const resetToken = verifyRes.responseData.resetToken;
+
+      const req = mockRequest({
+        resetToken,
         newPassword: 'newpassword123',
         confirmPassword: 'newpassword123'
       });
@@ -655,9 +662,17 @@ describe('Authentication Controller', () => {
     });
 
     it('should reject password reset with mismatched passwords', async () => {
-      const req = mockRequest({
+      // First verify the OTP to get resetToken
+      const verifyReq = mockRequest({
         email: 'test@example.com',
-        otp: resetOTP,
+        otp: resetOTP
+      });
+      const verifyRes = mockResponse();
+      await verifyPasswordResetOTP(verifyReq, verifyRes);
+      const resetToken = verifyRes.responseData.resetToken;
+
+      const req = mockRequest({
+        resetToken,
         newPassword: 'newpassword123',
         confirmPassword: 'differentpassword'
       });
@@ -686,7 +701,7 @@ describe('Authentication Controller', () => {
 
       expect(res.statusCode).toBe(400);
       expect(res.responseData.status).toBe('fail');
-      expect(res.responseData.message).toBe('Please verify your reset code first');
+      expect(res.responseData.message).toBe('Please provide reset token, new password, and confirm password');
     });
   });
 });

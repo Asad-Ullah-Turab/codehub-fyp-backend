@@ -374,6 +374,7 @@ describe('Tutorial Controller', () => {
         },
         {
           title: 'JavaScript Basics',
+          description: 'Learn JavaScript basics',
           language: 'javascript',
           difficulty: 'beginner',
           concept: 'variables',
@@ -391,8 +392,8 @@ describe('Tutorial Controller', () => {
 
       expect(res.statusCode).toBe(200);
       expect(res.responseData.success).toBe(true);
-      expect(res.responseData.data).toContain('variables');
-      expect(res.responseData.data).toContain('functions');
+      expect(res.responseData.concepts).toContain('variables');
+      expect(res.responseData.concepts).toContain('functions');
     });
   });
 
