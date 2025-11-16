@@ -1,31 +1,16 @@
-import { MongoMemoryServer } from "mongodb-memory-server";
 import mongoose from "mongoose";
-import dotenv from "dotenv";
 import { beforeAll, afterAll, beforeEach } from "@jest/globals";
 
-// Load test environment variables
-dotenv.config({ path: ".env.test" });
-
-let mongoServer;
-
 beforeAll(async () => {
-  // Create in-memory MongoDB instance
-  mongoServer = await MongoMemoryServer.create();
-  const mongoUri = mongoServer.getUri();
-
-  // Set the MONGODB_URI environment variable so the app connects to in-memory DB
-  process.env.MONGODB_URI = mongoUri;
-
   // Connect to the in-memory database (for unit tests that don't start the app)
   if (mongoose.connection.readyState === 0) {
-    await mongoose.connect(mongoUri);
+    await mongoose.connect(process.env.MONGODB_URI);
   }
 });
 
 afterAll(async () => {
   // Clean up database connections
   await mongoose.disconnect();
-  await mongoServer.stop();
 });
 
 beforeEach(async () => {

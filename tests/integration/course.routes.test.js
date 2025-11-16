@@ -3,6 +3,7 @@ import request from 'supertest';
 import app from '../../src/app.js';
 import Course from '../../src/models/Course.js';
 import User from '../../src/models/User.js';
+import jwt from 'jsonwebtoken';
 
 describe('Course Routes', () => {
   let testUser, testCourse, authToken;
@@ -25,18 +26,15 @@ describe('Course Routes', () => {
       shortDescription: 'Test course',
       language: 'python',
       category: 'programming-language',
-      instructor: testUser._id
+      instructor: testUser._id,
+      isPublished: true
     });
     await testCourse.save();
 
-    // Get auth token by signing in
-    const signinResponse = await request(app)
-      .post('/api/auth/signin')
-      .send({
-        email: 'test@example.com',
-        password: 'password123'
-      });
-    authToken = signinResponse.body.token;
+    // Get auth token by creating JWT manually
+    authToken = jwt.sign({ id: testUser._id }, process.env.JWT_SECRET || 'test-super-secret-jwt-key-for-testing-only', {
+      expiresIn: process.env.JWT_EXPIRES_IN || '7d',
+    });
   });
 
   it('should get all courses', async () => {
@@ -44,9 +42,9 @@ describe('Course Routes', () => {
       .get('/api/courses')
       .expect(200);
 
-    expect(response.body.status).toBe('success');
-    expect(Array.isArray(response.body.data.courses)).toBe(true);
-    expect(response.body.data.courses.length).toBeGreaterThan(0);
+    expect(response.body.success).toBe(true);
+    expect(Array.isArray(response.body.data)).toBe(true);
+    expect(response.body.data.length).toBeGreaterThan(0);
   });
 
   it('should get course by id', async () => {
@@ -54,8 +52,8 @@ describe('Course Routes', () => {
       .get(`/api/courses/${testCourse._id}`)
       .expect(200);
 
-    expect(response.body.status).toBe('success');
-    expect(response.body.data.course.title).toBe('Test Course');
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.title).toBe('Test Course');
   });
 
   it('should enroll user in course', async () => {
@@ -67,7 +65,7 @@ describe('Course Routes', () => {
       })
       .expect(201);
 
-    expect(response.body.status).toBe('success');
+    expect(response.body.success).toBe(true);
     expect(response.body.message).toContain('enrolled');
   });
 
@@ -86,7 +84,7 @@ describe('Course Routes', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .expect(200);
 
-    expect(response.body.status).toBe('success');
-    expect(Array.isArray(response.body.data.enrollments)).toBe(true);
+    expect(response.body.success).toBe(true);
+    expect(Array.isArray(response.body.data)).toBe(true);
   });
 });

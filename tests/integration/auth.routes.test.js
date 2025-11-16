@@ -9,7 +9,8 @@ describe('Authentication Routes', () => {
     const userData = {
       name: 'Test User',
       email: 'testuser@example.com',
-      password: 'password123'
+      password: 'password123',
+      confirmPassword: 'password123'
     };
 
     // Act: POST /api/auth/signup
@@ -20,7 +21,8 @@ describe('Authentication Routes', () => {
 
     // Assert: user created
     expect(signupResponse.body.status).toBe('success');
-    expect(signupResponse.body.message).toContain('User registered successfully');
+    expect(signupResponse.body.token).toBeDefined();
+    expect(signupResponse.body.data.user).toBeDefined();
 
     // For login, we might need email verification first
     // This depends on your implementation
@@ -67,7 +69,7 @@ describe('Authentication Routes', () => {
 
     // Assert: error returned
     expect(response.status).toBe(400);
-    expect(response.body.status).toBe('error');
+    expect(response.body.status).toBe('fail');
   });
 
   it('should handle duplicate email registration', async () => {
@@ -89,6 +91,6 @@ describe('Authentication Routes', () => {
 
     // Assert: error for duplicate email
     expect(duplicateResponse.status).toBe(400);
-    expect(duplicateResponse.body.status).toBe('error');
+    expect(duplicateResponse.body.status).toBe('fail');
   });
 });
