@@ -91,12 +91,13 @@ describe('Tutorial Routes', () => {
   });
 
   it('should fetch tutorials by language via API', async () => {
-    // Act: GET /api/tutorials/language/python
+    // Act: GET /api/tutorials?language=python
     const response = await request(app)
-      .get('/api/tutorials/language/python')
+      .get('/api/tutorials?language=python')
       .expect(200);
 
     // Assert: tutorials returned
+    console.log('Response body:', response.body); // Debug
     expect(response.body.success).toBe(true);
     expect(Array.isArray(response.body.data)).toBe(true);
 
@@ -185,10 +186,10 @@ describe('Tutorial Routes', () => {
 
     // Assert: concepts returned
     expect(response.body.success).toBe(true);
-    expect(Array.isArray(response.body.data)).toBe(true);
+    expect(Array.isArray(response.body.concepts)).toBe(true);
 
     // Should include 'Variables' from our test tutorial
-    expect(response.body.data).toContain('Variables');
+    expect(response.body.concepts).toContain('Variables');
   });
 
   it('should get user saved tutorials', async () => {
@@ -211,8 +212,8 @@ describe('Tutorial Routes', () => {
     expect(response.body.data.length).toBe(1);
 
     const savedTutorial = response.body.data[0];
-    expect(savedTutorial.tutorialId._id.toString()).toBe(testTutorial1._id.toString());
-    expect(savedTutorial.tutorialId.title).toBe(testTutorial1.title);
+    expect(savedTutorial.tutorial._id.toString()).toBe(testTutorial1._id.toString());
+    expect(savedTutorial.tutorial.title).toBe(testTutorial1.title);
   });
 
   it('should unsave tutorial', async () => {
