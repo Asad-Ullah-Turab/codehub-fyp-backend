@@ -7,7 +7,7 @@ jest.mock('../../src/services/codeExecutorWSService.js');
 
 import codeExecutorWSService from '../../src/services/codeExecutorWSService.js';
 
-describe.skip('Code Execution Functional Tests', () => {
+describe('Code Execution Functional Tests', () => {
   beforeEach(() => {
     // Reset mocks before each test
     jest.clearAllMocks();
