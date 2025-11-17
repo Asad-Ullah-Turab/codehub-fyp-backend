@@ -1,6 +1,5 @@
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import validator from "validator";
 
 const userSchema = new mongoose.Schema(
   {
@@ -16,7 +15,12 @@ const userSchema = new mongoose.Schema(
       required: [true, "Email is required"],
       unique: true,
       lowercase: true,
-      validate: [validator.isEmail, "Please provide a valid email"],
+      validate: {
+        validator: function (value) {
+          return /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(value);
+        },
+        message: "Please provide a valid email",
+      },
     },
     password: {
       type: String,
@@ -32,25 +36,33 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     lastLogin: { type: Date, default: null },
     profilePicture: { type: String, default: null },
-    
+
     // Profile Information
     dateOfBirth: { type: Date, default: null },
-    bio: { type: String, maxlength: [500, "Bio cannot exceed 500 characters"], default: null },
-    location: { type: String, maxlength: [100, "Location cannot exceed 100 characters"], default: null },
+    bio: {
+      type: String,
+      maxlength: [500, "Bio cannot exceed 500 characters"],
+      default: null,
+    },
+    location: {
+      type: String,
+      maxlength: [100, "Location cannot exceed 100 characters"],
+      default: null,
+    },
     github: { type: String, default: null },
     linkedin: { type: String, default: null },
     website: { type: String, default: null },
-    
+
     // Skills and Interests
     programmingLanguages: [{ type: String }],
     skills: [{ type: String }],
     interests: [{ type: String }],
-    experience: { 
-      type: String, 
+    experience: {
+      type: String,
       enum: ["beginner", "intermediate", "advanced", "expert", null],
-      default: null 
+      default: null,
     },
-    
+
     // Profile Completion
     isProfileComplete: { type: Boolean, default: false },
     profileCompletionPromptShown: { type: Boolean, default: false },
