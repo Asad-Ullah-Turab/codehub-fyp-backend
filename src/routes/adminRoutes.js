@@ -17,6 +17,9 @@ import {
   getAnalytics,
   searchUsers,
   getRecentActivity,
+  getPendingCertificates,
+  approveCertificate,
+  rejectCertificate,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -48,5 +51,10 @@ router.get("/analytics", getAnalytics);
 
 // Recent Activity
 router.get("/recent-activity", getRecentActivity);
+
+// Certificate Management
+router.get("/certificates/pending", getPendingCertificates);
+router.put("/certificates/:certificateId/approve", approveCertificate);
+router.put("/certificates/:certificateId/reject", rejectCertificate);
 
 export default router;

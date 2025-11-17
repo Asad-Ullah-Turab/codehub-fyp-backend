@@ -8,10 +8,19 @@ import Course from "../models/Course.js";
 // Submit quiz answers
 export const submitQuizAnswers = async (req, res) => {
   try {
-    console.log('Submit quiz request body:', req.body);
+    console.log("Submit quiz request body:", req.body);
     const { quizId, courseId, sectionId, answers } = req.body;
     const userId = req.user._id;
-    console.log('Quiz submission - userId:', userId, 'quizId:', quizId, 'courseId:', courseId, 'sectionId:', sectionId);
+    console.log(
+      "Quiz submission - userId:",
+      userId,
+      "quizId:",
+      quizId,
+      "courseId:",
+      courseId,
+      "sectionId:",
+      sectionId
+    );
 
     // Validate quiz and get it with full details
     const quiz = await Quiz.findById(quizId);
@@ -124,22 +133,42 @@ export const submitQuizAnswers = async (req, res) => {
         sectionProgress.isCompleted = true;
         sectionProgress.completedAt = new Date();
       }
-    } else if (quiz.type === "final-quiz") {
-      if (!enrollment.finalQuizScore) {
-        enrollment.finalQuizScore = {};
+    }
+
+    enrollment.lastAccessedAt = new Date();
+    await enrollment.save();
+
+    // Recalculate overall progress and check if all sections are completed
+    try {
+      const course = await Course.findById(courseId).populate("sections");
+      
+      if (!course) {
+        console.error("Course not found:", courseId);
+        return res.status(404).json({
+          success: false,
+          message: "Course not found",
+        });
       }
 
-      enrollment.finalQuizScore = {
-        quizId,
-        score: scorePercentage,
-        maxScore: 100,
-        attemptCount: (enrollment.finalQuizScore.attemptCount || 0) + 1,
-        lastAttemptAt: new Date(),
-        passed,
-      };
+      let completedSections = 0;
 
-      // If user passed final quiz, mark course as completed and generate certificate
-      if (passed && !enrollment.certificateIssued) {
+      for (const section of course.sections) {
+        const sectionProgress = enrollment.sectionProgress.find(
+          (sp) => sp.section.toString() === section._id.toString()
+        );
+        if (sectionProgress?.isCompleted) {
+          completedSections++;
+        }
+      }
+
+      enrollment.overallProgress = Math.round(
+        (completedSections / course.sections.length) * 100
+      );
+      console.log(`Progress updated: ${completedSections}/${course.sections.length} sections completed`);
+
+      // Check if all sections are completed - if so, issue certificate
+      if (completedSections === course.sections.length && !enrollment.certificateIssued) {
+        console.log("All sections completed! Generating certificate...");
         enrollment.status = "completed";
         enrollment.completionDate = new Date();
         enrollment.certificateIssued = true;
@@ -153,29 +182,14 @@ export const submitQuizAnswers = async (req, res) => {
         );
 
         enrollment.certificate = certificate._id;
+        console.log("Certificate generated with ID:", certificate._id);
       }
+
+      await enrollment.save();
+    } catch (error) {
+      console.error("Error updating progress/generating certificate:", error.message);
+      throw error;
     }
-
-    enrollment.lastAccessedAt = new Date();
-    await enrollment.save();
-
-    // Recalculate overall progress
-    const course = await Course.findById(courseId).populate("sections");
-    let completedSections = 0;
-
-    for (const section of course.sections) {
-      const sectionProgress = enrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === section._id.toString()
-      );
-      if (sectionProgress?.isCompleted) {
-        completedSections++;
-      }
-    }
-
-    enrollment.overallProgress = Math.round(
-      (completedSections / course.sections.length) * 100
-    );
-    await enrollment.save();
 
     res.status(200).json({
       success: true,
@@ -185,18 +199,17 @@ export const submitQuizAnswers = async (req, res) => {
         score: scorePercentage,
         maxScore: 100,
         passed,
-        attemptCount:
-          quiz.type === "final-quiz"
-            ? enrollment.finalQuizScore.attemptCount
-            : sectionProgress.sectionQuizScore.attemptCount,
+        attemptCount: sectionProgress?.sectionQuizScore?.attemptCount || 1,
         results,
-        certificate:
-          quiz.type === "final-quiz" && enrollment.certificate
-            ? enrollment.certificate
-            : null,
+        certificate: enrollment.certificate ? enrollment.certificate : null,
       },
     });
   } catch (error) {
+    console.error("========== ERROR in submitQuizAnswers ==========");
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    console.error("Full error:", error);
     res.status(500).json({
       success: false,
       message: "Error submitting quiz",
@@ -322,7 +335,7 @@ export const getQuizLeaderboard = async (req, res) => {
 
 // ========== CERTIFICATE MANAGEMENT ==========
 
-// Generate certificate for user
+// Generate certificate for user (one per course)
 const generateCertificate = async (
   userId,
   courseId,
@@ -330,19 +343,45 @@ const generateCertificate = async (
   finalScore
 ) => {
   try {
+    console.log("========== Generating Certificate ==========");
+    console.log(`User: ${userId}, Course: ${courseId}, Score: ${finalScore}`);
+    
+    // Check if certificate already exists for this user and course
+    const existingCertificate = await Certificate.findOne({
+      user: userId,
+      course: courseId,
+    });
+
+    if (existingCertificate) {
+      console.log(
+        `Certificate already exists for user ${userId} in course ${courseId}`
+      );
+      return existingCertificate;
+    }
+
+    // Generate unique certificate number
+    const certificateNumber = `CERT-${Date.now()}-${userId.toString().slice(-6)}`;
+    console.log("Creating new certificate with number:", certificateNumber);
+
     const certificate = new Certificate({
       user: userId,
       course: courseId,
       enrollment: enrollmentId,
+      certificateNumber,
       finalScore,
       template: "standard",
       isValid: true,
+      approvalStatus: "pending",
     });
 
-    await certificate.save();
-    return certificate;
+    const savedCertificate = await certificate.save();
+    console.log("Certificate saved successfully:", savedCertificate._id);
+    return savedCertificate;
   } catch (error) {
-    console.error("Error generating certificate:", error);
+    console.error("========== ERROR generating certificate ==========");
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     throw error;
   }
 };
@@ -388,20 +427,29 @@ export const getCertificateById = async (req, res) => {
     const { certificateId } = req.params;
     const userId = req.user._id;
 
+    console.log("========== getCertificateById ==========");
+    console.log("CertificateId:", certificateId);
+    console.log("UserId:", userId);
+
     const certificate = await Certificate.findById(certificateId)
       .populate("course", "title language category")
       .populate("user", "name email")
       .populate("enrollment");
 
     if (!certificate) {
+      console.log("Certificate not found for ID:", certificateId);
       return res.status(404).json({
         success: false,
         message: "Certificate not found",
       });
     }
 
+    console.log("Certificate found:", certificate._id);
+    console.log("Certificate user:", certificate.user._id);
+
     // Check ownership
     if (certificate.user._id.toString() !== userId.toString()) {
+      console.log("Unauthorized: cert user", certificate.user._id, "!== req user", userId);
       return res.status(403).json({
         success: false,
         message: "Unauthorized to view this certificate",
@@ -413,6 +461,9 @@ export const getCertificateById = async (req, res) => {
       data: certificate,
     });
   } catch (error) {
+    console.error("========== ERROR in getCertificateById ==========");
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
     res.status(500).json({
       success: false,
       message: "Error fetching certificate",

@@ -8,12 +8,20 @@ import User from '../models/User.js';
 export const auth = async (req, res, next) => {
   try {
     let user = null;
+    let token = null;
 
     // Check for JWT token in Authorization header (Bearer token)
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7); // Remove 'Bearer ' prefix
-      
+      token = authHeader.slice(7); // Remove 'Bearer ' prefix
+    }
+    
+    // Also check for token in query parameters (for downloads)
+    if (!token && req.query.token) {
+      token = req.query.token;
+    }
+
+    if (token) {
       try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-super-secret-jwt-key');
         

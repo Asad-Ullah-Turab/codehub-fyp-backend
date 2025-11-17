@@ -4,6 +4,7 @@ import AIChat from "../models/AIChat.js";
 import Progress from "../models/Progress.js";
 import Course from "../models/Course.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
+import Certificate from "../models/Certificate.js";
 
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {
@@ -639,6 +640,118 @@ export const getRecentActivity = async (req, res) => {
       data: sortedActivities,
     });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get pending certificates for approval
+export const getPendingCertificates = async (req, res) => {
+  try {
+    console.log("========== getPendingCertificates called ==========");
+    console.log("User:", req.user ? `${req.user._id}` : "NOT AUTHENTICATED");
+    
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    
+    console.log(`Page: ${page}, Limit: ${limit}, Skip: ${skip}`);
+    
+    // Verify Certificate model is available
+    if (!Certificate) {
+      throw new Error("Certificate model not loaded");
+    }
+
+    const certificates = await Certificate.find({ approvalStatus: "pending" })
+      .populate("user", "name email")
+      .populate("course", "title")
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Certificate.countDocuments({ approvalStatus: "pending" });
+
+    console.log(`Found ${certificates.length} pending certificates out of ${total} total`);
+
+    res.setHeader('Content-Type', 'application/json');
+    res.status(200).json({
+      success: true,
+      data: certificates,
+      total,
+      pages: Math.ceil(total / parseInt(limit)),
+    });
+  } catch (error) {
+    console.error("========== ERROR in getPendingCertificates ==========");
+    console.error("Error name:", error.name);
+    console.error("Error message:", error.message);
+    console.error("Error stack:", error.stack);
+    
+    res.setHeader('Content-Type', 'application/json');
+    res.status(500).json({ 
+      success: false, 
+      message: error.message,
+      errorType: error.name
+    });
+  }
+};
+
+// Approve a certificate
+export const approveCertificate = async (req, res) => {
+  try {
+    const { certificateId } = req.params;
+    const adminId = req.user._id; // From auth middleware
+
+    const certificate = await Certificate.findById(certificateId);
+    if (!certificate) {
+      return res.status(404).json({ success: false, message: "Certificate not found" });
+    }
+
+    certificate.approvalStatus = "approved";
+    certificate.approvedBy = adminId;
+    certificate.approvalDate = new Date();
+    await certificate.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Certificate approved successfully",
+      data: certificate,
+    });
+  } catch (error) {
+    console.error("Error approving certificate:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Reject a certificate
+export const rejectCertificate = async (req, res) => {
+  try {
+    const { certificateId } = req.params;
+    const { rejectionReason } = req.body;
+    const adminId = req.user._id; // From auth middleware
+
+    if (!rejectionReason) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Rejection reason is required" 
+      });
+    }
+
+    const certificate = await Certificate.findById(certificateId);
+    if (!certificate) {
+      return res.status(404).json({ success: false, message: "Certificate not found" });
+    }
+
+    certificate.approvalStatus = "rejected";
+    certificate.approvedBy = adminId;
+    certificate.approvalDate = new Date();
+    certificate.rejectionReason = rejectionReason;
+    await certificate.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Certificate rejected successfully",
+      data: certificate,
+    });
+  } catch (error) {
+    console.error("Error rejecting certificate:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

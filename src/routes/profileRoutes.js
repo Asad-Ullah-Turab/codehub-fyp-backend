@@ -19,4 +19,8 @@ router.get("/dashboard", auth, profileController.getDashboardStats);
 router.get("/enrollments", auth, profileController.getUserEnrollments);
 router.put("/enrollments/:enrollmentId/status", auth, profileController.updateEnrollmentStatus);
 
+// ========== CERTIFICATES ==========
+router.get("/certificates", auth, profileController.getUserCertificates);
+router.get("/certificates/:certificateId/download", auth, profileController.downloadCertificatePdf);
+
 export default router;

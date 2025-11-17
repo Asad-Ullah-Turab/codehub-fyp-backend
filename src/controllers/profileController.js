@@ -438,3 +438,91 @@ export const updateEnrollmentStatus = async (req, res) => {
     });
   }
 };
+
+// ========== CERTIFICATE MANAGEMENT ==========
+
+// Get user's certificates
+export const getUserCertificates = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const certificates = await Certificate.find({ user: userId, approvalStatus: "approved" })
+      .populate("course", "title language category")
+      .populate("user", "name email")
+      .sort({ approvalDate: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Certificate.countDocuments({
+      user: userId,
+      approvalStatus: "approved",
+    });
+
+    res.status(200).json({
+      success: true,
+      data: certificates,
+      total,
+      pages: Math.ceil(total / parseInt(limit)),
+    });
+  } catch (error) {
+    console.error("Error fetching user certificates:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching certificates",
+      error: error.message,
+    });
+  }
+};
+
+// Download certificate as PDF
+export const downloadCertificatePdf = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const { certificateId } = req.params;
+
+    const certificate = await Certificate.findOne({
+      _id: certificateId,
+      user: userId,
+      approvalStatus: "approved",
+    })
+      .populate("user", "name email")
+      .populate("course", "title");
+
+    if (!certificate) {
+      return res.status(404).json({
+        success: false,
+        message: "Certificate not found or not approved",
+      });
+    }
+
+    // Import PDF service
+    const { default: CertificatePdfService } = await import(
+      "../services/certificatePdfService.js"
+    );
+
+    // Generate PDF
+    const pdfBuffer = await CertificatePdfService.generateCertificate({
+      user: certificate.user,
+      course: certificate.course,
+      certificateNumber: certificate.certificateNumber,
+      finalScore: certificate.finalScore,
+      issuedDate: certificate.approvalDate,
+    });
+
+    // Send PDF
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="Certificate_${certificate.certificateNumber}.pdf"`
+    );
+    res.send(pdfBuffer);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error generating certificate PDF",
+      error: error.message,
+    });
+  }
+};
