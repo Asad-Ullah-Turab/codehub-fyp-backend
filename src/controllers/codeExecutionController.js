@@ -1,5 +1,4 @@
 import codeExecutorWSService from '../services/codeExecutorWSService.js';
-import sanitizationService from '../services/sanitizationService.js';
 
 class CodeExecutionController {
   async executeCode(req, res) {
@@ -13,46 +12,21 @@ class CodeExecutionController {
         });
       }
 
-      // Sanitize and validate all inputs
-      const validation = sanitizationService.validateExecutionRequest({
-        code,
-        language,
-        input: input || ''
-      });
-
-      if (!validation.isValid) {
-        return res.status(400).json({
-          success: false,
-          message: 'Validation failed',
-          errors: validation.errors
-        });
-      }
-
-      // Execute code with sanitized inputs
-      const result = await codeExecutorWSService.executeCode(
-        validation.sanitized.code,
-        validation.sanitized.language,
-        validation.sanitized.input
-      );
-
-      // Sanitize execution result before sending to client
-      const sanitizedResult = sanitizationService.sanitizeExecutionResult(result);
+      // Execute code
+      const result = await codeExecutorWSService.executeCode(code, language, input);
 
       res.status(200).json({
         success: true,
-        data: sanitizedResult
+        data: result
       });
 
     } catch (error) {
       console.error('Code execution error:', error);
       
-      // Sanitize error message before sending
-      const safeErrorMsg = sanitizationService.escapeError(error.message);
-      
       res.status(500).json({
         success: false,
         message: 'Code execution failed',
-        error: safeErrorMsg
+        error: error.message
       });
     }
   }
