@@ -527,13 +527,13 @@ export const downloadCertificatePdf = async (req, res) => {
       averageScore = count > 0 ? Math.round(totalScore / count) : certificate.finalScore;
     }
 
-    // Import PDF service
-    const { default: CertificatePdfService } = await import(
-      "../services/certificatePdfService.js"
+    // Import HTML service
+    const { default: CertificateHtmlService } = await import(
+      "../services/certificateHtmlService.js"
     );
 
-    // Generate PDF
-    const pdfBuffer = await CertificatePdfService.generateCertificate({
+    // Generate HTML
+    const htmlContent = CertificateHtmlService.generateCertificate({
       user: certificate.user,
       course: certificate.course,
       certificateNumber: certificate.certificateNumber,
@@ -543,13 +543,13 @@ export const downloadCertificatePdf = async (req, res) => {
       issuedDate: certificate.approvalDate,
     });
 
-    // Send PDF
-    res.setHeader("Content-Type", "application/pdf");
+    // Send HTML
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="Certificate_${certificate.certificateNumber}.pdf"`
+      `inline; filename="Certificate_${certificate.certificateNumber}.html"`
     );
-    res.send(pdfBuffer);
+    res.send(htmlContent);
   } catch (error) {
     res.status(500).json({
       success: false,

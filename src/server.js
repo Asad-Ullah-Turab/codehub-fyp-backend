@@ -44,6 +44,7 @@ process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 server.on("error", (error) => {
+});
 
 // Start the server
 startServer();
