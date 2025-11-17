@@ -488,13 +488,43 @@ export const downloadCertificatePdf = async (req, res) => {
       approvalStatus: "approved",
     })
       .populate("user", "name email")
-      .populate("course", "title");
+      .populate("course", "title")
+      .populate("enrollment");
 
     if (!certificate) {
       return res.status(404).json({
         success: false,
         message: "Certificate not found or not approved",
       });
+    }
+
+    // Calculate average quiz score from enrollment
+    let averageScore = 0;
+    let quizzesAttempted = 0;
+
+    if (certificate.enrollment) {
+      const enrollment = certificate.enrollment;
+      let totalScore = 0;
+      let count = 0;
+
+      // Check section quiz scores
+      if (enrollment.sectionProgress && Array.isArray(enrollment.sectionProgress)) {
+        enrollment.sectionProgress.forEach((section) => {
+          if (section.sectionQuizScore && section.sectionQuizScore.score) {
+            totalScore += section.sectionQuizScore.score;
+            count++;
+          }
+        });
+      }
+
+      // Check final quiz score if exists
+      if (enrollment.finalQuizScore && enrollment.finalQuizScore.score) {
+        totalScore += enrollment.finalQuizScore.score;
+        count++;
+      }
+
+      quizzesAttempted = count;
+      averageScore = count > 0 ? Math.round(totalScore / count) : certificate.finalScore;
     }
 
     // Import PDF service
@@ -508,6 +538,8 @@ export const downloadCertificatePdf = async (req, res) => {
       course: certificate.course,
       certificateNumber: certificate.certificateNumber,
       finalScore: certificate.finalScore,
+      averageScore: averageScore,
+      quizzesAttempted: quizzesAttempted,
       issuedDate: certificate.approvalDate,
     });
 
@@ -515,7 +547,7 @@ export const downloadCertificatePdf = async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="Certificate_${certificate.certificateNumber}.pdf"`
+      `inline; filename="Certificate_${certificate.certificateNumber}.pdf"`
     );
     res.send(pdfBuffer);
   } catch (error) {

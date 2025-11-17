@@ -21,12 +21,20 @@ class CertificatePdfService {
   static async generateCertificate(certificateData) {
     return new Promise((resolve, reject) => {
       try {
-        const { user, course, certificateNumber, finalScore, issuedDate } =
-          certificateData;
+        const { 
+          user, 
+          course, 
+          certificateNumber, 
+          finalScore, 
+          averageScore,
+          quizzesAttempted,
+          issuedDate 
+        } = certificateData;
 
-        // Create PDF document
+        // Create PDF document in landscape orientation
         const doc = new PDFDocument({
           size: "A4",
+          landscape: true,
           margin: 0,
           bufferPages: true,
         });
@@ -37,108 +45,149 @@ class CertificatePdfService {
         doc.on("end", () => resolve(Buffer.concat(buffer)));
         doc.on("error", reject);
 
-        // Page dimensions
-        const pageWidth = 595; // A4 width in points
-        const pageHeight = 842; // A4 height in points
+        // Page dimensions (landscape)
+        const pageWidth = 842; // A4 landscape width in points
+        const pageHeight = 595; // A4 landscape height in points
 
-        // Background color
-        doc.rect(0, 0, pageWidth, pageHeight).fill("#f5f5f5");
+        // ===== BACKGROUND & BORDERS =====
+        // Elegant gradient background (simulated with color)
+        doc.rect(0, 0, pageWidth, pageHeight).fill("#fafafa");
 
-        // Border
+        // Outer gold border
         doc
-          .strokeColor("#1e3a8a")
-          .lineWidth(4)
-          .rect(30, 30, pageWidth - 60, pageHeight - 60)
+          .strokeColor("#d4af37")
+          .lineWidth(8)
+          .rect(20, 20, pageWidth - 40, pageHeight - 40)
           .stroke();
 
-        // Inner decorative border
+        // Inner silver border
         doc
-          .strokeColor("#3b82f6")
-          .lineWidth(1)
-          .rect(45, 45, pageWidth - 90, pageHeight - 90)
-          .stroke();
-
-        // Top decorative line
-        doc
-          .strokeColor("#1e3a8a")
+          .strokeColor("#c0c0c0")
           .lineWidth(2)
-          .moveTo(80, 100)
-          .lineTo(pageWidth - 80, 100)
+          .rect(35, 35, pageWidth - 70, pageHeight - 70)
           .stroke();
 
-        // Title
+        // Top decorative elements
+        const topY = 50;
+        
+        // Left decoration
         doc
-          .fillColor("#1e3a8a")
-          .fontSize(48)
+          .fillColor("#d4af37")
+          .fontSize(18)
+          .text("★", 60, topY);
+
+        // Right decoration
+        doc.text("★", pageWidth - 100, topY);
+
+        // ===== MAIN TITLE =====
+        doc
+          .fillColor("#1a3a52")
+          .fontSize(44)
           .font("Helvetica-Bold")
-          .text("CERTIFICATE OF COMPLETION", 50, 140, {
+          .text("CERTIFICATE OF ACHIEVEMENT", 50, 85, {
             align: "center",
             width: pageWidth - 100,
           });
 
-        // Subtitle
+        // ===== SUBTITLE =====
         doc
-          .fillColor("#3b82f6")
-          .fontSize(14)
-          .font("Helvetica")
-          .text("This Certifies That", 50, 220, {
+          .fillColor("#d4af37")
+          .fontSize(12)
+          .font("Helvetica-Oblique")
+          .text("This Certificate is Proudly Presented to", 50, 150, {
             align: "center",
             width: pageWidth - 100,
           });
 
-        // User Name - Large and prominent
+        // ===== STUDENT NAME =====
         doc
-          .fillColor("#1e3a8a")
+          .fillColor("#1a3a52")
           .fontSize(32)
           .font("Helvetica-Bold")
-          .text(user.name.toUpperCase(), 50, 260, {
+          .text(user.name.toUpperCase(), 50, 180, {
             align: "center",
             width: pageWidth - 100,
           });
 
-        // Achievement text
+        // ===== ACHIEVEMENT TEXT =====
         doc
-          .fillColor("#2c3e50")
-          .fontSize(12)
+          .fillColor("#333333")
+          .fontSize(11)
           .font("Helvetica")
-          .text("has successfully completed the course", 50, 320, {
+          .text("For successfully completing and demonstrating mastery of", 50, 230, {
             align: "center",
             width: pageWidth - 100,
           });
 
-        // Course Name - Highlight
+        // ===== COURSE NAME (HIGHLIGHTED) =====
         doc
-          .fillColor("#1e3a8a")
+          .fillColor("#d4af37")
           .fontSize(24)
           .font("Helvetica-Bold")
-          .text(course.title, 50, 350, {
+          .text(course.title, 50, 255, {
             align: "center",
             width: pageWidth - 100,
           });
 
-        // Details section
-        const detailsStartY = 420;
-        doc
-          .fillColor("#2c3e50")
-          .fontSize(11)
-          .font("Helvetica");
+        // ===== DETAILS SECTION =====
+        const detailsStartY = 310;
+        const leftCol = 100;
+        const rightCol = pageWidth / 2 + 50;
+        const labelFontSize = 9;
+        const valueFontSize = 12;
 
-        // Score
-        doc.text("Final Score: ", 100, detailsStartY, { continued: true });
+        // Left column
+        doc
+          .fillColor("#666666")
+          .fontSize(labelFontSize)
+          .font("Helvetica")
+          .text("Final Score", leftCol, detailsStartY);
+
         doc
           .fillColor("#27ae60")
+          .fontSize(valueFontSize)
           .font("Helvetica-Bold")
-          .text(`${finalScore}%`);
+          .text(`${finalScore}%`, leftCol, detailsStartY + 14);
 
+        // Average score
+        doc
+          .fillColor("#666666")
+          .fontSize(labelFontSize)
+          .font("Helvetica")
+          .text("Average Quiz Score", leftCol, detailsStartY + 38);
+
+        doc
+          .fillColor("#2980b9")
+          .fontSize(valueFontSize)
+          .font("Helvetica-Bold")
+          .text(`${averageScore || finalScore}%`, leftCol, detailsStartY + 52);
+
+        // Quizzes attempted
+        doc
+          .fillColor("#666666")
+          .fontSize(labelFontSize)
+          .font("Helvetica")
+          .text("Quizzes Completed", leftCol, detailsStartY + 76);
+
+        doc
+          .fillColor("#8e44ad")
+          .fontSize(valueFontSize)
+          .font("Helvetica-Bold")
+          .text(`${quizzesAttempted || 1} Assessments`, leftCol, detailsStartY + 90);
+
+        // Right column
         // Certificate Number
         doc
-          .fillColor("#2c3e50")
+          .fillColor("#666666")
+          .fontSize(labelFontSize)
           .font("Helvetica")
-          .text("Certificate Number: ", 100, detailsStartY + 25, { continued: true });
+          .text("Certificate ID", rightCol, detailsStartY);
+
         doc
-          .fillColor("#1e3a8a")
+          .fillColor("#1a3a52")
+          .fontSize(valueFontSize)
           .font("Helvetica-Bold")
-          .text(certificateNumber);
+          .text(certificateNumber, rightCol, detailsStartY + 14);
 
         // Issue Date
         const issueDate = issuedDate
@@ -154,77 +203,88 @@ class CertificatePdfService {
             });
 
         doc
-          .fillColor("#2c3e50")
+          .fillColor("#666666")
+          .fontSize(labelFontSize)
           .font("Helvetica")
-          .text("Issued Date: ", 100, detailsStartY + 50, { continued: true });
-        doc
-          .fillColor("#1e3a8a")
-          .font("Helvetica-Bold")
-          .text(issueDate);
+          .text("Date Issued", rightCol, detailsStartY + 38);
 
-        // User Email
         doc
-          .fillColor("#2c3e50")
+          .fillColor("#1a3a52")
+          .fontSize(valueFontSize)
+          .font("Helvetica-Bold")
+          .text(issueDate, rightCol, detailsStartY + 52);
+
+        // Email
+        doc
+          .fillColor("#666666")
+          .fontSize(labelFontSize)
           .font("Helvetica")
-          .text("Email: ", 100, detailsStartY + 75, { continued: true });
-        doc
-          .fillColor("#1e3a8a")
-          .font("Helvetica-Bold")
-          .text(user.email);
-
-        // Signature lines
-        const signatureY = pageHeight - 180;
+          .text("Email", rightCol, detailsStartY + 76);
 
         doc
-          .strokeColor("#2c3e50")
-          .lineWidth(1)
-          .moveTo(80, signatureY)
-          .lineTo(220, signatureY)
+          .fillColor("#1a3a52")
+          .fontSize(9)
+          .font("Helvetica")
+          .text(user.email, rightCol, detailsStartY + 90);
+
+        // ===== SIGNATURE SECTION =====
+        const sigY = pageHeight - 120;
+
+        // Signature lines and labels
+        const sigLineY = sigY + 50;
+        const sigLineLength = 100;
+
+        // Left signature (Admin)
+        doc
+          .strokeColor("#333333")
+          .lineWidth(1.5)
+          .moveTo(leftCol, sigLineY)
+          .lineTo(leftCol + sigLineLength, sigLineY)
           .stroke();
 
         doc
-          .strokeColor("#2c3e50")
-          .lineWidth(1)
-          .moveTo(pageWidth - 220, signatureY)
-          .lineTo(pageWidth - 80, signatureY)
-          .stroke();
-
-        // Signature labels
-        doc
-          .fillColor("#2c3e50")
-          .fontSize(10)
+          .fillColor("#666666")
+          .fontSize(9)
           .font("Helvetica")
-          .text("Admin Signature", 80, signatureY + 10, {
-            width: 140,
+          .text("Director Signature", leftCol, sigLineY + 8, {
+            width: sigLineLength,
             align: "center",
           });
 
-        doc.text("Date", pageWidth - 220, signatureY + 10, {
-          width: 140,
+        // Right signature (Institution)
+        doc
+          .strokeColor("#333333")
+          .lineWidth(1.5)
+          .moveTo(rightCol, sigLineY)
+          .lineTo(rightCol + sigLineLength, sigLineY)
+          .stroke();
+
+        doc.text("Official Seal", rightCol, sigLineY + 8, {
+          width: sigLineLength,
           align: "center",
         });
 
-        // Footer
+        // ===== FOOTER =====
         doc
-          .fillColor("#666666")
-          .fontSize(8)
-          .font("Helvetica")
+          .fillColor("#8B7355")
+          .fontSize(9)
+          .font("Helvetica-Oblique")
           .text(
-            "This certificate is awarded in recognition of outstanding achievement and dedication.",
+            "Verified Achievement • Authenticated Completion • Excellence Recognized",
             50,
-            pageHeight - 50,
+            pageHeight - 45,
             {
               align: "center",
               width: pageWidth - 100,
             }
           );
 
-        // Decorative bottom line
+        // Bottom decorative line
         doc
-          .strokeColor("#1e3a8a")
+          .strokeColor("#d4af37")
           .lineWidth(2)
-          .moveTo(80, pageHeight - 80)
-          .lineTo(pageWidth - 80, pageHeight - 80)
+          .moveTo(100, pageHeight - 30)
+          .lineTo(pageWidth - 100, pageHeight - 30)
           .stroke();
 
         doc.end();

@@ -8,19 +8,8 @@ import Course from "../models/Course.js";
 // Submit quiz answers
 export const submitQuizAnswers = async (req, res) => {
   try {
-    console.log("Submit quiz request body:", req.body);
     const { quizId, courseId, sectionId, answers } = req.body;
     const userId = req.user._id;
-    console.log(
-      "Quiz submission - userId:",
-      userId,
-      "quizId:",
-      quizId,
-      "courseId:",
-      courseId,
-      "sectionId:",
-      sectionId
-    );
 
     // Validate quiz and get it with full details
     const quiz = await Quiz.findById(quizId);
@@ -143,7 +132,6 @@ export const submitQuizAnswers = async (req, res) => {
       const course = await Course.findById(courseId).populate("sections");
       
       if (!course) {
-        console.error("Course not found:", courseId);
         return res.status(404).json({
           success: false,
           message: "Course not found",
@@ -164,11 +152,9 @@ export const submitQuizAnswers = async (req, res) => {
       enrollment.overallProgress = Math.round(
         (completedSections / course.sections.length) * 100
       );
-      console.log(`Progress updated: ${completedSections}/${course.sections.length} sections completed`);
 
       // Check if all sections are completed - if so, issue certificate
       if (completedSections === course.sections.length && !enrollment.certificateIssued) {
-        console.log("All sections completed! Generating certificate...");
         enrollment.status = "completed";
         enrollment.completionDate = new Date();
         enrollment.certificateIssued = true;
@@ -182,12 +168,10 @@ export const submitQuizAnswers = async (req, res) => {
         );
 
         enrollment.certificate = certificate._id;
-        console.log("Certificate generated with ID:", certificate._id);
       }
 
       await enrollment.save();
     } catch (error) {
-      console.error("Error updating progress/generating certificate:", error.message);
       throw error;
     }
 
@@ -205,11 +189,6 @@ export const submitQuizAnswers = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("========== ERROR in submitQuizAnswers ==========");
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    console.error("Full error:", error);
     res.status(500).json({
       success: false,
       message: "Error submitting quiz",
@@ -343,9 +322,6 @@ const generateCertificate = async (
   finalScore
 ) => {
   try {
-    console.log("========== Generating Certificate ==========");
-    console.log(`User: ${userId}, Course: ${courseId}, Score: ${finalScore}`);
-    
     // Check if certificate already exists for this user and course
     const existingCertificate = await Certificate.findOne({
       user: userId,
@@ -353,15 +329,11 @@ const generateCertificate = async (
     });
 
     if (existingCertificate) {
-      console.log(
-        `Certificate already exists for user ${userId} in course ${courseId}`
-      );
       return existingCertificate;
     }
 
     // Generate unique certificate number
     const certificateNumber = `CERT-${Date.now()}-${userId.toString().slice(-6)}`;
-    console.log("Creating new certificate with number:", certificateNumber);
 
     const certificate = new Certificate({
       user: userId,
@@ -375,13 +347,8 @@ const generateCertificate = async (
     });
 
     const savedCertificate = await certificate.save();
-    console.log("Certificate saved successfully:", savedCertificate._id);
     return savedCertificate;
   } catch (error) {
-    console.error("========== ERROR generating certificate ==========");
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
     throw error;
   }
 };

@@ -647,13 +647,8 @@ export const getRecentActivity = async (req, res) => {
 // Get pending certificates for approval
 export const getPendingCertificates = async (req, res) => {
   try {
-    console.log("========== getPendingCertificates called ==========");
-    console.log("User:", req.user ? `${req.user._id}` : "NOT AUTHENTICATED");
-    
     const { page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
-    console.log(`Page: ${page}, Limit: ${limit}, Skip: ${skip}`);
     
     // Verify Certificate model is available
     if (!Certificate) {
@@ -669,8 +664,6 @@ export const getPendingCertificates = async (req, res) => {
 
     const total = await Certificate.countDocuments({ approvalStatus: "pending" });
 
-    console.log(`Found ${certificates.length} pending certificates out of ${total} total`);
-
     res.setHeader('Content-Type', 'application/json');
     res.status(200).json({
       success: true,
@@ -679,11 +672,6 @@ export const getPendingCertificates = async (req, res) => {
       pages: Math.ceil(total / parseInt(limit)),
     });
   } catch (error) {
-    console.error("========== ERROR in getPendingCertificates ==========");
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
-    
     res.setHeader('Content-Type', 'application/json');
     res.status(500).json({ 
       success: false, 
