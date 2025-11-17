@@ -1,4 +1,5 @@
 import codeExecutorWSService from '../services/codeExecutorWSService.js';
+import sanitizationService from '../services/sanitizationService.js';
 
 class CodeExecutionController {
   async executeCode(req, res) {
@@ -12,28 +13,46 @@ class CodeExecutionController {
         });
       }
 
-      const supportedLanguages = ['python', 'cpp', 'javascript'];
-      if (!supportedLanguages.includes(language)) {
+      // Sanitize and validate all inputs
+      const validation = sanitizationService.validateExecutionRequest({
+        code,
+        language,
+        input: input || ''
+      });
+
+      if (!validation.isValid) {
         return res.status(400).json({
           success: false,
-          message: `Unsupported language. Supported: ${supportedLanguages.join(', ')}`
+          message: 'Validation failed',
+          errors: validation.errors
         });
       }
 
-      // Execute code with pre-provided input
-      const result = await codeExecutorWSService.executeCode(code, language, input);
+      // Execute code with sanitized inputs
+      const result = await codeExecutorWSService.executeCode(
+        validation.sanitized.code,
+        validation.sanitized.language,
+        validation.sanitized.input
+      );
+
+      // Sanitize execution result before sending to client
+      const sanitizedResult = sanitizationService.sanitizeExecutionResult(result);
 
       res.status(200).json({
         success: true,
-        data: result
+        data: sanitizedResult
       });
 
     } catch (error) {
       console.error('Code execution error:', error);
+      
+      // Sanitize error message before sending
+      const safeErrorMsg = sanitizationService.escapeError(error.message);
+      
       res.status(500).json({
         success: false,
         message: 'Code execution failed',
-        error: error.message
+        error: safeErrorMsg
       });
     }
   }

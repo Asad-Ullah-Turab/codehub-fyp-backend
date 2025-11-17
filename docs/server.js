@@ -1,8 +1,8 @@
 
 import http from "http";
-import app from "./app.js";
-import containerManager from "./services/containerManager.js";
-import codeExecutorWSService from "./services/codeExecutorWSService.js";
+import app from "../src/app.js";
+import containerManager from "../src/services/containerManager.js";
+import codeExecutorWSService from "../src/services/codeExecutorWSService.js";
 
 const PORT = process.env.PORT || 5000;
 
