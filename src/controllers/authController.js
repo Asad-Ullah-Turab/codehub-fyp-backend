@@ -46,10 +46,28 @@ export const signup = async (req, res) => {
       });
     }
 
+    // Validate email format
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid email, please enter a valid email'
+      });
+    }
+
     if (password !== confirmPassword) {
       return res.status(400).json({
         status: 'fail',
         message: 'Passwords do not match'
+      });
+    }
+
+    // Validate password strength
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!strongPasswordRegex.test(password)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, one number, and one special character'
       });
     }
 
@@ -320,14 +338,55 @@ export const signin = async (req, res) => {
       });
     }
 
-    // Check if user exists && password is correct
+    // Check if user exists
     const user = await User.findOne({ email }).select('+password');
 
-    if (!user || !(await user.correctPassword(password, user.password))) {
+    if (!user) {
       return res.status(401).json({
         status: 'fail',
         message: 'Incorrect email or password'
       });
+    }
+
+    // Verify password first
+    const isPasswordCorrect = await user.correctPassword(password, user.password);
+    
+    if (!isPasswordCorrect) {
+      // Check if account is currently locked (only for wrong password)
+      if (user.isAccountLocked()) {
+        const lockTimeRemaining = Math.ceil((user.accountLockedUntil - Date.now()) / (60 * 1000)); // minutes
+        return res.status(423).json({
+          status: 'fail',
+          message: `Account temporarily locked due to multiple failed login attempts. Please try again in ${lockTimeRemaining} minutes.`,
+          accountLocked: true,
+          lockTimeRemaining
+        });
+      }
+
+      // Increment failed attempts
+      await user.incrementFailedAttempts();
+      
+      const attemptsRemaining = 5 - user.failedLoginAttempts;
+      
+      if (user.failedLoginAttempts >= 5) {
+        return res.status(423).json({
+          status: 'fail',
+          message: 'Account has been temporarily locked due to too many failed login attempts. Please try again in 30 minutes.',
+          accountLocked: true,
+          lockTimeRemaining: 30
+        });
+      }
+      
+      return res.status(401).json({
+        status: 'fail',
+        message: `Incorrect email or password. ${attemptsRemaining} attempts remaining before account lockout.`,
+        attemptsRemaining
+      });
+    }
+
+    // Password is correct - reset failed attempts if any (even if account was locked)
+    if (user.failedLoginAttempts > 0 || user.accountLockedUntil) {
+      await user.resetFailedAttempts();
     }
 
     // Check if email is verified
@@ -427,6 +486,17 @@ export const protect = async (req, res, next) => {
       return res.status(403).json({
         status: 'fail',
         message: 'Your account has been suspended. Please contact support.'
+      });
+    }
+
+    // Check if account is currently locked due to failed login attempts
+    if (currentUser.isAccountLocked()) {
+      const lockTimeRemaining = Math.ceil((currentUser.accountLockedUntil - Date.now()) / (60 * 1000)); // minutes
+      return res.status(423).json({
+        status: 'fail',
+        message: `Account temporarily locked due to multiple failed login attempts. Please try again in ${lockTimeRemaining} minutes.`,
+        accountLocked: true,
+        lockTimeRemaining
       });
     }
 

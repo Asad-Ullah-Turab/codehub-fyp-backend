@@ -45,6 +45,17 @@ export const auth = async (req, res, next) => {
           });
         }
 
+        // Check if account is currently locked due to failed login attempts
+        if (user.isAccountLocked()) {
+          const lockTimeRemaining = Math.ceil((user.accountLockedUntil - Date.now()) / (60 * 1000)); // minutes
+          return res.status(423).json({
+            success: false,
+            message: `Account temporarily locked due to multiple failed login attempts. Please try again in ${lockTimeRemaining} minutes.`,
+            accountLocked: true,
+            lockTimeRemaining
+          });
+        }
+
         // Attach user to request
         req.user = user;
         return next();
