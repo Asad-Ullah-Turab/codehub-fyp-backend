@@ -23,40 +23,67 @@ class ContainerManager {
     };
     // Go up two directories from src/services to reach project root, then into docker
     this.dockerDir = path.join(__dirname, '..', '..', 'docker');
+    this.containerConfigs = {}; // Track successful container configurations
   }
 
   /**
    * Build Docker image for a language
    */
   async buildImage(language) {
-    const imageName = `codehub-${language}-persistent`;
-    const dockerfilePath = `Dockerfile.${language}.persistent`;
+    // Try secure configurations first, fallback to original
+    const configs = [
+      {
+        imageName: `codehub-${language}-fallback`,
+        dockerfilePath: `Dockerfile.${language}.fallback`,
+        description: 'secure fallback'
+      },
+      {
+        imageName: `codehub-${language}-secure`,
+        dockerfilePath: `Dockerfile.${language}.persistent.secure`,
+        description: 'secure'
+      },
+      {
+        imageName: `codehub-${language}-persistent`,
+        dockerfilePath: `Dockerfile.${language}.persistent`,
+        description: 'original'
+      }
+    ];
     
     console.log(`Building ${language} image from ${this.dockerDir}...`);
     
-    try {
-      const { stdout, stderr } = await execAsync(
-        `docker build -t ${imageName} -f ${dockerfilePath} .`,
-        { cwd: this.dockerDir, timeout: 120000 }
-      );
-      
-      if (stderr && !stderr.includes('naming to')) {
-        console.log(`Build output: ${stderr}`);
+    for (const config of configs) {
+      try {
+        console.log(`Attempting ${config.description} build for ${language}...`);
+        const { stdout, stderr } = await execAsync(
+          `docker build -t ${config.imageName} -f ${config.dockerfilePath} .`,
+          { cwd: this.dockerDir, timeout: 180000 }
+        );
+        
+        if (stderr && !stderr.includes('naming to')) {
+          console.log(`Build output: ${stderr}`);
+        }
+        
+        console.log(`${language} ${config.description} image built successfully`);
+        this.containerConfigs[language] = config.imageName;
+        return true;
+      } catch (error) {
+        console.log(`${config.description} build failed for ${language}: ${error.message}`);
+        if (config === configs[configs.length - 1]) {
+          console.error(`All build configurations failed for ${language}`);
+          return false;
+        }
+        console.log(`Trying next configuration for ${language}...`);
       }
-      
-      console.log(`${language} image built successfully`);
-      return true;
-    } catch (error) {
-      console.error(`Error building ${language} image:`, error.message);
-      throw error;
     }
+    return false;
   }
 
   /**
    * Start a container for a language
    */
   async startContainer(language) {
-    const imageName = `codehub-${language}-persistent`;
+    // Use the successful image configuration, fallback to original
+    const imageName = this.containerConfigs[language] || `codehub-${language}-persistent`;
     const containerName = this.containerNames[language];
 
     try {
@@ -82,8 +109,8 @@ class ContainerManager {
       // Container doesn't exist, continue to create
     }
 
-    // Create and start new container
-    console.log(`Creating ${language} container...`);
+    // Create and start new container with security enhancements
+    console.log(`Creating ${language} container with security features...`);
     const container = await this.docker.createContainer({
       Image: imageName,
       name: containerName,
@@ -94,9 +121,15 @@ class ContainerManager {
         PortBindings: {
           '8765/tcp': [{ HostPort: '0' }] // Random port
         },
-        Memory: 256 * 1024 * 1024, // 256MB
-        CpuQuota: 50000, // 50% CPU
-        NetworkMode: 'bridge'
+        Memory: 256 * 1024 * 1024, // 256MB memory limit
+        CpuQuota: 50000, // 50% CPU limit
+        NetworkMode: 'bridge',
+        // Security enhancements
+        CapDrop: ['ALL'], // Drop all capabilities
+        CapAdd: ['SETUID', 'SETGID'], // Add only necessary capabilities
+        SecurityOpt: ['no-new-privileges:true'], // Prevent privilege escalation
+        ReadonlyRootfs: false, // Keep false for compatibility
+        Privileged: false // Ensure not privileged
       }
     });
 
