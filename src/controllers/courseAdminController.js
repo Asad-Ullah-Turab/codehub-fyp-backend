@@ -597,13 +597,36 @@ export const createOrUpdateQuiz = async (req, res) => {
     const { courseId, sectionId, type, title, description, questions, passingScore, timeLimit, maxRetakes } = req.body;
     const { quizId } = req.params;
 
-    // Find the relevant course
     let course;
-    if (courseId) {
-      course = await Course.findById(courseId);
-    } else if (sectionId) {
-      const section = await CourseSection.findById(sectionId).populate("course");
-      course = section.course;
+
+    if (quizId) {
+      // Update existing quiz - find course from existing quiz data
+      const existingQuiz = await Quiz.findById(quizId).populate('course section');
+      if (!existingQuiz) {
+        return res.status(404).json({
+          success: false,
+          message: "Quiz not found",
+        });
+      }
+
+      // Use course/section from existing quiz if not provided in body
+      const targetCourseId = courseId || (existingQuiz.course ? existingQuiz.course._id : null);
+      const targetSectionId = sectionId || (existingQuiz.section ? existingQuiz.section._id : null);
+
+      if (targetSectionId) {
+        const section = await CourseSection.findById(targetSectionId).populate("course");
+        course = section.course;
+      } else if (targetCourseId) {
+        course = await Course.findById(targetCourseId);
+      }
+    } else {
+      // Create new quiz - find course from body parameters
+      if (courseId) {
+        course = await Course.findById(courseId);
+      } else if (sectionId) {
+        const section = await CourseSection.findById(sectionId).populate("course");
+        course = section.course;
+      }
     }
 
     if (!course) {
@@ -636,12 +659,12 @@ export const createOrUpdateQuiz = async (req, res) => {
         });
       }
 
-      quiz.title = title || quiz.title;
-      quiz.description = description || quiz.description;
-      quiz.questions = questions || quiz.questions;
-      quiz.passingScore = passingScore || quiz.passingScore;
-      quiz.timeLimit = timeLimit || quiz.timeLimit;
-      quiz.maxRetakes = maxRetakes || quiz.maxRetakes;
+      quiz.title = title !== undefined ? title : quiz.title;
+      quiz.description = description !== undefined ? description : quiz.description;
+      quiz.questions = questions !== undefined ? questions : quiz.questions;
+      quiz.passingScore = passingScore !== undefined ? passingScore : quiz.passingScore;
+      quiz.timeLimit = timeLimit !== undefined ? timeLimit : quiz.timeLimit;
+      quiz.maxRetakes = maxRetakes !== undefined ? maxRetakes : quiz.maxRetakes;
     } else {
       // Create new quiz
       quiz = new Quiz({
