@@ -14,6 +14,10 @@ import {
   updateTutorial,
   deleteTutorial,
   createTutorial,
+  getAllCourses,
+  createCourse,
+  updateCourse,
+  deleteCourse,
   getAnalytics,
   searchUsers,
   getRecentActivity,
@@ -45,6 +49,12 @@ router.get("/tutorials", getAllTutorials);
 router.post("/tutorials", createTutorial);
 router.put("/tutorials/:tutorialId", updateTutorial);
 router.delete("/tutorials/:tutorialId", deleteTutorial);
+
+// Course management
+router.get("/courses", getAllCourses);
+router.post("/courses", createCourse);
+router.put("/courses/:courseId", updateCourse);
+router.delete("/courses/:courseId", deleteCourse);
 
 // Analytics
 router.get("/analytics", getAnalytics);

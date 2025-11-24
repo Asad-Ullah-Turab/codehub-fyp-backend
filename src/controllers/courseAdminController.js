@@ -549,6 +549,46 @@ export const deleteLesson = async (req, res) => {
   }
 };
 
+// Get lessons for a section
+export const getSectionLessons = async (req, res) => {
+  try {
+    const { sectionId } = req.params;
+
+    const section = await CourseSection.findById(sectionId).populate("course");
+
+    if (!section) {
+      return res.status(404).json({
+        success: false,
+        message: "Section not found",
+      });
+    }
+
+    // Check authorization
+    if (
+      section.course.instructor.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const lessons = await CourseLesson.find({ section: sectionId }).sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: lessons,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching lessons",
+      error: error.message,
+    });
+  }
+};
+
 // ========== QUIZ MANAGEMENT ==========
 
 // Create or update quiz
@@ -683,6 +723,140 @@ export const getInstructorCourses = async (req, res) => {
   }
 };
 
+// Get course sections
+export const getCourseSections = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findById(courseId);
+
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
+      });
+    }
+
+    // Check authorization
+    if (
+      course.instructor.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const sections = await CourseSection.find({ course: courseId })
+      .populate("lessons")
+      .populate("sectionQuiz")
+      .sort({ order: 1 });
+
+    res.status(200).json({
+      success: true,
+      data: sections,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching course sections",
+      error: error.message,
+    });
+  }
+};
+
+// Get quiz details
+export const getQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    const quiz = await Quiz.findById(quizId).populate("course").populate("section");
+
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: "Quiz not found",
+      });
+    }
+
+    // Check authorization
+    if (
+      quiz.course &&
+      quiz.course.instructor.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: quiz,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error fetching quiz",
+      error: error.message,
+    });
+  }
+};
+
+// Delete quiz
+export const deleteQuiz = async (req, res) => {
+  try {
+    const { quizId } = req.params;
+
+    const quiz = await Quiz.findById(quizId).populate("course").populate("section");
+
+    if (!quiz) {
+      return res.status(404).json({
+        success: false,
+        message: "Quiz not found",
+      });
+    }
+
+    // Check authorization
+    if (
+      quiz.course &&
+      quiz.course.instructor.toString() !== req.user._id.toString() &&
+      req.user.role !== "admin"
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    // Remove quiz reference from section or course
+    if (quiz.section) {
+      await CourseSection.findByIdAndUpdate(quiz.section._id, {
+        $unset: { sectionQuiz: 1 }
+      });
+    } else if (quiz.course && quiz.type === "final-quiz") {
+      await Course.findByIdAndUpdate(quiz.course._id, {
+        $unset: { finalQuiz: 1 }
+      });
+    }
+
+    await Quiz.findByIdAndDelete(quizId);
+
+    res.status(200).json({
+      success: true,
+      message: "Quiz deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error deleting quiz",
+      error: error.message,
+    });
+  }
+};
+
 export default {
   createCourse,
   updateCourse,
@@ -694,6 +868,10 @@ export default {
   addLesson,
   updateLesson,
   deleteLesson,
+  getSectionLessons,
   createOrUpdateQuiz,
   getInstructorCourses,
+  getCourseSections,
+  getQuiz,
+  deleteQuiz,
 };

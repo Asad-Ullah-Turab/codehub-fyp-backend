@@ -743,3 +743,145 @@ export const rejectCertificate = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// ========== COURSE MANAGEMENT ==========
+
+// Get all courses for admin
+export const getAllCourses = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, language = "", category = "", search = "" } = req.query;
+    const skip = (page - 1) * limit;
+
+    let filter = {};
+    
+    if (language) {
+      filter.language = language.toLowerCase();
+    }
+    
+    if (category) {
+      filter.category = category.toLowerCase();
+    }
+    
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: "i" } },
+        { description: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const courses = await Course.find(filter)
+      .populate("instructor", "name email")
+      .limit(parseInt(limit))
+      .skip(skip)
+      .sort({ createdAt: -1 });
+
+    const total = await Course.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: courses,
+      pagination: {
+        total,
+        pages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Create new course (by admin)
+export const createCourse = async (req, res) => {
+  try {
+    const { 
+      title, 
+      description, 
+      shortDescription, 
+      language, 
+      category, 
+      difficulty, 
+      estimatedHours,
+      certificateTemplate,
+      tags,
+      prerequisites
+    } = req.body;
+
+    if (!title || !description || !shortDescription || !language || !category) {
+      return res.status(400).json({
+        success: false,
+        message: "Title, description, shortDescription, language, and category are required"
+      });
+    }
+
+    const course = await Course.create({
+      title,
+      description,
+      shortDescription,
+      language: language.toLowerCase(),
+      category: category.toLowerCase(),
+      difficulty: difficulty || "beginner",
+      estimatedHours: estimatedHours || 0,
+      certificateTemplate: certificateTemplate || "standard",
+      tags: tags || [],
+      prerequisites: prerequisites || [],
+      instructor: req.user._id,
+      isPublished: false,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Course created successfully",
+      data: course,
+    });
+  } catch (error) {
+    console.error("Error creating course:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Update course
+export const updateCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const updateData = req.body;
+
+    const course = await Course.findByIdAndUpdate(
+      courseId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Course updated successfully",
+      data: course,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Delete course
+export const deleteCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+
+    const course = await Course.findByIdAndDelete(courseId);
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Course deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

@@ -56,6 +56,12 @@ router.post(
   adminMiddleware,
   courseAdminController.addLesson
 );
+router.get(
+  "/sections/:sectionId/lessons",
+  auth,
+  adminMiddleware,
+  courseAdminController.getSectionLessons
+);
 router.put(
   "/lessons/:lessonId",
   auth,
@@ -81,6 +87,26 @@ router.put(
   auth,
   adminMiddleware,
   courseAdminController.createOrUpdateQuiz
+);
+router.get(
+  "/quizzes/:quizId",
+  auth,
+  adminMiddleware,
+  courseAdminController.getQuiz
+);
+router.delete(
+  "/quizzes/:quizId",
+  auth,
+  adminMiddleware,
+  courseAdminController.deleteQuiz
+);
+
+// Get course sections (for admin management)
+router.get(
+  "/:courseId/sections",
+  auth,
+  adminMiddleware,
+  courseAdminController.getCourseSections
 );
 
 // ========== QUIZ SUBMISSION (Protected User Routes) ==========
