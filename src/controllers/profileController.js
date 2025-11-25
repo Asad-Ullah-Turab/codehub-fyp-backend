@@ -311,10 +311,10 @@ export const getDashboardStats = async (req, res) => {
 
     const averageCourseProgress = enrolledCoursesCount > 0 ? Math.round(totalCourseProgress / enrolledCoursesCount) : 0;
 
-    // Calculate total time spent (from course progress only)
-    const totalTimeSpent = await Progress.aggregate([
-      { $match: { user: userId, course: { $exists: true } } }, // Only course progress
-      { $group: { _id: null, totalTime: { $sum: "$timeSpentMinutes" } } }
+    // Calculate total time spent (from course enrollments)
+    const totalTimeSpent = await CourseEnrollment.aggregate([
+      { $match: { user: userId } },
+      { $group: { _id: null, totalTime: { $sum: "$totalTimeSpentMinutes" } } }
     ]);
 
     const stats = {

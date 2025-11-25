@@ -109,23 +109,6 @@ router.get(
   courseAdminController.getCourseSections
 );
 
-// ========== QUIZ SUBMISSION (Protected User Routes) ==========
-router.post(
-  "/quizzes/:quizId/submit",
-  auth,
-  quizCertificateController.submitQuizAnswers
-);
-router.get(
-  "/quizzes/:quizId",
-  auth,
-  quizCertificateController.getQuizDetails
-);
-router.get(
-  "/quizzes/:quizId/leaderboard",
-  auth,
-  quizCertificateController.getQuizLeaderboard
-);
-
 // ========== CERTIFICATE ROUTES ==========
 // Protected - user's own certificates
 router.get(

@@ -1,5 +1,6 @@
 import express from "express";
 import courseController from "../controllers/courseController.js";
+import quizCertificateController from "../controllers/quizCertificateController.js";
 import auth from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -26,6 +27,23 @@ router.put(
   "/:courseId/progress/lesson",
   auth,
   courseController.completeLessonProgress
+);
+
+// ========== QUIZ ROUTES (For enrolled users) ==========
+router.get(
+  "/quizzes/:quizId",
+  auth,
+  quizCertificateController.getQuizDetails
+);
+router.post(
+  "/quizzes/:quizId/submit",
+  auth,
+  quizCertificateController.submitQuizAnswers
+);
+router.get(
+  "/quizzes/:quizId/leaderboard",
+  auth,
+  quizCertificateController.getQuizLeaderboard
 );
 
 export default router;

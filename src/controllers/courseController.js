@@ -301,7 +301,7 @@ export const getEnrollmentDetails = async (req, res) => {
 export const completeLessonProgress = async (req, res) => {
   try {
     const { courseId } = req.params;
-    const { sectionId, lessonId } = req.body;
+    const { sectionId, lessonId, timeSpentMinutes = 0 } = req.body;
     const userId = req.user._id;
 
     // First, check if enrollment exists
@@ -334,13 +334,18 @@ export const completeLessonProgress = async (req, res) => {
                 lesson: lessonId,
                 isCompleted: true,
                 completedAt: new Date(),
+                timeSpentMinutes: timeSpentMinutes,
               }],
               isCompleted: false,
               lastAccessedAt: new Date(),
+              timeSpentMinutes: timeSpentMinutes,
             },
           },
           $set: {
             lastAccessedAt: new Date(),
+          },
+          $inc: {
+            totalTimeSpentMinutes: timeSpentMinutes,
           },
         }
       );
@@ -368,16 +373,27 @@ export const completeLessonProgress = async (req, res) => {
                 lesson: lessonId,
                 isCompleted: true,
                 completedAt: new Date(),
+                timeSpentMinutes: timeSpentMinutes,
               },
             },
             $set: {
               "sectionProgress.$.lastAccessedAt": new Date(),
               lastAccessedAt: new Date(),
             },
+            $inc: {
+              "sectionProgress.$.timeSpentMinutes": timeSpentMinutes,
+              totalTimeSpentMinutes: timeSpentMinutes,
+            },
           }
         );
       } else {
         // Update existing lesson progress
+        const existingLesson = sectionProgress.lessons.find(
+          (lp) => lp.lesson.toString() === lessonId
+        );
+        const previousTime = existingLesson.timeSpentMinutes || 0;
+        const timeDifference = timeSpentMinutes - previousTime;
+
         await CourseEnrollment.updateOne(
           {
             user: userId,
@@ -389,8 +405,13 @@ export const completeLessonProgress = async (req, res) => {
             $set: {
               "sectionProgress.$[sp].lessons.$[lp].isCompleted": true,
               "sectionProgress.$[sp].lessons.$[lp].completedAt": new Date(),
+              "sectionProgress.$[sp].lessons.$[lp].timeSpentMinutes": timeSpentMinutes,
               "sectionProgress.$[sp].lastAccessedAt": new Date(),
               lastAccessedAt: new Date(),
+            },
+            $inc: {
+              "sectionProgress.$[sp].timeSpentMinutes": timeDifference,
+              totalTimeSpentMinutes: timeDifference,
             },
           },
           {
