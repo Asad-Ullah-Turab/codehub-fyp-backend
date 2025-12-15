@@ -1,6 +1,7 @@
 import Tutorial from '../models/Tutorial.js';
 import UserSavedTutorial from '../models/UserSavedTutorial.js';
 import Feedback from '../models/Feedback.js';
+import openaiService from '../services/openaiService.js';
 
 class TutorialController {
   // Get all pre-generated tutorials, optionally filtered by language
@@ -327,32 +328,82 @@ class TutorialController {
     }
   }
 
-  // Create a new tutorial (for AI-generated content later)
+  // Create a new tutorial (with AI generation support)
   async createTutorial(req, res) {
     try {
-      const { title, description, content, language, concept, difficulty, codeExamples, tags } = req.body;
+      const { title, description, content, language, concept, difficulty, codeExamples, tags, notes, tips } = req.body;
       const userId = req.user._id;
       
       // Validate required fields
-      if (!title || !content || !language || !concept) {
+      if (!language || !concept) {
         return res.status(400).json({
           success: false,
-          message: 'Title, content, language, and concept are required'
+          message: 'Language and concept are required'
         });
       }
       
-      const tutorial = new Tutorial({
-        title,
-        description,
-        content,
+      // Check if this is an AI-generated tutorial (based on tags)
+      const isAIgenerated = tags && tags.includes('AI-generated');
+      
+      let tutorialData = {
+        title: title || concept,
+        description: description || `Tutorial about ${concept}`,
+        content: content || '',
         language: language.toLowerCase(),
         concept,
         difficulty: difficulty || 'beginner',
         codeExamples: codeExamples || [],
-        tags: tags || [],
+        notes: notes || [],
+        tips: tips || [],
+        tags: tags || []
+      };
+
+      // If AI-generated, use OpenAI to generate real content
+      if (isAIgenerated) {
+        try {
+          console.log(`Generating AI tutorial for: ${concept} in ${language}`);
+          const aiContent = await openaiService.generateTutorial(
+            concept,
+            language.toLowerCase(),
+            difficulty || 'beginner'
+          );
+          
+          // Merge AI-generated content with user-provided data
+          tutorialData = {
+            ...tutorialData,
+            title: aiContent.title,
+            description: aiContent.description,
+            content: aiContent.content,
+            codeExamples: aiContent.codeExamples,
+            notes: aiContent.notes,
+            tips: aiContent.tips
+          };
+          
+          console.log('AI tutorial generated successfully');
+        } catch (aiError) {
+          console.error('Error generating AI content:', aiError);
+          // Fall back to manual content if AI generation fails
+          if (!content) {
+            return res.status(500).json({
+              success: false,
+              message: 'Failed to generate AI content. Please try again or provide content manually.',
+              error: aiError.message
+            });
+          }
+        }
+      } else if (!title || !content) {
+        // Non-AI tutorials require title and content
+        return res.status(400).json({
+          success: false,
+          message: 'Title and content are required for manual tutorials'
+        });
+      }
+      
+      const tutorial = new Tutorial({
+        ...tutorialData,
         createdBy: userId,
         isPreGenerated: false,
-        isAIgenerated: false
+        isAIgenerated: isAIgenerated
       });
       
       await tutorial.save();
@@ -367,6 +418,76 @@ class TutorialController {
       res.status(500).json({
         success: false,
         message: 'Error creating tutorial',
+        error: error.message
+      });
+    }
+  }
+
+  // Get user's created tutorials (AI-generated or custom)
+  async getUserCreatedTutorials(req, res) {
+    try {
+      const userId = req.user._id;
+      
+      const tutorials = await Tutorial.find({ 
+        createdBy: userId,
+        isPreGenerated: false 
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      res.status(200).json({
+        success: true,
+        count: tutorials.length,
+        data: tutorials
+      });
+    } catch (error) {
+      console.error('Error fetching user created tutorials:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching created tutorials',
+        error: error.message
+      });
+    }
+  }
+
+  // Delete user's own tutorial
+  async deleteUserTutorial(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user._id;
+      
+      // Find the tutorial and check ownership
+      const tutorial = await Tutorial.findOne({ _id: id, createdBy: userId });
+      
+      if (!tutorial) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tutorial not found or you do not have permission to delete it'
+        });
+      }
+      
+      // Don't allow deletion of pre-generated tutorials
+      if (tutorial.isPreGenerated) {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot delete pre-generated tutorials'
+        });
+      }
+      
+      await Tutorial.findByIdAndDelete(id);
+      
+      // Also delete associated saved tutorials
+      await UserSavedTutorial.deleteMany({ tutorial: id });
+      
+      res.status(200).json({
+        success: true,
+        message: 'Tutorial deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting tutorial:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error deleting tutorial',
         error: error.message
       });
     }
@@ -593,6 +714,76 @@ class TutorialController {
       res.status(500).json({
         success: false,
         message: 'Error fetching languages',
+        error: error.message
+      });
+    }
+  }
+
+  // Get user's created tutorials (AI-generated or custom)
+  async getUserCreatedTutorials(req, res) {
+    try {
+      const userId = req.user._id;
+      
+      const tutorials = await Tutorial.find({ 
+        createdBy: userId,
+        isPreGenerated: false 
+      })
+        .sort({ createdAt: -1 })
+        .lean();
+      
+      res.status(200).json({
+        success: true,
+        count: tutorials.length,
+        data: tutorials
+      });
+    } catch (error) {
+      console.error('Error fetching user created tutorials:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error fetching created tutorials',
+        error: error.message
+      });
+    }
+  }
+
+  // Delete user's own tutorial
+  async deleteUserTutorial(req, res) {
+    try {
+      const { id } = req.params;
+      const userId = req.user._id;
+      
+      // Find the tutorial and check ownership
+      const tutorial = await Tutorial.findOne({ _id: id, createdBy: userId });
+      
+      if (!tutorial) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tutorial not found or you do not have permission to delete it'
+        });
+      }
+      
+      // Don't allow deletion of pre-generated tutorials
+      if (tutorial.isPreGenerated) {
+        return res.status(403).json({
+          success: false,
+          message: 'Cannot delete pre-generated tutorials'
+        });
+      }
+      
+      await Tutorial.findByIdAndDelete(id);
+      
+      // Also delete associated saved tutorials
+      await UserSavedTutorial.deleteMany({ tutorial: id });
+      
+      res.status(200).json({
+        success: true,
+        message: 'Tutorial deleted successfully'
+      });
+    } catch (error) {
+      console.error('Error deleting tutorial:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Error deleting tutorial',
         error: error.message
       });
     }

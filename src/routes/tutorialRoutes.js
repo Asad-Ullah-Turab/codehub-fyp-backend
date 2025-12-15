@@ -17,6 +17,10 @@ router.get('/user/saved', auth, tutorialController.getSavedTutorials);
 router.delete('/saved/:tutorialId', auth, tutorialController.unsaveTutorial);
 router.put('/progress/:tutorialId', auth, tutorialController.updateTutorialProgress);
 
+// User's created tutorials
+router.get('/user/created', auth, tutorialController.getUserCreatedTutorials);
+router.delete('/user/created/:id', auth, tutorialController.deleteUserTutorial);
+
 // Create custom tutorial (for future AI integration)
 router.post('/create', auth, tutorialController.createTutorial);
 
