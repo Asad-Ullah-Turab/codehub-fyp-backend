@@ -2,6 +2,7 @@ import Tutorial from '../models/Tutorial.js';
 import UserSavedTutorial from '../models/UserSavedTutorial.js';
 import Feedback from '../models/Feedback.js';
 import openaiService from '../services/openaiService.js';
+import geminiService from '../services/geminiService.js';
 
 class TutorialController {
   // Get all pre-generated tutorials, optionally filtered by language
@@ -360,15 +361,14 @@ class TutorialController {
 
       // If AI-generated, use OpenAI to generate real content
       if (isAIgenerated) {
+        // --- GEMINI AI GENERATION (default) ---
         try {
-          console.log(`Generating AI tutorial for: ${concept} in ${language}`);
-          const aiContent = await openaiService.generateTutorial(
+          console.log(`Generating AI tutorial for: ${concept} in ${language} (Gemini)`);
+          const aiContent = await geminiService.generateTutorial(
             concept,
             language.toLowerCase(),
             difficulty || 'beginner'
           );
-          
-          // Merge AI-generated content with user-provided data
           tutorialData = {
             ...tutorialData,
             title: aiContent.title,
@@ -378,11 +378,9 @@ class TutorialController {
             notes: aiContent.notes,
             tips: aiContent.tips
           };
-          
-          console.log('AI tutorial generated successfully');
+          console.log('AI tutorial generated successfully (Gemini)');
         } catch (aiError) {
-          console.error('Error generating AI content:', aiError);
-          // Fall back to manual content if AI generation fails
+          console.error('Error generating AI content (Gemini):', aiError);
           if (!content) {
             return res.status(500).json({
               success: false,
@@ -391,6 +389,37 @@ class TutorialController {
             });
           }
         }
+
+        /*
+        // --- OPENAI AI GENERATION (uncomment to use OpenAI instead) ---
+        try {
+          console.log(`Generating AI tutorial for: ${concept} in ${language} (OpenAI)`);
+          const aiContent = await openaiService.generateTutorial(
+            concept,
+            language.toLowerCase(),
+            difficulty || 'beginner'
+          );
+          tutorialData = {
+            ...tutorialData,
+            title: aiContent.title,
+            description: aiContent.description,
+            content: aiContent.content,
+            codeExamples: aiContent.codeExamples,
+            notes: aiContent.notes,
+            tips: aiContent.tips
+          };
+          console.log('AI tutorial generated successfully (OpenAI)');
+        } catch (openaiError) {
+          console.error('Error generating AI content (OpenAI):', openaiError);
+          if (!content) {
+            return res.status(500).json({
+              success: false,
+              message: 'Failed to generate AI content. Please try again or provide content manually.',
+              error: openaiError.message
+            });
+          }
+        }
+        */
       } else if (!title || !content) {
         // Non-AI tutorials require title and content
         return res.status(400).json({
