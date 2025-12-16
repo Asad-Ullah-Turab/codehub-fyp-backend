@@ -84,8 +84,13 @@ class CodeExecutorWSService {
             ws.off('message', messageHandler);
             ws.off('error', errorHandler);
             
+            // If there's an error, combine output and error fields
+            const outputText = result.status === 'error' 
+              ? (result.error || result.output || 'Unknown error occurred')
+              : (result.output || 'No output');
+            
             resolve({
-              output: result.output || 'No output',
+              output: outputText,
               error: result.status === 'error',
               executionTime: 'N/A'
             });
