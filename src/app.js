@@ -18,6 +18,7 @@ import adminTutorialRoutes from "./routes/adminTutorialRoutes.js";
 import profileRoutes from "./routes/profileRoutes.js";
 import codeSnippetRoutes from "./routes/codeSnippetRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import aiChatRoutes from "./routes/aiChatRoutes.js";
 import connectDB from "./config/database.js";
 import passport, { initializeOAuthStrategies } from "./config/oauthConfig.js";
 import emailService from "./services/emailService.js";
@@ -91,6 +92,7 @@ app.use("/api/contact", contactRoutes);
 app.use("/api/admin/courses", adminCourseRoutes);
 app.use("/api/admin/tutorials", adminTutorialRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/aichat", aiChatRoutes);
 
 // 404 handler
 app.use((req, res) => {
