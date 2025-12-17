@@ -87,6 +87,10 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    viewCount: {
+      type: Number,
+      default: 0,
+    },
     completedCount: {
       type: Number,
       default: 0,

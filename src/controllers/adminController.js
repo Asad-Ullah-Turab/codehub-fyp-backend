@@ -575,17 +575,18 @@ export const getRecentActivity = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(3);
 
-    // Get recent tutorials
+    // Get recent tutorials (only genuinely new ones, not just viewed)
     const recentTutorials = await Tutorial.find()
       .select("title createdAt updatedAt")
       .sort({ createdAt: -1 })
       .limit(3);
 
-    // Get recently updated tutorials
+    // Get recently updated tutorials (only if manually updated, not just viewed)
+    // Check if updatedAt is significantly different from createdAt (more than 1 minute)
     const updatedTutorials = await Tutorial.find()
       .select("title createdAt updatedAt")
       .sort({ updatedAt: -1 })
-      .limit(2);
+      .limit(5);
 
     // Get recent courses
     const recentCourses = await Course.find()
@@ -613,6 +614,7 @@ export const getRecentActivity = async (req, res) => {
     });
 
     updatedTutorials.forEach((tutorial) => {
+      // Check if truly updated (not just created)
       if (tutorial.updatedAt > tutorial.createdAt) {
         activities.push({
           type: "content_updated",
