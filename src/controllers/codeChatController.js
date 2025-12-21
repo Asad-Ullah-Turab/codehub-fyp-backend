@@ -14,17 +14,7 @@ class CodeChatController {
       }
 
       // Build context-aware prompt for code editor AI
-      let systemContext = `You are a friendly AI coding tutor helping beginners with programming in the code editor.
-
-IMPORTANT - TEACHING MODE:
-- Use simple, everyday language (avoid jargon)
-- Structure your response with markdown formatting (use ##, ###, -, ** for formatting)
-- Break complex explanations into clear sections with headings
-- Use bullet points for lists and steps
-- Use **bold text** for key terms and important points
-- Give helpful, detailed answers but keep language simple
-- Focus on teaching and understanding, not just giving solutions
-- Be encouraging and supportive`;
+      let systemContext = `You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching.`;
 
       let contextInfo = '';
       if (code && code.trim()) {
@@ -38,7 +28,7 @@ IMPORTANT - TEACHING MODE:
         contextInfo += `\n\nCode problems: ${problemsText}`;
       }
 
-      const prompt = `${systemContext}${contextInfo}\n\nUser question: ${message}\n\nProvide a helpful, beginner-friendly answer using markdown formatting. Structure your response with headings (##, ###), bullet points (-), and **bold text** for key terms. Focus on teaching and helping them understand.`;
+      const prompt = `${systemContext}${contextInfo}\n\nQ: ${message}\n\nAnswer concisely:`;
 
       // Call Gemini API
       const response = await geminiService.callGemini(prompt);

@@ -17,44 +17,18 @@ class AIChatController {
       // Build context-aware prompt with strict scope - BEGINNER FRIENDLY
       let systemContext;
       if (context === "course" && contextTitle) {
-        systemContext = `You are a friendly AI tutor helping beginners learn about "${contextTitle}" in a programming course.
-
-IMPORTANT - KEEP IT SIMPLE FOR BEGINNERS:
-- Use simple, everyday language (avoid jargon)
-- Structure your response with markdown formatting (use ##, ###, -, ** for formatting)
-- Break complex explanations into clear sections with headings
-- Use bullet points for lists and steps
-- Use **bold text** for key terms and important points
-- Give helpful, detailed answers but keep language simple
-- Use real-world examples when helpful
-- ONLY answer questions about "${contextTitle}"
-- If asked about unrelated topics, say: "I can only help with questions about ${contextTitle}. Please ask about this specific topic."
-${
-  contentScope
-    ? `\nCurrent section content you should reference: ${contentScope}`
-    : ""
+        systemContext = `You are an AI tutor for "${contextTitle}". Use markdown formatting (##, -, **bold**). Keep answers simple, beginner-friendly, and focused only on ${contextTitle}. If asked about other topics, redirect to the course topic.${
+  contentScope ? `\nReference: ${contentScope}` : ""
 }`;
       } else if (context === "tutorial" && contextTitle) {
-        systemContext = `You are a friendly AI tutor helping beginners learn about "${contextTitle}" from this tutorial.
-
-IMPORTANT - KEEP IT SIMPLE FOR BEGINNERS:
-- Use simple, everyday language (avoid jargon)
-- Structure your response with markdown formatting (use ##, ###, -, ** for formatting)
-- Break complex explanations into clear sections with headings
-- Use bullet points for lists and steps
-- Use **bold text** for key terms and important points
-- Give helpful, detailed answers but keep language simple
-- Use real-world examples when helpful
-- ONLY answer questions about this tutorial topic: "${contextTitle}"
-- If asked about other topics, say: "I can only answer questions about this tutorial on ${contextTitle}. Please focus your question on this topic."
-${
-  contentScope ? `\nTutorial content you should reference: ${contentScope}` : ""
+        systemContext = `You are an AI tutor for tutorial "${contextTitle}". Use markdown formatting (##, -, **bold**). Keep answers simple, beginner-friendly, and focused only on this tutorial topic. If asked about other topics, redirect to the tutorial.${
+  contentScope ? `\nReference: ${contentScope}` : ""
 }`;
       } else {
-        systemContext = `You are a friendly AI assistant helping beginners with programming. Use simple language, structure your responses with markdown formatting (headings, bullet points, bold text), and keep explanations clear and helpful.`;
+        systemContext = `You are an AI programming assistant. Use markdown formatting and simple language for beginners.`;
       }
 
-      const prompt = `${systemContext}\n\nUser question: ${message}\n\nProvide a helpful, beginner-friendly answer using markdown formatting. Structure your response with headings (##, ###), bullet points (-), and **bold text** for key terms. Keep the language simple and clear while being thorough in your explanation.`;
+      const prompt = `${systemContext}\n\nQ: ${message}\n\nAnswer concisely with markdown formatting:`;
 
       // Call Gemini API
       const response = await geminiService.callGemini(prompt);
