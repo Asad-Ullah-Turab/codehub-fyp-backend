@@ -199,10 +199,11 @@ Tell me: **What do you see on lines 15, 16, and 17?** (the lines around the erro
 
 IMPORTANT - TEACHING MODE (NOT GIVING CODE):
 - DO NOT write complete code for them
-- DO help them understand concepts
+- DO help them understand concepts with markdown formatting
+- Use headings (##, ###), bullet points (-), and **bold text** for key terms
 - Guide them step-by-step to write code themselves
 - Ask clarifying questions about what they want to do
-- Explain the logic/approach first
+- Explain the logic/approach first in structured, clear sections
 - Help them learn to think like a programmer
 - Be encouraging and supportive
 - Use simple language, avoid jargon
@@ -213,7 +214,7 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
 
       const userPrompt = `A beginner is asking: "${question}". Help them understand and learn. Don't write the code for them - guide them to write it themselves.`;
 
-      const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide a SHORT explanation (max 3-4 sentences) that helps them learn. Focus on the concept and approach, not the code.`;
+      const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide a helpful explanation using markdown formatting (##, ###, -, **bold**). Structure your response to help them learn step by step. Keep it beginner-friendly but thorough.`;
 
       const response = await geminiService.callGemini(prompt);
       let answer = geminiService.extractText(response);

@@ -1,47 +1,60 @@
-import geminiService from '../services/geminiService.js';
-import AIChat from '../models/AIChat.js';
+import geminiService from "../services/geminiService.js";
+import AIChat from "../models/AIChat.js";
 
 class AIChatController {
   async sendMessage(req, res) {
     try {
-      const { message, context, contextId, contextTitle, contentScope } = req.body;
-      
+      const { message, context, contextId, contextTitle, contentScope } =
+        req.body;
+
       if (!message) {
         return res.status(400).json({
           success: false,
-          message: 'Message is required'
+          message: "Message is required",
         });
       }
 
       // Build context-aware prompt with strict scope - BEGINNER FRIENDLY
       let systemContext;
-      if (context === 'course' && contextTitle) {
+      if (context === "course" && contextTitle) {
         systemContext = `You are a friendly AI tutor helping beginners learn about "${contextTitle}" in a programming course.
 
 IMPORTANT - KEEP IT SIMPLE FOR BEGINNERS:
 - Use simple, everyday language (avoid jargon)
-- Give SHORT, clear answers (2-3 sentences max)
-- If you must explain something complex, break it into simple steps
+- Structure your response with markdown formatting (use ##, ###, -, ** for formatting)
+- Break complex explanations into clear sections with headings
+- Use bullet points for lists and steps
+- Use **bold text** for key terms and important points
+- Give helpful, detailed answers but keep language simple
 - Use real-world examples when helpful
 - ONLY answer questions about "${contextTitle}"
 - If asked about unrelated topics, say: "I can only help with questions about ${contextTitle}. Please ask about this specific topic."
-${contentScope ? `\nCurrent section content you should reference: ${contentScope}` : ''}`;
-      } else if (context === 'tutorial' && contextTitle) {
+${
+  contentScope
+    ? `\nCurrent section content you should reference: ${contentScope}`
+    : ""
+}`;
+      } else if (context === "tutorial" && contextTitle) {
         systemContext = `You are a friendly AI tutor helping beginners learn about "${contextTitle}" from this tutorial.
 
 IMPORTANT - KEEP IT SIMPLE FOR BEGINNERS:
 - Use simple, everyday language (avoid jargon)
-- Give SHORT, clear answers (2-3 sentences max)
-- If you must explain something complex, break it into simple steps
+- Structure your response with markdown formatting (use ##, ###, -, ** for formatting)
+- Break complex explanations into clear sections with headings
+- Use bullet points for lists and steps
+- Use **bold text** for key terms and important points
+- Give helpful, detailed answers but keep language simple
 - Use real-world examples when helpful
 - ONLY answer questions about this tutorial topic: "${contextTitle}"
 - If asked about other topics, say: "I can only answer questions about this tutorial on ${contextTitle}. Please focus your question on this topic."
-${contentScope ? `\nTutorial content you should reference: ${contentScope}` : ''}`;
+${
+  contentScope ? `\nTutorial content you should reference: ${contentScope}` : ""
+}`;
       } else {
-        systemContext = `You are a friendly AI assistant helping beginners with programming. Use simple language and keep answers short and clear.`;
+        systemContext = `You are a friendly AI assistant helping beginners with programming. Use simple language, structure your responses with markdown formatting (headings, bullet points, bold text), and keep explanations clear and helpful.`;
       }
 
-      const prompt = `${systemContext}\n\nUser question: ${message}\n\nProvide a SHORT, beginner-friendly answer (max 2-3 sentences). Use simple words and avoid technical jargon. Remember to stay within the scope defined above.`;
+      const prompt = `${systemContext}\n\nUser question: ${message}\n\nProvide a helpful, beginner-friendly answer using markdown formatting. Structure your response with headings (##, ###), bullet points (-), and **bold text** for key terms. Keep the language simple and clear while being thorough in your explanation.`;
 
       // Call Gemini API
       const response = await geminiService.callGemini(prompt);
@@ -53,28 +66,28 @@ ${contentScope ? `\nTutorial content you should reference: ${contentScope}` : ''
           user: req.user?._id,
           message,
           response: aiResponse,
-          context: context || 'general',
-          contextTitle: contextTitle || '',
-          contextId: contextId || '',
-          contentScope: contentScope || ''
+          context: context || "general",
+          contextTitle: contextTitle || "",
+          contextId: contextId || "",
+          contentScope: contentScope || "",
         });
       } catch (dbError) {
-        console.error('Error saving chat to database:', dbError);
+        console.error("Error saving chat to database:", dbError);
         // Continue even if DB save fails
       }
 
       res.status(200).json({
         success: true,
         data: {
-          response: aiResponse
-        }
+          response: aiResponse,
+        },
       });
     } catch (error) {
-      console.error('Error in AI chat:', error);
+      console.error("Error in AI chat:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to generate AI response',
-        error: error.message
+        message: "Failed to generate AI response",
+        error: error.message,
       });
     }
   }
@@ -82,11 +95,11 @@ ${contentScope ? `\nTutorial content you should reference: ${contentScope}` : ''
   async clearChats(req, res) {
     try {
       const userId = req.user?._id;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'User not authenticated'
+          message: "User not authenticated",
         });
       }
 
@@ -95,15 +108,15 @@ ${contentScope ? `\nTutorial content you should reference: ${contentScope}` : ''
 
       res.status(200).json({
         success: true,
-        message: 'All chats cleared successfully',
-        deletedCount: result.deletedCount
+        message: "All chats cleared successfully",
+        deletedCount: result.deletedCount,
       });
     } catch (error) {
-      console.error('Error clearing chats:', error);
+      console.error("Error clearing chats:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to clear chats',
-        error: error.message
+        message: "Failed to clear chats",
+        error: error.message,
       });
     }
   }
@@ -112,11 +125,11 @@ ${contentScope ? `\nTutorial content you should reference: ${contentScope}` : ''
     try {
       const userId = req.user?._id;
       const { context, contextId } = req.query;
-      
+
       if (!userId) {
         return res.status(401).json({
           success: false,
-          message: 'User not authenticated'
+          message: "User not authenticated",
         });
       }
 
@@ -126,20 +139,18 @@ ${contentScope ? `\nTutorial content you should reference: ${contentScope}` : ''
       if (contextId) query.contextId = contextId;
 
       // Fetch chats and sort by creation date
-      const chats = await AIChat.find(query)
-        .sort({ createdAt: 1 })
-        .limit(50); // Limit to last 50 chats per context
+      const chats = await AIChat.find(query).sort({ createdAt: 1 }).limit(50); // Limit to last 50 chats per context
 
       res.status(200).json({
         success: true,
-        data: chats
+        data: chats,
       });
     } catch (error) {
-      console.error('Error fetching chat history:', error);
+      console.error("Error fetching chat history:", error);
       res.status(500).json({
         success: false,
-        message: 'Failed to fetch chat history',
-        error: error.message
+        message: "Failed to fetch chat history",
+        error: error.message,
       });
     }
   }
