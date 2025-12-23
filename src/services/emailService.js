@@ -1,4 +1,4 @@
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
 
 class EmailService {
   constructor() {
@@ -12,15 +12,19 @@ class EmailService {
 
     try {
       // Check if email credentials are provided
-      if (!process.env.EMAIL_HOST || !process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-        console.log('⚠️  Email service not configured - missing credentials');
+      if (
+        !process.env.EMAIL_HOST ||
+        !process.env.EMAIL_USER ||
+        !process.env.EMAIL_PASS
+      ) {
+        console.log("⚠️  Email service not configured - missing credentials");
         return;
       }
 
       this.transporter = nodemailer.createTransport({
         host: process.env.EMAIL_HOST,
         port: process.env.EMAIL_PORT || 587,
-        secure: process.env.EMAIL_SECURE === 'true', // true for 465, false for other ports
+        secure: process.env.EMAIL_SECURE === "true", // true for 465, false for other ports
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASS,
@@ -29,10 +33,10 @@ class EmailService {
 
       // Verify the connection
       await this.transporter.verify();
-      console.log('✅ Email service initialized successfully');
+      console.log("✅ Email service initialized successfully");
       this.initialized = true;
     } catch (error) {
-      console.error('❌ Email service initialization failed:', error.message);
+      console.error("❌ Email service initialization failed:", error.message);
       this.transporter = null;
     }
   }
@@ -48,48 +52,52 @@ class EmailService {
   }
 
   // Send OTP email for verification
-  async sendVerificationOTP(email, otp, name = 'User') {
+  async sendVerificationOTP(email, otp, name = "User") {
     if (!this.isAvailable()) {
-      throw new Error('Email service is not available');
+      throw new Error("Email service is not available");
     }
 
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: `"${process.env.EMAIL_FROM_NAME || "CodeHub"}" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
       to: email,
-      subject: 'Verify Your Email - CodeHub',
+      subject: "Verify Your Email - CodeHub",
       html: this.getVerificationEmailTemplate(name, otp),
     };
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Verification email sent:', info.messageId);
+      console.log("📧 Verification email sent:", info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Failed to send verification email:', error);
-      throw new Error('Failed to send verification email');
+      console.error("❌ Failed to send verification email:", error);
+      throw new Error("Failed to send verification email");
     }
   }
 
   // Send password reset email
-  async sendPasswordResetOTP(email, otp, name = 'User') {
+  async sendPasswordResetOTP(email, otp, name = "User") {
     if (!this.isAvailable()) {
-      throw new Error('Email service is not available');
+      throw new Error("Email service is not available");
     }
 
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: `"${process.env.EMAIL_FROM_NAME || "CodeHub"}" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
       to: email,
-      subject: 'Reset Your Password - CodeHub',
+      subject: "Reset Your Password - CodeHub",
       html: this.getPasswordResetEmailTemplate(name, otp),
     };
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Password reset email sent:', info.messageId);
+      console.log("📧 Password reset email sent:", info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Failed to send password reset email:', error);
-      throw new Error('Failed to send password reset email');
+      console.error("❌ Failed to send password reset email:", error);
+      throw new Error("Failed to send password reset email");
     }
   }
 
@@ -198,49 +206,72 @@ class EmailService {
   // Send contact form confirmation email
   async sendContactConfirmation(email, name, subject) {
     if (!this.isAvailable()) {
-      console.log('⚠️  Email service not available - skipping contact confirmation email');
+      console.log(
+        "⚠️  Email service not available - skipping contact confirmation email"
+      );
       return;
     }
 
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: `"${process.env.EMAIL_FROM_NAME || "CodeHub"}" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
       to: email,
-      subject: 'We Received Your Message - CodeHub',
+      subject: "We Received Your Message - CodeHub",
       html: this.getContactConfirmationTemplate(name, subject),
     };
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Contact confirmation email sent:', info.messageId);
+      console.log("📧 Contact confirmation email sent:", info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Failed to send contact confirmation email:', error);
+      console.error("❌ Failed to send contact confirmation email:", error);
       throw error;
     }
   }
 
   // Send contact form notification to admin
-  async sendContactNotification({ fullName, email, subject, message, contactId }) {
+  async sendContactNotification({
+    fullName,
+    email,
+    subject,
+    message,
+    contactId,
+  }) {
     if (!this.isAvailable()) {
-      console.log('⚠️  Email service not available - skipping admin notification');
+      console.log(
+        "⚠️  Email service not available - skipping admin notification"
+      );
       return;
     }
 
     const adminEmail = process.env.ADMIN_EMAIL || process.env.EMAIL_USER;
-    
+
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: `"${process.env.EMAIL_FROM_NAME || "CodeHub"}" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
       to: adminEmail,
       subject: `New Contact Form Submission: ${subject}`,
-      html: this.getContactNotificationTemplate(fullName, email, subject, message, contactId),
+      html: this.getContactNotificationTemplate(
+        fullName,
+        email,
+        subject,
+        message,
+        contactId
+      ),
     };
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Contact notification email sent to admin:', info.messageId);
+      console.log(
+        "📧 Contact notification email sent to admin:",
+        info.messageId
+      );
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Failed to send contact notification email:', error);
+      console.error("❌ Failed to send contact notification email:", error);
       throw error;
     }
   }
@@ -248,12 +279,16 @@ class EmailService {
   // Send contact form response to user
   async sendContactResponse(email, name, subject, response) {
     if (!this.isAvailable()) {
-      console.log('⚠️  Email service not available - skipping contact response email');
+      console.log(
+        "⚠️  Email service not available - skipping contact response email"
+      );
       return;
     }
 
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: `"${process.env.EMAIL_FROM_NAME || "CodeHub"}" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
       to: email,
       subject: `Re: ${subject}`,
       html: this.getContactResponseTemplate(name, subject, response),
@@ -261,10 +296,51 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Contact response email sent:', info.messageId);
+      console.log("📧 Contact response email sent:", info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Failed to send contact response email:', error);
+      console.error("❌ Failed to send contact response email:", error);
+      throw error;
+    }
+  }
+
+  // Send contact form reply from admin to user
+  async sendContactReply({
+    to,
+    recipientName,
+    originalSubject,
+    subject,
+    message,
+    adminName,
+  }) {
+    if (!this.isAvailable()) {
+      console.log(
+        "⚠️  Email service not available - skipping contact reply email"
+      );
+      return;
+    }
+
+    const mailOptions = {
+      from: `"${adminName || process.env.EMAIL_FROM_NAME || "CodeHub"}" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
+      to: to,
+      subject: subject,
+      html: this.getContactReplyTemplate(
+        recipientName,
+        originalSubject,
+        subject,
+        message,
+        adminName
+      ),
+    };
+
+    try {
+      const info = await this.transporter.sendMail(mailOptions);
+      console.log("📧 Contact reply email sent:", info.messageId);
+      return { success: true, messageId: info.messageId };
+    } catch (error) {
+      console.error("❌ Failed to send contact reply email:", error);
       throw error;
     }
   }
@@ -350,11 +426,13 @@ class EmailService {
         
         <div class="message-box">
           <p class="label">Message:</p>
-          <p>${message.replace(/\n/g, '<br>')}</p>
+          <p>${message.replace(/\n/g, "<br>")}</p>
         </div>
         
         <p style="text-align: center; margin-top: 30px;">
-          <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}/admin/contacts/${contactId}" 
+          <a href="${
+            process.env.FRONTEND_URL || "http://localhost:5173"
+          }/admin/contacts/${contactId}" 
              style="background-color: #456DE6; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block;">
             View in Admin Panel
           </a>
@@ -395,7 +473,7 @@ class EmailService {
         <p>Thank you for your patience. We're writing in response to your inquiry regarding: <strong>${subject}</strong></p>
         
         <div class="response-box">
-          ${response.replace(/\n/g, '<br>')}
+          ${response.replace(/\n/g, "<br>")}
         </div>
         
         <p>If you have any additional questions or need further assistance, please don't hesitate to reach out to us again.</p>
@@ -411,14 +489,75 @@ class EmailService {
     `;
   }
 
+  // Contact reply email template
+  getContactReplyTemplate(
+    recipientName,
+    originalSubject,
+    replySubject,
+    replyMessage,
+    adminName
+  ) {
+    return `
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Reply from CodeHub</title>
+      <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background-color: #f9f9f9; padding: 30px; border-radius: 10px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .logo { font-size: 28px; font-weight: bold; color: #456DE6; margin-bottom: 10px; }
+        .reply-box { background-color: white; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #456DE6; }
+        .original-inquiry { background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 15px 0; font-style: italic; color: #666; }
+        .footer { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; font-size: 14px; color: #666; }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <div class="logo">CodeHub</div>
+          <h2>Personal Reply from Our Team</h2>
+        </div>
+        
+        <p>Hello ${recipientName},</p>
+        
+        <p>Thank you for contacting CodeHub. ${
+          adminName || "Our team"
+        } has personally reviewed your inquiry and wanted to respond directly:</p>
+        
+        <div class="original-inquiry">
+          <strong>Your original inquiry:</strong> "${originalSubject}"
+        </div>
+        
+        <div class="reply-box">
+          ${replyMessage.replace(/\n/g, "<br>")}
+        </div>
+        
+        <p>If you have any follow-up questions or need additional assistance, please don't hesitate to reach out to us again.</p>
+        
+        <div class="footer">
+          <p><strong>${adminName || "CodeHub Team"}</strong><br>
+          CodeHub - Your Online Code Editor & Executor</p>
+          <p>Email: support@codehub.io | Website: codehub.io</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+  }
+
   // Send custom email (for admin notifications)
-  async sendCustomEmail(email, subject, htmlMessage, name = 'User') {
+  async sendCustomEmail(email, subject, htmlMessage, name = "User") {
     if (!this.isAvailable()) {
-      throw new Error('Email service is not available');
+      throw new Error("Email service is not available");
     }
 
     const mailOptions = {
-      from: `"${process.env.EMAIL_FROM_NAME || 'CodeHub'}" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+      from: `"${process.env.EMAIL_FROM_NAME || "CodeHub"}" <${
+        process.env.EMAIL_FROM || process.env.EMAIL_USER
+      }>`,
       to: email,
       subject: subject,
       html: this.getCustomEmailTemplate(name, htmlMessage),
@@ -426,11 +565,11 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Custom email sent:', info.messageId);
+      console.log("📧 Custom email sent:", info.messageId);
       return { success: true, messageId: info.messageId };
     } catch (error) {
-      console.error('❌ Failed to send custom email:', error);
-      throw new Error('Failed to send custom email');
+      console.error("❌ Failed to send custom email:", error);
+      throw new Error("Failed to send custom email");
     }
   }
 

@@ -24,6 +24,7 @@ import {
   getPendingCertificates,
   approveCertificate,
   rejectCertificate,
+  getNewsletterSubscriptions,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -66,5 +67,8 @@ router.get("/recent-activity", getRecentActivity);
 router.get("/certificates/pending", getPendingCertificates);
 router.put("/certificates/:certificateId/approve", approveCertificate);
 router.put("/certificates/:certificateId/reject", rejectCertificate);
+
+// Newsletter Management
+router.get("/newsletter-subscriptions", getNewsletterSubscriptions);
 
 export default router;

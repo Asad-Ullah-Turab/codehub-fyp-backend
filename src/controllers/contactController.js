@@ -84,11 +84,21 @@ export const submitContact = async (req, res) => {
 // Get all contact submissions (Admin only)
 export const getAllContacts = async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, page = 1, limit = 20, search } = req.query;
 
     const query = {};
     if (status) {
       query.status = status;
+    }
+
+    // Add search functionality
+    if (search) {
+      query.$or = [
+        { fullName: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { subject: { $regex: search, $options: 'i' } },
+        { message: { $regex: search, $options: 'i' } }
+      ];
     }
 
     const contacts = await Contact.find(query)
@@ -208,6 +218,74 @@ export const updateContactStatus = async (req, res) => {
     res.status(500).json({
       status: "error",
       message: "Failed to update contact submission",
+    });
+  }
+};
+
+// Reply to contact submission (Admin only)
+export const replyToContact = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { subject, message } = req.body;
+
+    if (!subject || !message) {
+      return res.status(400).json({
+        status: "error",
+        message: "Subject and message are required",
+      });
+    }
+
+    const contact = await Contact.findById(id);
+
+    if (!contact) {
+      return res.status(404).json({
+        status: "error",
+        message: "Contact submission not found",
+      });
+    }
+
+    // Send reply email to user
+    try {
+      await emailService.sendContactReply({
+        to: contact.email,
+        recipientName: contact.fullName,
+        originalSubject: contact.subject,
+        subject,
+        message,
+        adminName: req.user.username || "CodeHub Admin"
+      });
+    } catch (emailError) {
+      console.error("Failed to send reply email:", emailError);
+      return res.status(500).json({
+        status: "error",
+        message: "Failed to send reply email",
+      });
+    }
+
+    // Update contact status and response
+    const updateData = {
+      status: 'replied',
+      response: message,
+      respondedAt: new Date(),
+      respondedBy: req.user._id,
+    };
+
+    const updatedContact = await Contact.findByIdAndUpdate(id, updateData, {
+      new: true,
+      runValidators: true,
+    }).populate("userId", "username email")
+      .populate("respondedBy", "username email");
+
+    res.status(200).json({
+      status: "success",
+      message: "Reply sent successfully",
+      data: { contact: updatedContact },
+    });
+  } catch (error) {
+    console.error("Error replying to contact:", error);
+    res.status(500).json({
+      status: "error",
+      message: "Failed to send reply",
     });
   }
 };

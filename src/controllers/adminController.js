@@ -5,6 +5,7 @@ import Progress from "../models/Progress.js";
 import Course from "../models/Course.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Certificate from "../models/Certificate.js";
+import NewsletterSubscription from "../models/NewsletterSubscription.js";
 
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {
@@ -885,5 +886,45 @@ export const deleteCourse = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Get newsletter subscriptions
+export const getNewsletterSubscriptions = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, search } = req.query;
+
+    const query = {};
+
+    // Add search functionality
+    if (search) {
+      query.email = { $regex: search, $options: 'i' };
+    }
+
+    const subscriptions = await NewsletterSubscription.find(query)
+      .sort({ subscribedAt: -1 })
+      .limit(parseInt(limit))
+      .skip((parseInt(page) - 1) * parseInt(limit));
+
+    const total = await NewsletterSubscription.countDocuments(query);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        subscriptions,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total,
+          pages: Math.ceil(total / parseInt(limit)),
+        },
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching newsletter subscriptions:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to fetch newsletter subscriptions" 
+    });
   }
 };
