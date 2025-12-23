@@ -22,6 +22,7 @@ import aiChatRoutes from "./routes/aiChatRoutes.js";
 import codeHelpRoutes from "./routes/codeHelpRoutes.js";
 import codeChatRoutes from "./routes/codeChatRoutes.js";
 import viewTrackingRoutes from "./routes/viewTrackingRoutes.js";
+import newsletterRoutes from "./routes/newsletterRoutes.js";
 import connectDB from "./config/database.js";
 import passport, { initializeOAuthStrategies } from "./config/oauthConfig.js";
 import emailService from "./services/emailService.js";
@@ -99,6 +100,7 @@ app.use("/api/aichat", aiChatRoutes);
 app.use("/api/codehelp", codeHelpRoutes);
 app.use("/api/codechat", codeChatRoutes);
 app.use("/api/views", viewTrackingRoutes);
+app.use("/api/newsletter", newsletterRoutes);
 
 // 404 handler
 app.use((req, res) => {
