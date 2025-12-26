@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 import passport from "passport";
 import { Strategy as GoogleStrategy } from "passport-google-oauth20";
 import { Strategy as GitHubStrategy } from "passport-github2";
+
 import User from "../models/User.js";
 
 // Ensure environment variables are loaded
@@ -71,14 +72,14 @@ export const initializeGoogleStrategy = () => {
             console.error("Google OAuth error:", error);
             done(error, null);
           }
-        }
-      )
+        },
+      ),
     );
 
     return true;
   } else {
     console.log(
-      "❌ Google OAuth strategy NOT initialized (missing credentials)"
+      "❌ Google OAuth strategy NOT initialized (missing credentials)",
     );
     return false;
   }
@@ -152,14 +153,14 @@ export const initializeGitHubStrategy = () => {
             console.error("GitHub OAuth error:", error);
             done(error, null);
           }
-        }
-      )
+        },
+      ),
     );
 
     return true;
   } else {
     console.log(
-      "❌ GitHub OAuth strategy NOT initialized (missing credentials)"
+      "❌ GitHub OAuth strategy NOT initialized (missing credentials)",
     );
     return false;
   }
