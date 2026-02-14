@@ -17,7 +17,7 @@ class EmailService {
         !process.env.EMAIL_USER ||
         !process.env.EMAIL_PASS
       ) {
-        console.log("⚠️  Email service not configured - missing credentials");
+        /* Email service not configured - missing credentials */
         return;
       }
 
@@ -33,7 +33,7 @@ class EmailService {
 
       // Verify the connection
       await this.transporter.verify();
-      console.log("✅ Email service initialized successfully");
+      /* Email service initialized */
       this.initialized = true;
     } catch (error) {
       console.error("❌ Email service initialization failed:", error.message);
@@ -68,7 +68,7 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("📧 Verification email sent:", info.messageId);
+      /* verification email sent (info suppressed) */
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error("❌ Failed to send verification email:", error);
@@ -93,7 +93,7 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("📧 Password reset email sent:", info.messageId);
+      /* password reset email sent (info suppressed) */
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error("❌ Failed to send password reset email:", error);
@@ -223,7 +223,7 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("📧 Contact confirmation email sent:", info.messageId);
+      /* contact confirmation email sent (info suppressed) */
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error("❌ Failed to send contact confirmation email:", error);
@@ -296,7 +296,7 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("📧 Contact response email sent:", info.messageId);
+      /* contact response email sent (info suppressed) */
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error("❌ Failed to send contact response email:", error);
@@ -337,7 +337,7 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("📧 Contact reply email sent:", info.messageId);
+      /* contact reply email sent (info suppressed) */
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error("❌ Failed to send contact reply email:", error);
@@ -565,7 +565,7 @@ class EmailService {
 
     try {
       const info = await this.transporter.sendMail(mailOptions);
-      console.log("📧 Custom email sent:", info.messageId);
+      /* custom email sent (info suppressed) */
       return { success: true, messageId: info.messageId };
     } catch (error) {
       console.error("❌ Failed to send custom email:", error);

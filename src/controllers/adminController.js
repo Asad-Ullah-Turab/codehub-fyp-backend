@@ -346,7 +346,7 @@ export const notifyUserStatusChange = async (user, accountStatus, reason = "") =
     const emailService = (await import('../services/emailService.js')).default;
     
     if (!emailService.isAvailable()) {
-      console.log("Email service not available, skipping notification");
+      /* email service not available - skipping notification (log removed) */
       return;
     }
 

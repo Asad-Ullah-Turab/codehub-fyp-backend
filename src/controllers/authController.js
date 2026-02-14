@@ -207,10 +207,7 @@ export const signup = async (req, res) => {
 export const verifyEmail = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    console.log("📧 Email verification attempt:", {
-      email,
-      otp: otp ? "****" : "missing",
-    });
+    /* email verification attempt (removed debug log) */
 
     if (!email || !otp) {
       return res.status(400).json({
@@ -259,15 +256,10 @@ export const verifyEmail = async (req, res) => {
     }
 
     // Verify OTP
-    console.log("📧 Verifying OTP:", {
-      providedOTP: otp,
-      storedOTP: user.emailVerificationOTP,
-      isExpired: Date.now() > user.emailVerificationOTPExpires,
-      expiresAt: new Date(user.emailVerificationOTPExpires),
-    });
+    /* OTP verification debug info removed */
 
     const otpIsValid = user.verifyEmailOTP(otp);
-    console.log("📧 OTP verification result:", otpIsValid);
+    /* OTP verification result (removed debug log) */
 
     if (!otpIsValid) {
       return res.status(400).json({
@@ -277,9 +269,7 @@ export const verifyEmail = async (req, res) => {
     }
 
     // Clear OTP and activate account
-    console.log("📧 Clearing OTP and activating account...");
     await user.clearEmailVerificationOTP();
-    console.log("📧 Account activated successfully");
 
     // Send JWT token
     createSendToken(user, 200, res);
@@ -662,9 +652,7 @@ export const requestPasswordReset = async (req, res) => {
       }
     } else {
       // Email service not available - for development, still return success
-      console.log(
-        `⚠️  Email service not available - password reset OTP for ${email}: ${otp}`
-      );
+      /* email service not available - debug OTP suppressed */;
       res.status(200).json({
         status: "success",
         message: "Password reset code generated (email service unavailable)",

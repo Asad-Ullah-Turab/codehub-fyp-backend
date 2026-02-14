@@ -412,7 +412,7 @@ class CertificateHtmlService {
                 try {
                     window.print();
                 } catch (e) {
-                    console.log('Auto-print failed, user can manually print');
+                    /* auto-print failed (suppressed) */
                 }
             }, 500);
         };

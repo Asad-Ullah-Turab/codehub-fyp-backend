@@ -27,7 +27,7 @@ class CodeExecutorWSService {
       const ws = new WebSocket(wsUrl);
       
       ws.on('open', () => {
-        console.log(`WebSocket connected to ${language} executor`);
+        /* WebSocket connected to executor */
         this.wsConnections[language] = ws;
         resolve(ws);
       });
@@ -38,7 +38,7 @@ class CodeExecutorWSService {
       });
 
       ws.on('close', () => {
-        console.log(`WebSocket disconnected from ${language} executor`);
+        /* WebSocket disconnected from executor */
         this.wsConnections[language] = null;
       });
 

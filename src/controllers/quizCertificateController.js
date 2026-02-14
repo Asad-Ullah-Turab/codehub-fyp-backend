@@ -394,29 +394,20 @@ export const getCertificateById = async (req, res) => {
     const { certificateId } = req.params;
     const userId = req.user._id;
 
-    console.log("========== getCertificateById ==========");
-    console.log("CertificateId:", certificateId);
-    console.log("UserId:", userId);
-
     const certificate = await Certificate.findById(certificateId)
       .populate("course", "title language category")
       .populate("user", "name email")
       .populate("enrollment");
 
     if (!certificate) {
-      console.log("Certificate not found for ID:", certificateId);
       return res.status(404).json({
         success: false,
         message: "Certificate not found",
       });
     }
 
-    console.log("Certificate found:", certificate._id);
-    console.log("Certificate user:", certificate.user._id);
-
     // Check ownership
     if (certificate.user._id.toString() !== userId.toString()) {
-      console.log("Unauthorized: cert user", certificate.user._id, "!== req user", userId);
       return res.status(403).json({
         success: false,
         message: "Unauthorized to view this certificate",

@@ -363,7 +363,6 @@ class TutorialController {
       if (isAIgenerated) {
         // --- GEMINI AI GENERATION (default) ---
         try {
-          console.log(`Generating AI tutorial for: ${concept} in ${language} (Gemini)`);
           const aiContent = await geminiService.generateTutorial(
             concept,
             language.toLowerCase(),
@@ -378,7 +377,6 @@ class TutorialController {
             notes: aiContent.notes,
             tips: aiContent.tips
           };
-          console.log('AI tutorial generated successfully (Gemini)');
         } catch (aiError) {
           console.error('Error generating AI content (Gemini):', aiError);
           if (!content) {
@@ -393,7 +391,6 @@ class TutorialController {
         /*
         // --- OPENAI AI GENERATION (uncomment to use OpenAI instead) ---
         try {
-          console.log(`Generating AI tutorial for: ${concept} in ${language} (OpenAI)`);
           const aiContent = await openaiService.generateTutorial(
             concept,
             language.toLowerCase(),
@@ -408,7 +405,6 @@ class TutorialController {
             notes: aiContent.notes,
             tips: aiContent.tips
           };
-          console.log('AI tutorial generated successfully (OpenAI)');
         } catch (openaiError) {
           console.error('Error generating AI content (OpenAI):', openaiError);
           if (!content) {
