@@ -135,6 +135,11 @@ describe('Admin Routes', () => {
     expect(usersResponse.body.success).toBe(true);
     expect(Array.isArray(usersResponse.body.data)).toBe(true);
     expect(usersResponse.body.data.length).toBeGreaterThanOrEqual(2); // admin + regular user
+    // Each user should have subscription information
+    usersResponse.body.data.forEach((u) => {
+      expect(u).toHaveProperty('subscriptionPlan');
+      expect(u).toHaveProperty('subscriptionStatus');
+    });
   });
 
   it('should get user details as admin', async () => {

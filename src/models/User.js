@@ -134,6 +134,27 @@ const userSchema = new mongoose.Schema(
         timestamp: { type: Date, default: Date.now },
       },
     ],
+
+    // Subscription / billing information
+    subscriptionPlan: {
+      type: String,
+      enum: ["free", "premium"],
+      default: "free",
+    },
+    subscriptionStatus: {
+      type: String,
+      enum: ["none", "active", "past_due", "canceled"],
+      default: "none",
+    },
+    stripeCustomerId: { type: String, default: null },
+    stripeSubscriptionId: { type: String, default: null },
+    subscriptionStart: { type: Date, default: null },
+    subscriptionEnd: { type: Date, default: null },
+
+    // Query limits for free tier (reset logic can be added later)
+    chatQueriesRemaining: { type: Number, default: 5 },
+    codeQueriesRemaining: { type: Number, default: 5 },
+    tutorialGenRemaining: { type: Number, default: 5 },
   },
   { timestamps: true }
 );
@@ -204,6 +225,40 @@ userSchema.methods.isAccountLocked = function () {
     return false;
   }
   return !!(this.accountLockedUntil && this.accountLockedUntil > Date.now());
+};
+
+// Helper methods for subscription & limits
+userSchema.methods.isPremium = function () {
+  // Admins are always treated as premium
+  if (this.role === "admin") return true;
+  return this.subscriptionPlan === "premium" && this.subscriptionStatus === "active";
+};
+
+userSchema.methods.consumeChatQuery = function () {
+  if (this.isPremium()) return Promise.resolve();
+  if (this.chatQueriesRemaining <= 0) {
+    return Promise.reject(new Error("Chat query limit reached"));
+  }
+  this.chatQueriesRemaining -= 1;
+  return this.save({ validateBeforeSave: false });
+};
+
+userSchema.methods.consumeCodeQuery = function () {
+  if (this.isPremium()) return Promise.resolve();
+  if (this.codeQueriesRemaining <= 0) {
+    return Promise.reject(new Error("Code query limit reached"));
+  }
+  this.codeQueriesRemaining -= 1;
+  return this.save({ validateBeforeSave: false });
+};
+
+userSchema.methods.consumeTutorialGen = function () {
+  if (this.isPremium()) return Promise.resolve();
+  if (this.tutorialGenRemaining <= 0) {
+    return Promise.reject(new Error("Tutorial generation limit reached"));
+  }
+  this.tutorialGenRemaining -= 1;
+  return this.save({ validateBeforeSave: false });
 };
 
 userSchema.methods.incrementFailedAttempts = function () {

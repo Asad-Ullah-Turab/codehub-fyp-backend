@@ -12,6 +12,7 @@ export const getDashboardStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const totalAdmins = await User.countDocuments({ role: "admin" });
+    const premiumUsers = await User.countDocuments({ subscriptionPlan: "premium", subscriptionStatus: "active" });
     const activeUsers = await User.countDocuments({ accountStatus: "active" });
     const suspendedUsers = await User.countDocuments({ accountStatus: "suspended" });
     const totalTutorials = await Tutorial.countDocuments();
@@ -79,6 +80,7 @@ export const getDashboardStats = async (req, res) => {
       data: {
         totalUsers,
         totalAdmins,
+        premiumUsers,
         activeUsers,
         suspendedUsers,
         totalTutorials,
@@ -101,7 +103,7 @@ export const getDashboardStats = async (req, res) => {
 // Get all users with pagination
 export const getAllUsers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", role = "", status = "" } = req.query;
+    const { page = 1, limit = 10, search = "", role = "", status = "", plan = "" } = req.query;
     const skip = (page - 1) * limit;
 
     let filter = {};
@@ -115,9 +117,10 @@ export const getAllUsers = async (req, res) => {
 
     if (role) filter.role = role;
     if (status) filter.accountStatus = status;
+    if (plan) filter.subscriptionPlan = plan;
 
     const users = await User.find(filter)
-      .select("-password")
+      .select("name email role accountStatus profileImage createdAt subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining")
       .limit(parseInt(limit))
       .skip(skip)
       .sort({ createdAt: -1 });

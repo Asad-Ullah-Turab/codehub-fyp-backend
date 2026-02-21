@@ -361,6 +361,18 @@ class TutorialController {
 
       // If AI-generated, use OpenAI to generate real content
       if (isAIgenerated) {
+        // enforce tutorial generation limit
+        if (req.user) {
+          try {
+            await req.user.consumeTutorialGen();
+          } catch (limitError) {
+            return res.status(403).json({
+              success: false,
+              message: "You have reached your free tutorial generation limit. Upgrade to premium for unlimited generations.",
+            });
+          }
+        }
+
         // --- GEMINI AI GENERATION (default) ---
         try {
           const aiContent = await geminiService.generateTutorial(

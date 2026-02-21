@@ -30,6 +30,19 @@ class AIChatController {
 
       const prompt = `${systemContext}\n\nQ: ${message}\n\nAnswer concisely with markdown formatting:`;
 
+      // enforce limits for free users
+      if (req.user) {
+        try {
+          await req.user.consumeChatQuery();
+        } catch (limitError) {
+          return res.status(403).json({
+            success: false,
+            message:
+              "You have reached your free chatbot query limit. Please upgrade to premium for more queries.",
+          });
+        }
+      }
+
       // Call Gemini API
       const response = await geminiService.callGemini(prompt);
       const aiResponse = geminiService.extractText(response);

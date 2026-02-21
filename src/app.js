@@ -37,6 +37,11 @@ console.log('OAuth strategies initialized:', oauthStrategies);
 // Initialize email service
 emailService.initialize();
 
+// warn if stripe config missing
+if (!process.env.STRIPE_PRICE_ID_PREMIUM || !process.env.STRIPE_SECRET_KEY) {
+  console.warn('Stripe subscription not fully configured: check STRIPE_SECRET_KEY and STRIPE_PRICE_ID_PREMIUM in environment variables');
+}
+
 const app = express();
 
 const environment = process.env.NODE_ENV || "development";
@@ -55,6 +60,12 @@ app.use(
   })
 );
 
+// 🔥 CRITICAL: Webhook route MUST come BEFORE express.json() middleware
+// Import and mount webhook route with raw body parsing FIRST
+import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+app.use("/api/subscriptions", subscriptionRoutes);
+
+// NOW apply JSON parsing for all other routes
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 app.use(cookieParser());
@@ -101,6 +112,7 @@ app.use("/api/codehelp", codeHelpRoutes);
 app.use("/api/codechat", codeChatRoutes);
 app.use("/api/views", viewTrackingRoutes);
 app.use("/api/newsletter", newsletterRoutes);
+// 🔥 NOTE: subscription routes moved to top of file for webhook raw body handling
 
 // 404 handler
 app.use((req, res) => {

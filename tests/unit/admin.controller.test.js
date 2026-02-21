@@ -59,8 +59,29 @@ describe('Admin Controller', () => {
     jest.clearAllMocks();
   });
 
-  // All failing tests have been removed
-  it('should be a placeholder test', () => {
-    expect(true).toBe(true);
+  // verify dashboard stats includes premium user count
+  it('should include premiumUsers in dashboard stats', async () => {
+    // create one free user and one premium user
+    await User.create({
+      name: 'Free',
+      email: 'free@example.com',
+      password: 'pass',
+      subscriptionPlan: 'free',
+      subscriptionStatus: 'none'
+    });
+    await User.create({
+      name: 'Premium',
+      email: 'premium@example.com',
+      password: 'pass',
+      subscriptionPlan: 'premium',
+      subscriptionStatus: 'active'
+    });
+
+    const req = mockRequest();
+    const res = mockResponse();
+    await getDashboardStats(req, res);
+    expect(res.statusCode).toBe(200);
+    expect(res.responseData.data).toHaveProperty('premiumUsers');
+    expect(typeof res.responseData.data.premiumUsers).toBe('number');
   });
 });
