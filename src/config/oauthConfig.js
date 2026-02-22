@@ -6,7 +6,7 @@ import { Strategy as GitHubStrategy } from "passport-github2";
 import User from "../models/User.js";
 
 // Ensure environment variables are loaded
-dotenv.config();
+dotenv.config({ quiet: true });
 
 // Google OAuth Strategy
 export const initializeGoogleStrategy = () => {

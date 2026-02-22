@@ -12,7 +12,9 @@ async function startServer() {
   try {
     await containerManager.startAllContainers();
 
-    server.listen(PORT, "0.0.0.0", () => {});
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on PORT: ${PORT}`);
+    });
   } catch (error) {
     console.error("Failed to start server:", error);
     process.exit(1);

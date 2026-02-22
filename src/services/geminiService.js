@@ -1,27 +1,41 @@
 import dotenv from "dotenv";
-dotenv.config();
+dotenv.config({ quiet: true });
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 class GeminiService {
-  async generateTutorial(topic, language, difficulty = 'beginner') {
+  async generateTutorial(topic, language, difficulty = "beginner") {
     if (!GEMINI_API_KEY) {
-      throw new Error('Gemini API key is not configured');
+      throw new Error("Gemini API key is not configured");
     }
     try {
       // Generate main tutorial content (no code examples)
-      const contentPrompt = this.buildTutorialPrompt(topic, language, difficulty);
+      const contentPrompt = this.buildTutorialPrompt(
+        topic,
+        language,
+        difficulty,
+      );
       const contentResponse = await this.callGemini(contentPrompt);
       const tutorialContent = this.extractText(contentResponse);
 
       // Generate code examples separately
-      const codeExamplesPrompt = this.buildCodeExamplesPrompt(topic, language, difficulty);
+      const codeExamplesPrompt = this.buildCodeExamplesPrompt(
+        topic,
+        language,
+        difficulty,
+      );
       const codeResponse = await this.callGemini(codeExamplesPrompt);
       const codeExamplesText = this.extractText(codeResponse);
 
-      return this.parseTutorialContent(tutorialContent, codeExamplesText, topic, language, difficulty);
+      return this.parseTutorialContent(
+        tutorialContent,
+        codeExamplesText,
+        topic,
+        language,
+        difficulty,
+      );
     } catch (error) {
-      console.error('Error generating tutorial with Gemini:', error);
+      console.error("Error generating tutorial with Gemini:", error);
       throw error;
     }
   }
@@ -29,29 +43,33 @@ class GeminiService {
   async callGemini(prompt) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
     const body = {
-      contents: [{ 
-        parts: [{ text: prompt }] 
-      }]
+      contents: [
+        {
+          parts: [{ text: prompt }],
+        },
+      ],
     };
-    
+
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(body),
     });
-    
+
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`Gemini API error: ${error.error?.message || JSON.stringify(error)}`);
+      throw new Error(
+        `Gemini API error: ${error.error?.message || JSON.stringify(error)}`,
+      );
     }
     return await response.json();
   }
 
   extractText(data) {
     // Gemini returns content in a nested structure
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
   }
 
   buildCodeExamplesPrompt(topic, language, difficulty) {
@@ -65,12 +83,13 @@ class GeminiService {
   parseTutorialContent(content, codeExamplesText, topic, language, difficulty) {
     // Parse code examples from the dedicated response
     const codeBlocks = [];
-    const exampleRegex = /EXAMPLE \d+:\s*```[\w]*\n([\s\S]*?)```\s*EXPLANATION:\s*(.*?)(?=EXAMPLE \d+:|$)/gi;
+    const exampleRegex =
+      /EXAMPLE \d+:\s*```[\w]*\n([\s\S]*?)```\s*EXPLANATION:\s*(.*?)(?=EXAMPLE \d+:|$)/gi;
     let match;
     while ((match = exampleRegex.exec(codeExamplesText)) !== null) {
       codeBlocks.push({
         code: match[1].trim(),
-        explanation: match[2].trim()
+        explanation: match[2].trim(),
       });
     }
     // Fallback: extract any remaining code blocks if the format wasn't followed
@@ -80,14 +99,15 @@ class GeminiService {
       while ((match = codeBlockRegex.exec(codeExamplesText)) !== null) {
         codeBlocks.push({
           code: match[1].trim(),
-          explanation: `Example ${exampleIndex}: Demonstrating ${topic}`
+          explanation: `Example ${exampleIndex}: Demonstrating ${topic}`,
         });
         exampleIndex++;
       }
     }
     // Extract tips (lines that start with common tip indicators)
     const tips = [];
-    const tipRegex = /(?:💡|Tip:|Pro tip:|Best practice:|Remember:)(.*?)(?:\n|$)/gi;
+    const tipRegex =
+      /(?:💡|Tip:|Pro tip:|Best practice:|Remember:)(.*?)(?:\n|$)/gi;
     while ((match = tipRegex.exec(content)) !== null) {
       const tip = match[1].trim();
       if (tip) tips.push(tip);
@@ -107,22 +127,31 @@ class GeminiService {
       description,
       content,
       concept: topic,
-      codeExamples: codeBlocks.length > 0 ? codeBlocks : [
-        {
-          code: `// ${topic} example in ${language}\n// Basic example demonstrating the concept`,
-          explanation: `Example demonstrating ${topic}`
-        }
-      ],
-      notes: notes.length > 0 ? notes : [
-        'AI-generated content',
-        'Review and verify examples before use',
-        'Practice with the provided exercises'
-      ],
-      tips: tips.length > 0 ? tips : [
-        `Practice ${topic} with real projects`,
-        'Experiment with different variations',
-        `Refer to ${language} documentation for more details`
-      ]
+      codeExamples:
+        codeBlocks.length > 0
+          ? codeBlocks
+          : [
+              {
+                code: `// ${topic} example in ${language}\n// Basic example demonstrating the concept`,
+                explanation: `Example demonstrating ${topic}`,
+              },
+            ],
+      notes:
+        notes.length > 0
+          ? notes
+          : [
+              "AI-generated content",
+              "Review and verify examples before use",
+              "Practice with the provided exercises",
+            ],
+      tips:
+        tips.length > 0
+          ? tips
+          : [
+              `Practice ${topic} with real projects`,
+              "Experiment with different variations",
+              `Refer to ${language} documentation for more details`,
+            ],
     };
   }
 }

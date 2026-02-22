@@ -1,60 +1,77 @@
-import dotenv from 'dotenv';
-dotenv.config();
+import dotenv from "dotenv";
+dotenv.config({ quiet: true });
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-const OPENAI_API_URL = 'https://api.openai.com/v1/chat/completions';
+const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
 class OpenAIService {
-  async generateTutorial(topic, language, difficulty = 'beginner') {
+  async generateTutorial(topic, language, difficulty = "beginner") {
     if (!OPENAI_API_KEY) {
-      throw new Error('OpenAI API key is not configured');
+      throw new Error("OpenAI API key is not configured");
     }
 
     try {
       // Generate main tutorial content
-      const contentPrompt = this.buildTutorialPrompt(topic, language, difficulty);
+      const contentPrompt = this.buildTutorialPrompt(
+        topic,
+        language,
+        difficulty,
+      );
       const contentResponse = await this.callOpenAI(contentPrompt);
       const tutorialContent = contentResponse.choices[0].message.content;
 
       // Generate code examples separately
-      const codeExamplesPrompt = this.buildCodeExamplesPrompt(topic, language, difficulty);
+      const codeExamplesPrompt = this.buildCodeExamplesPrompt(
+        topic,
+        language,
+        difficulty,
+      );
       const codeResponse = await this.callOpenAI(codeExamplesPrompt);
       const codeExamplesText = codeResponse.choices[0].message.content;
 
-      return this.parseTutorialContent(tutorialContent, codeExamplesText, topic, language, difficulty);
+      return this.parseTutorialContent(
+        tutorialContent,
+        codeExamplesText,
+        topic,
+        language,
+        difficulty,
+      );
     } catch (error) {
-      console.error('Error generating tutorial with OpenAI:', error);
+      console.error("Error generating tutorial with OpenAI:", error);
       throw error;
     }
   }
 
   async callOpenAI(prompt) {
     const response = await fetch(OPENAI_API_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OPENAI_API_KEY}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: "gpt-4o-mini",
         messages: [
           {
-            role: 'system',
-            content: 'You are an expert programming tutor who creates comprehensive, well-structured tutorials for students learning to code. Your tutorials are clear, educational, and include practical examples.'
+            role: "system",
+            content:
+              "You are an expert programming tutor who creates comprehensive, well-structured tutorials for students learning to code. Your tutorials are clear, educational, and include practical examples.",
           },
           {
-            role: 'user',
-            content: prompt
-          }
+            role: "user",
+            content: prompt,
+          },
         ],
         temperature: 0.7,
-        max_tokens: 3000
-      })
+        max_tokens: 3000,
+      }),
     });
 
     if (!response.ok) {
       const error = await response.json();
-      throw new Error(`OpenAI API error: ${error.error?.message || 'Unknown error'}`);
+      throw new Error(
+        `OpenAI API error: ${error.error?.message || "Unknown error"}`,
+      );
     }
 
     return await response.json();
@@ -116,13 +133,14 @@ Please provide the complete tutorial content now (without any code).`;
   parseTutorialContent(content, codeExamplesText, topic, language, difficulty) {
     // Parse code examples from the dedicated response
     const codeBlocks = [];
-    const exampleRegex = /EXAMPLE \d+:\s*```[\w]*\n([\s\S]*?)```\s*EXPLANATION:\s*(.*?)(?=EXAMPLE \d+:|$)/gi;
+    const exampleRegex =
+      /EXAMPLE \d+:\s*```[\w]*\n([\s\S]*?)```\s*EXPLANATION:\s*(.*?)(?=EXAMPLE \d+:|$)/gi;
     let match;
 
     while ((match = exampleRegex.exec(codeExamplesText)) !== null) {
       codeBlocks.push({
         code: match[1].trim(),
-        explanation: match[2].trim()
+        explanation: match[2].trim(),
       });
     }
 
@@ -133,7 +151,7 @@ Please provide the complete tutorial content now (without any code).`;
       while ((match = codeBlockRegex.exec(codeExamplesText)) !== null) {
         codeBlocks.push({
           code: match[1].trim(),
-          explanation: `Example ${exampleIndex}: Demonstrating ${topic}`
+          explanation: `Example ${exampleIndex}: Demonstrating ${topic}`,
         });
         exampleIndex++;
       }
@@ -141,7 +159,8 @@ Please provide the complete tutorial content now (without any code).`;
 
     // Extract tips (lines that start with common tip indicators)
     const tips = [];
-    const tipRegex = /(?:💡|Tip:|Pro tip:|Best practice:|Remember:)(.*?)(?:\n|$)/gi;
+    const tipRegex =
+      /(?:💡|Tip:|Pro tip:|Best practice:|Remember:)(.*?)(?:\n|$)/gi;
     while ((match = tipRegex.exec(content)) !== null) {
       const tip = match[1].trim();
       if (tip) tips.push(tip);
@@ -164,41 +183,50 @@ Please provide the complete tutorial content now (without any code).`;
       description,
       content,
       concept: topic,
-      codeExamples: codeBlocks.length > 0 ? codeBlocks : [
-        {
-          code: `// ${topic} example in ${language}\n// Basic example demonstrating the concept`,
-          explanation: `Example demonstrating ${topic}`
-        }
-      ],
-      notes: notes.length > 0 ? notes : [
-        'AI-generated content',
-        'Review and verify examples before use',
-        'Practice with the provided exercises'
-      ],
-      tips: tips.length > 0 ? tips : [
-        `Practice ${topic} with real projects`,
-        'Experiment with different variations',
-        `Refer to ${language} documentation for more details`
-      ]
+      codeExamples:
+        codeBlocks.length > 0
+          ? codeBlocks
+          : [
+              {
+                code: `// ${topic} example in ${language}\n// Basic example demonstrating the concept`,
+                explanation: `Example demonstrating ${topic}`,
+              },
+            ],
+      notes:
+        notes.length > 0
+          ? notes
+          : [
+              "AI-generated content",
+              "Review and verify examples before use",
+              "Practice with the provided exercises",
+            ],
+      tips:
+        tips.length > 0
+          ? tips
+          : [
+              `Practice ${topic} with real projects`,
+              "Experiment with different variations",
+              `Refer to ${language} documentation for more details`,
+            ],
     };
   }
 
   async testConnection() {
     if (!OPENAI_API_KEY) {
-      return { success: false, message: 'OpenAI API key is not configured' };
+      return { success: false, message: "OpenAI API key is not configured" };
     }
 
     try {
-      const response = await fetch('https://api.openai.com/v1/models', {
+      const response = await fetch("https://api.openai.com/v1/models", {
         headers: {
-          'Authorization': `Bearer ${OPENAI_API_KEY}`
-        }
+          Authorization: `Bearer ${OPENAI_API_KEY}`,
+        },
       });
 
       if (response.ok) {
-        return { success: true, message: 'OpenAI API connection successful' };
+        return { success: true, message: "OpenAI API connection successful" };
       } else {
-        return { success: false, message: 'OpenAI API connection failed' };
+        return { success: false, message: "OpenAI API connection failed" };
       }
     } catch (error) {
       return { success: false, message: error.message };
