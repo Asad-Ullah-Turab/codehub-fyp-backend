@@ -12,15 +12,19 @@ async function startServer() {
   try {
     await containerManager.startAllContainers();
 
-    server.listen(PORT, "0.0.0.0", () => {
-    });
+    server.listen(PORT, "0.0.0.0", () => {});
   } catch (error) {
+    console.error("Failed to start server:", error);
     process.exit(1);
   }
 }
 
 // Graceful shutdown
+let isShuttingDown = false;
 async function shutdown() {
+  // Prevent multiple shutdown attempts
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
   // Close WebSocket connections
   codeExecutorWSService.closeAllConnections();
@@ -44,6 +48,7 @@ process.on("SIGTERM", shutdown);
 process.on("SIGINT", shutdown);
 
 server.on("error", (error) => {
+  console.error("Server error:", error);
 });
 
 // Start the server

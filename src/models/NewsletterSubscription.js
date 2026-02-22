@@ -36,15 +36,15 @@ const newsletterSubscriptionSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 // Create indexes
-newsletterSubscriptionSchema.index({ email: 1 });
+// newsletterSubscriptionSchema.index({ email: 1 });
 newsletterSubscriptionSchema.index({ subscribedAt: -1 });
 newsletterSubscriptionSchema.index({ isActive: 1 });
 
 export default mongoose.model(
   "NewsletterSubscription",
-  newsletterSubscriptionSchema
+  newsletterSubscriptionSchema,
 );
