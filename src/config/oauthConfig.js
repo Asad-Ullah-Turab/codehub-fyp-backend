@@ -19,7 +19,8 @@ export const initializeGoogleStrategy = () => {
         {
           clientID: process.env.GOOGLE_CLIENT_ID,
           clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          callbackURL: "/api/auth/google/callback",
+          // use explicit HTTPS URL rather than relying on req.protocol
+          callbackURL: `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/google/callback`,
         },
         async (accessToken, refreshToken, profile, done) => {
           try {
@@ -96,7 +97,7 @@ export const initializeGitHubStrategy = () => {
         {
           clientID: process.env.GITHUB_CLIENT_ID,
           clientSecret: process.env.GITHUB_CLIENT_SECRET,
-          callbackURL: "/api/auth/github/callback",
+        callbackURL: `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/github/callback`,
         },
         async (accessToken, refreshToken, profile, done) => {
           try {
