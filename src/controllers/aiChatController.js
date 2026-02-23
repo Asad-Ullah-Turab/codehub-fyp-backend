@@ -1,4 +1,4 @@
-import geminiService from "../services/geminiService.js";
+import openaiService from "../services/openaiService.js";
 import AIChat from "../models/AIChat.js";
 
 class AIChatController {
@@ -43,9 +43,9 @@ class AIChatController {
         }
       }
 
-      // Call Gemini API
-      const response = await geminiService.callGemini(prompt);
-      const aiResponse = geminiService.extractText(response);
+      // Call OpenAI API
+      const response = await openaiService.chatMessage(prompt);
+      const aiResponse = response.choices[0].message.content;
 
       // Save to database (optional)
       try {

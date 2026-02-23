@@ -1,4 +1,4 @@
-import geminiService from '../services/geminiService.js';
+import openaiService from '../services/openaiService.js';
 
 class CodeHelpController {
   async getErrorExplanation(req, res) {
@@ -33,8 +33,8 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
 
       const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide a SHORT, beginner-friendly explanation (max 3-4 sentences) with hints on how to debug. Focus on understanding, not solutions.`;
 
-      const response = await geminiService.callGemini(prompt);
-      let explanation = geminiService.extractText(response);
+      const response = await openaiService.chatMessage(prompt);
+      let explanation = response.choices[0].message.content;
 
       if (!explanation || explanation.trim() === '') {
         explanation = `Let me help you understand this error:
@@ -114,8 +114,8 @@ ${attempt ? `What they've tried so far:\n\`\`\`${language}\n${attempt}\n\`\`\`` 
 
       const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide guidance for ONE small step they can try next. Keep it brief and encouraging.`;
 
-      const response = await geminiService.callGemini(prompt);
-      let hint = geminiService.extractText(response);
+      const response = await openaiService.chatMessage(prompt);
+      let hint = response.choices[0].message.content;
 
       // Fallback hint if response is empty
       if (!hint || hint.trim() === '') {
@@ -216,8 +216,8 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
 
       const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide a helpful explanation using markdown formatting (##, ###, -, **bold**). Structure your response to help them learn step by step. Keep it beginner-friendly but thorough.`;
 
-      const response = await geminiService.callGemini(prompt);
-      let answer = geminiService.extractText(response);
+      const response = await openaiService.chatMessage(prompt);
+      let answer = response.choices[0].message.content;
 
       if (!answer || answer.trim() === '') {
         answer = `Great question! Let me guide you through this:

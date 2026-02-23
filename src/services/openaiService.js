@@ -232,6 +232,40 @@ Please provide the complete tutorial content now (without any code).`;
       return { success: false, message: error.message };
     }
   }
+
+  async chatMessage(prompt) {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: "You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching. Help users debug code, explain concepts, and provide practical coding advice."
+          },
+          {
+            role: "user",
+            content: prompt,
+          },
+        ],
+        temperature: 0.7,
+        max_tokens: 1500,
+      }),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        `OpenAI API error: ${error.error?.message || "Unknown error"}`,
+      );
+    }
+
+    return await response.json();
+  }
 }
 
 export default new OpenAIService();

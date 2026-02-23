@@ -2,7 +2,6 @@ import Tutorial from '../models/Tutorial.js';
 import UserSavedTutorial from '../models/UserSavedTutorial.js';
 import Feedback from '../models/Feedback.js';
 import openaiService from '../services/openaiService.js';
-import geminiService from '../services/geminiService.js';
 
 class TutorialController {
   // Get all pre-generated tutorials, optionally filtered by language
@@ -373,35 +372,7 @@ class TutorialController {
           }
         }
 
-        // --- GEMINI AI GENERATION (default) ---
-        try {
-          const aiContent = await geminiService.generateTutorial(
-            concept,
-            language.toLowerCase(),
-            difficulty || 'beginner'
-          );
-          tutorialData = {
-            ...tutorialData,
-            title: aiContent.title,
-            description: aiContent.description,
-            content: aiContent.content,
-            codeExamples: aiContent.codeExamples,
-            notes: aiContent.notes,
-            tips: aiContent.tips
-          };
-        } catch (aiError) {
-          console.error('Error generating AI content (Gemini):', aiError);
-          if (!content) {
-            return res.status(500).json({
-              success: false,
-              message: 'Failed to generate AI content. Please try again or provide content manually.',
-              error: aiError.message
-            });
-          }
-        }
-
-        /*
-        // --- OPENAI AI GENERATION (uncomment to use OpenAI instead) ---
+        // --- OPENAI AI GENERATION (primary) ---
         try {
           const aiContent = await openaiService.generateTutorial(
             concept,
@@ -417,17 +388,17 @@ class TutorialController {
             notes: aiContent.notes,
             tips: aiContent.tips
           };
-        } catch (openaiError) {
-          console.error('Error generating AI content (OpenAI):', openaiError);
+        } catch (aiError) {
+          console.error('Error generating AI content (OpenAI):', aiError);
           if (!content) {
             return res.status(500).json({
               success: false,
               message: 'Failed to generate AI content. Please try again or provide content manually.',
-              error: openaiError.message
+              error: aiError.message
             });
           }
         }
-        */
+        
       } else if (!title || !content) {
         // Non-AI tutorials require title and content
         return res.status(400).json({
