@@ -44,6 +44,11 @@ if (!process.env.STRIPE_PRICE_ID_PREMIUM || !process.env.STRIPE_SECRET_KEY) {
 
 const app = express();
 
+// when running behind a proxy (e.g. Azure App Service or load balancer)
+// we need to trust the forwarded protocol so req.protocol reflects HTTPS.
+// Without this Passport will generate redirect URIs with http:// instead of https://.
+app.set('trust proxy', true);
+
 const environment = process.env.NODE_ENV || "development";
 const logger = loggerConfig[environment];
 
