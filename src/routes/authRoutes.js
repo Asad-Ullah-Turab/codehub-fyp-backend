@@ -33,6 +33,13 @@ router.post('/reset-password', resetPassword);
 
 // Google OAuth routes
 router.get('/google', (req, res, next) => {
+  console.log('[oauth] incoming /google', {
+    protocol: req.protocol,
+    forwarded: req.headers['x-forwarded-proto'],
+    host: req.headers.host,
+    secure: req.secure
+  });
+
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(500).json({
       status: 'error',
@@ -85,6 +92,13 @@ router.get('/google/callback', (req, res, next) => {
 
 // GitHub OAuth routes
 router.get('/github', (req, res, next) => {
+  console.log('[oauth] incoming /github', {
+    protocol: req.protocol,
+    forwarded: req.headers['x-forwarded-proto'],
+    host: req.headers.host,
+    secure: req.secure
+  });
+
   if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
     return res.status(500).json({
       status: 'error',
