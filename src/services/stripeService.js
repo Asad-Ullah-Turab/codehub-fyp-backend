@@ -36,6 +36,7 @@ export async function createCheckoutSession(user) {
  */
 export async function handleWebhookEvent(event) {
   const User = (await import("../models/User.js")).default;
+  const { createNotification } = await import("../controllers/notificationController.js");
 
   switch (event.type) {
     case "checkout.session.completed": {
@@ -62,6 +63,18 @@ export async function handleWebhookEvent(event) {
 
       await user.save({ validateBeforeSave: false });
       console.log("User successfully upgraded to premium:", user.email);
+
+      // create notification
+      try {
+        await createNotification({
+          userId: user._id,
+          type: 'subscription',
+          message: 'Your subscription to Premium is now active! Enjoy unlimited access.',
+        });
+      } catch (notifErr) {
+        console.error('Failed to create upgrade notification:', notifErr);
+      }
+
       return user;
     }
     case "invoice.payment_failed": {

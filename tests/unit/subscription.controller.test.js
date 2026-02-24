@@ -81,11 +81,19 @@ describe('Subscription Controller', () => {
     req.user = { _id: 'u1', stripeSubscriptionId: 'sub_123' };
     stripeService.cancelSubscription = jest.fn().mockResolvedValue({ id: 'sub_123', status: 'canceled' });
     SubscriptionCancellation.create.mockResolvedValue({});
+    // also mock notification creation
+    const notifSpy = jest.spyOn(require('../../src/controllers/notificationController.js'), 'createNotification');
+    notifSpy.mockResolvedValue({});
+
     await cancelSubscription(req, res);
     expect(stripeService.cancelSubscription).toHaveBeenCalledWith(req.user);
     expect(SubscriptionCancellation.create).toHaveBeenCalledWith(expect.objectContaining({
       user: req.user._id,
       stripeSubscriptionId: req.user.stripeSubscriptionId,
+    }));
+    expect(notifSpy).toHaveBeenCalledWith(expect.objectContaining({
+      userId: req.user._id,
+      type: 'subscription',
     }));
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 'sub_123', status: 'canceled' } });

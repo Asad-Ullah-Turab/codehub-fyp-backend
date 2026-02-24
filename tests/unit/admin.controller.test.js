@@ -15,14 +15,17 @@ import {
   createTutorial,
   getAnalytics,
   searchUsers,
-  getRecentActivity
+  getRecentActivity,
+  approveCertificate
 } from '../../src/controllers/adminController.js';
+import mongoose from 'mongoose';
 import User from '../../src/models/User.js';
 import Tutorial from '../../src/models/Tutorial.js';
 import AIChat from '../../src/models/AIChat.js';
 import Progress from '../../src/models/Progress.js';
 import Course from '../../src/models/Course.js';
 import CourseEnrollment from '../../src/models/CourseEnrollment.js';
+import Certificate from '../../src/models/Certificate.js';
 
 // Mock email service
 import { jest } from '@jest/globals';
@@ -83,5 +86,33 @@ describe('Admin Controller', () => {
     expect(res.statusCode).toBe(200);
     expect(res.responseData.data).toHaveProperty('premiumUsers');
     expect(typeof res.responseData.data.premiumUsers).toBe('number');
+  });
+
+  it('should notify user when certificate is approved', async () => {
+    // create user and certificate
+    const user = await User.create({
+      name: 'Cert User',
+      email: 'cert@example.com',
+      password: 'pass',
+      isEmailVerified: true
+    });
+    const cert = await Certificate.create({
+      user: user._id,
+      course: mongoose.Types.ObjectId(),
+      approvalStatus: 'pending'
+    });
+
+    const notifSpy = jest.spyOn(require('../../src/controllers/notificationController.js'), 'createNotification');
+    notifSpy.mockResolvedValue({});
+
+    const req = mockRequest({}, { certificateId: cert._id.toString() }, {}, { _id: user._id, role: 'admin' });
+    const res = mockResponse();
+    await approveCertificate(req, res);
+
+    expect(notifSpy).toHaveBeenCalledWith(expect.objectContaining({
+      userId: user._id,
+      type: 'certificateApproved'
+    }));
+    expect(res.statusCode).toBe(200);
   });
 });

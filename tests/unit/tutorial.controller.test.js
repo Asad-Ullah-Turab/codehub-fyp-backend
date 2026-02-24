@@ -182,6 +182,46 @@ describe('Tutorial Controller', () => {
       ]);
     });
 
+    // additional tests for createTutorial notifications
+    describe('createTutorial', () => {
+      it('should notify user when AI-generated tutorial is created', async () => {
+        // mock OpenAI service
+        const openai = require('../../src/services/openaiService.js');
+        jest.spyOn(openai, 'generateTutorial').mockResolvedValue({
+          title: 'AI Title',
+          description: 'AI Desc',
+          content: 'AI Content',
+          codeExamples: [],
+          notes: [],
+          tips: []
+        });
+
+        // create test user
+        const user = await User.create({
+          name: 'AI User',
+          email: 'aiuser@example.com',
+          password: 'password',
+          isEmailVerified: true
+        });
+
+        const notifSpy = jest.spyOn(require('../../src/controllers/notificationController.js'), 'createNotification');
+        notifSpy.mockResolvedValue({});
+
+        const req = mockRequest({
+          language: 'javascript',
+          concept: 'loops',
+          tags: ['AI-generated']
+        }, {}, {}, { _id: user._id });
+        const res = mockResponse();
+
+        await tutorialController.createTutorial(req, res);
+
+        expect(res.statusCode).toBe(201);
+        expect(res.responseData.success).toBe(true);
+        expect(notifSpy).toHaveBeenCalledWith(expect.objectContaining({ userId: user._id, type: 'tutorialAI' }));
+      });
+    });
+
     it('should get tutorials by language', async () => {
       const req = mockRequest({}, { language: 'python' });
       const res = mockResponse();

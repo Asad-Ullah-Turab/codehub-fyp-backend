@@ -5,6 +5,7 @@ import CourseLesson from "../models/CourseLesson.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Quiz from "../models/Quiz.js";
 import Certificate from "../models/Certificate.js";
+import { createNotification } from "./notificationController.js";
 
 // ========== PUBLIC ROUTES ==========
 
@@ -179,6 +180,32 @@ export const enrollInCourse = async (req, res) => {
     // Update course enrollment count
     course.enrollmentCount = (course.enrollmentCount || 0) + 1;
     await course.save();
+
+    // lesson completed notification (fetch lesson title if possible)
+    try {
+      const lesson = await CourseLesson.findById(lessonId).select('title');
+      const lessonTitle = lesson ? lesson.title : 'a lesson';
+      await createNotification({
+        userId,
+        type: 'lessonComplete',
+        message: `You completed ${lessonTitle}. Keep going!`,
+        link: `/courses/${courseId}`,
+      });
+    } catch (notifErr) {
+      console.error('Lesson complete notification failed:', notifErr);
+    }
+
+    // Notification for enrollment
+    try {
+      await createNotification({
+        userId,
+        type: 'enrollment',
+        message: `You have been enrolled in the course "${course.title}".`,
+        link: `/courses/${course._id}`,
+      });
+    } catch (notifErr) {
+      console.error('Enrollment notification failed:', notifErr);
+    }
 
     res.status(201).json({
       success: true,

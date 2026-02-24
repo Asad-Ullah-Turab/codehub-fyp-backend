@@ -2,6 +2,7 @@ import Tutorial from '../models/Tutorial.js';
 import UserSavedTutorial from '../models/UserSavedTutorial.js';
 import Feedback from '../models/Feedback.js';
 import openaiService from '../services/openaiService.js';
+import { createNotification } from './notificationController.js';
 
 class TutorialController {
   // Get all pre-generated tutorials, optionally filtered by language

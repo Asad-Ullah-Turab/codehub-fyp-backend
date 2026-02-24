@@ -68,6 +68,7 @@ app.use(
 // 🔥 CRITICAL: Webhook route MUST come BEFORE express.json() middleware
 // Import and mount webhook route with raw body parsing FIRST
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 app.use("/api/subscriptions", subscriptionRoutes);
 
 // NOW apply JSON parsing for all other routes
@@ -117,6 +118,7 @@ app.use("/api/codehelp", codeHelpRoutes);
 app.use("/api/codechat", codeChatRoutes);
 app.use("/api/views", viewTrackingRoutes);
 app.use("/api/newsletter", newsletterRoutes);
+app.use("/api/notifications", notificationRoutes);
 // 🔥 NOTE: subscription routes moved to top of file for webhook raw body handling
 
 // 404 handler

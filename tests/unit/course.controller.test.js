@@ -325,6 +325,16 @@ describe('Course Controller', () => {
       expect(enrollment.overallProgress).toBe(0);
     });
 
+    it('should send a notification when enrolling', async () => {
+      const notifSpy = jest.spyOn(require('../../src/controllers/notificationController.js'), 'createNotification');
+      notifSpy.mockResolvedValue({});
+
+      const req = mockRequest({ courseId }, {}, {}, { _id: userId });
+      const res = mockResponse();
+      await enrollInCourse(req, res);
+      expect(notifSpy).toHaveBeenCalledWith(expect.objectContaining({ userId, type: 'enrollment' }));
+    });
+
     it('should return 400 if user already enrolled', async () => {
       // Enroll user first
       await CourseEnrollment.create({ user: userId, course: courseId, progress: 0 });

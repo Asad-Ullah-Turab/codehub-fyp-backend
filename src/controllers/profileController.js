@@ -2,6 +2,7 @@ import User from "../models/User.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Progress from "../models/Progress.js";
 import Certificate from "../models/Certificate.js";
+import { createNotification } from "./notificationController.js";
 import fs from "fs";
 import path from "path";
 
@@ -102,6 +103,17 @@ export const updateProfile = async (req, res) => {
       await updatedUser.save();
     }
 
+    // notify user of profile update
+    try {
+      await createNotification({
+        userId,
+        type: 'profileUpdate',
+        message: 'Your profile has been updated.',
+      });
+    } catch (notifErr) {
+      console.error('Profile update notification failed:', notifErr);
+    }
+
     res.status(200).json({
       success: true,
       message: "Profile updated successfully",
@@ -171,6 +183,17 @@ export const uploadProfilePicture = async (req, res) => {
       { profilePicture: fileUrl },
       { new: true }
     ).select("-password -emailVerificationOTP -passwordResetOTP");
+
+    // notify user picture updated
+    try {
+      await createNotification({
+        userId,
+        type: 'profilePicture',
+        message: 'Your profile picture has been updated.',
+      });
+    } catch (notifErr) {
+      console.error('Profile picture notification failed:', notifErr);
+    }
 
     res.status(200).json({
       success: true,

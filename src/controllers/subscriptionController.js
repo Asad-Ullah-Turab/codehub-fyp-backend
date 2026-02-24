@@ -1,5 +1,6 @@
 import stripeService from "../services/stripeService.js";
 import SubscriptionCancellation from "../models/SubscriptionCancellation.js";
+import { createNotification } from "./notificationController.js";
 
 // Create a checkout session and return the URL
 export const createCheckoutSession = async (req, res) => {
@@ -96,6 +97,17 @@ export const cancelSubscription = async (req, res) => {
       });
     } catch (logErr) {
       console.error('Failed to record cancellation event:', logErr);
+    }
+
+    // create notification about cancellation
+    try {
+      await createNotification({
+        userId: user._id,
+        type: 'subscription',
+        message: 'Your premium subscription has been cancelled. You have been moved to the free plan.',
+      });
+    } catch (notifErr) {
+      console.error('Failed to create cancellation notification:', notifErr);
     }
 
     res.status(200).json({ success: true, data: sub });
