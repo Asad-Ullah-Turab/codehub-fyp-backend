@@ -46,7 +46,11 @@ No Stripe secret key is required in the frontend. The client initiates the flow 
 
 The only frontend route you need to handle is `/upgrade` which simply kicks off the checkout flow and redirects the user.
 
-## 5. Notes & Future Plans
+## 5. Cancelling Subscriptions
+
+Users may cancel their active paid subscription at any time. The backend now exposes an authenticated POST endpoint `/api/subscriptions/cancel` which will call Stripe's API to delete the subscription and immediately downgrade the user back to the free plan. The frontend can wire this up to a "Cancel Subscription" button (for example, on the profile or subscription pages).
+
+## 6. Notes & Future Plans
 
 - Free users are limited to 5 queries each for the general AI chatbot, the code assistant chatbot, and tutorial generation. Limits are stored on the user record and decremented automatically.
 - The system is designed to be extensible; you can later implement a scheduled job to reset these counters monthly for free users or add more tiers.

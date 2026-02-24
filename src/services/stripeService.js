@@ -95,9 +95,35 @@ export async function handleWebhookEvent(event) {
   }
 }
 
+
+/**
+ * Cancel an existing subscription in Stripe and update local user record.
+ * @param {Object} user - Mongoose user document
+ * @returns {Object} stripe subscription object returned by the API
+ */
+export async function cancelSubscription(user) {
+  if (!user.stripeSubscriptionId) {
+    throw new Error('No active subscription to cancel');
+  }
+  // cancel immediately; you could also set cancel_at_period_end if desired
+  const sub = await stripe.subscriptions.del(user.stripeSubscriptionId);
+
+  // update local record to match Stripe state (the webhook handler will also cover this)
+  user.subscriptionStatus = sub.status;
+  if (sub.status !== 'active') {
+    user.subscriptionPlan = 'free';
+    user.chatQueriesRemaining = 5;
+    user.codeQueriesRemaining = 5;
+    user.tutorialGenRemaining = 5;
+  }
+  await user.save({ validateBeforeSave: false });
+  return sub;
+}
+
 export { stripe };
 export default {
   createCheckoutSession,
   handleWebhookEvent,
+  cancelSubscription,
   stripe,
 };

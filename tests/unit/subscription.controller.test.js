@@ -1,4 +1,4 @@
-import { createCheckoutSession, getSubscriptionStatus } from '../../src/controllers/subscriptionController.js';
+import { createCheckoutSession, getSubscriptionStatus, cancelSubscription } from '../../src/controllers/subscriptionController.js';
 import User from '../../src/models/User.js';
 
 // Mock stripe service so we don't hit external API
@@ -17,6 +17,7 @@ describe('Subscription Controller', () => {
       json: jest.fn(),
     };
     stripeService.createCheckoutSession.mockReset();
+    stripeService.cancelSubscription && stripeService.cancelSubscription.mockReset && stripeService.cancelSubscription.mockReset();
   });
 
   it('should return 401 when user not authenticated on create session', async () => {
@@ -63,5 +64,28 @@ describe('Subscription Controller', () => {
         tutorialGenRemaining: 5,
       },
     });
+  });
+
+  it('should cancel an existing subscription when user has one', async () => {
+    req.user = { stripeSubscriptionId: 'sub_123' };
+    stripeService.cancelSubscription = jest.fn().mockResolvedValue({ id: 'sub_123', status: 'canceled' });
+    await cancelSubscription(req, res);
+    expect(stripeService.cancelSubscription).toHaveBeenCalledWith(req.user);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 'sub_123', status: 'canceled' } });
+  });
+
+  it('should return 400 when cancelling without an active subscription', async () => {
+    req.user = {};
+    await cancelSubscription(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ success: false, message: 'No active subscription found' });
+  });
+
+  it('should return 401 when user not authenticated on cancel', async () => {
+    req.user = null;
+    await cancelSubscription(req, res);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Unauthorized' });
   });
 });

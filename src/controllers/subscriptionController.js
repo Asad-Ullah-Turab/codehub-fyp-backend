@@ -73,8 +73,26 @@ export const stripeWebhook = async (req, res) => {
   res.status(200).json({ received: true });
 };
 
+export const cancelSubscription = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    if (!user.stripeSubscriptionId) {
+      return res.status(400).json({ success: false, message: 'No active subscription found' });
+    }
+    const sub = await stripeService.cancelSubscription(user);
+    res.status(200).json({ success: true, data: sub });
+  } catch (error) {
+    console.error('Error cancelling subscription:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export default {
   createCheckoutSession,
   getSubscriptionStatus,
   stripeWebhook,
+  cancelSubscription,
 };
