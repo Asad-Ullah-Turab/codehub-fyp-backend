@@ -120,7 +120,7 @@ export const getAllUsers = async (req, res) => {
     if (plan) filter.subscriptionPlan = plan;
 
     const users = await User.find(filter)
-      .select("name email role accountStatus profileImage createdAt subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining")
+      .select("name email role accountStatus profileImage createdAt lastLogin subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining")
       .limit(parseInt(limit))
       .skip(skip)
       .sort({ createdAt: -1 });
