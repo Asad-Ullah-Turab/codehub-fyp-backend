@@ -207,7 +207,7 @@ class EmailService {
   async sendContactConfirmation(email, name, subject) {
     if (!this.isAvailable()) {
       console.log(
-        "⚠️  Email service not available - skipping contact confirmation email"
+        "Email service not available - skipping contact confirmation email"
       );
       return;
     }
@@ -241,7 +241,7 @@ class EmailService {
   }) {
     if (!this.isAvailable()) {
       console.log(
-        "⚠️  Email service not available - skipping admin notification"
+        "Email service not available - skipping admin notification"
       );
       return;
     }
@@ -280,7 +280,7 @@ class EmailService {
   async sendContactResponse(email, name, subject, response) {
     if (!this.isAvailable()) {
       console.log(
-        "⚠️  Email service not available - skipping contact response email"
+        "Email service not available - skipping contact response email"
       );
       return;
     }
@@ -315,7 +315,7 @@ class EmailService {
   }) {
     if (!this.isAvailable()) {
       console.log(
-        "⚠️  Email service not available - skipping contact reply email"
+        "Email service not available - skipping contact reply email"
       );
       return;
     }

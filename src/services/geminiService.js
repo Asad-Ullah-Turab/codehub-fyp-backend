@@ -107,14 +107,14 @@ class GeminiService {
     // Extract tips (lines that start with common tip indicators)
     const tips = [];
     const tipRegex =
-      /(?:💡|Tip:|Pro tip:|Best practice:|Remember:)(.*?)(?:\n|$)/gi;
+      /(?:Tip:|Pro tip:|Best practice:|Remember:)(.*?)(?:\n|$)/gi;
     while ((match = tipRegex.exec(content)) !== null) {
       const tip = match[1].trim();
       if (tip) tips.push(tip);
     }
     // Extract notes (lines that mention "note" or "important")
     const notes = [];
-    const noteRegex = /(?:📝|Note:|Important:|Keep in mind:)(.*?)(?:\n|$)/gi;
+    const noteRegex = /(?:Note:|Important:|Keep in mind:)(.*?)(?:\n|$)/gi;
     while ((match = noteRegex.exec(content)) !== null) {
       const note = match[1].trim();
       if (note) notes.push(note);

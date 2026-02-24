@@ -1,11 +1,17 @@
 import { createCheckoutSession, getSubscriptionStatus, cancelSubscription } from '../../src/controllers/subscriptionController.js';
 import User from '../../src/models/User.js';
+import SubscriptionCancellation from '../../src/models/SubscriptionCancellation.js';
 
 // Mock stripe service so we don't hit external API
 jest.mock('../../src/services/stripeService.js', () => ({
   createCheckoutSession: jest.fn(),
 }));
 import stripeService from '../../src/services/stripeService.js';
+
+// mock cancellation model
+jest.mock('../../src/models/SubscriptionCancellation.js', () => ({
+  create: jest.fn(),
+}));
 
 describe('Subscription Controller', () => {
   let req, res;
@@ -17,7 +23,12 @@ describe('Subscription Controller', () => {
       json: jest.fn(),
     };
     stripeService.createCheckoutSession.mockReset();
-    stripeService.cancelSubscription && stripeService.cancelSubscription.mockReset && stripeService.cancelSubscription.mockReset();
+    if (stripeService.cancelSubscription && stripeService.cancelSubscription.mockReset) {
+      stripeService.cancelSubscription.mockReset();
+    }
+    if (SubscriptionCancellation.create) {
+      SubscriptionCancellation.create.mockReset();
+    }
   });
 
   it('should return 401 when user not authenticated on create session', async () => {
@@ -67,12 +78,27 @@ describe('Subscription Controller', () => {
   });
 
   it('should cancel an existing subscription when user has one', async () => {
-    req.user = { stripeSubscriptionId: 'sub_123' };
+    req.user = { _id: 'u1', stripeSubscriptionId: 'sub_123' };
     stripeService.cancelSubscription = jest.fn().mockResolvedValue({ id: 'sub_123', status: 'canceled' });
+    SubscriptionCancellation.create.mockResolvedValue({});
     await cancelSubscription(req, res);
     expect(stripeService.cancelSubscription).toHaveBeenCalledWith(req.user);
+    expect(SubscriptionCancellation.create).toHaveBeenCalledWith(expect.objectContaining({
+      user: req.user._id,
+      stripeSubscriptionId: req.user.stripeSubscriptionId,
+    }));
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 'sub_123', status: 'canceled' } });
+  });
+
+  it('should still respond success when cancellation record fails', async () => {
+    req.user = { _id: 'u1', stripeSubscriptionId: 'sub_123' };
+    stripeService.cancelSubscription = jest.fn().mockResolvedValue({ id: 'sub_123', status: 'canceled' });
+    SubscriptionCancellation.create.mockRejectedValue(new Error('db error'));
+    await cancelSubscription(req, res);
+    expect(stripeService.cancelSubscription).toHaveBeenCalledWith(req.user);
+    expect(SubscriptionCancellation.create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
   });
 
   it('should return 400 when cancelling without an active subscription', async () => {
