@@ -105,6 +105,11 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
+    // Access level
+    isPremium: {
+      type: Boolean,
+      default: false,
+    },
     // Status
     isPublished: {
       type: Boolean,

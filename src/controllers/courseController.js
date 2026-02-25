@@ -20,6 +20,7 @@ export const getAllCourses = async (req, res) => {
     if (category) filter.category = category.toLowerCase();
     if (difficulty) filter.difficulty = difficulty.toLowerCase();
 
+
     const skip = (page - 1) * limit;
 
     const courses = await Course.find(filter)
@@ -152,6 +153,14 @@ export const enrollInCourse = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: "Course not found",
+      });
+    }
+
+    // premium course enrollment requires premium user
+    if (course.isPremium && !req.user.isPremium()) {
+      return res.status(403).json({
+        success: false,
+        message: "Only premium users can enroll in this course",
       });
     }
 

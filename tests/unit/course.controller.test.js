@@ -13,6 +13,7 @@ import CourseEnrollment from '../../src/models/CourseEnrollment.js';
 import CourseLesson from '../../src/models/CourseLesson.js';
 import CourseSection from '../../src/models/CourseSection.js';
 import User from '../../src/models/User.js';
+import * as courseAdminController from '../../src/controllers/courseAdminController.js';
 
 // Mock request and response objects
 const mockRequest = (body = {}, params = {}, query = {}, user = null) => ({
@@ -136,6 +137,31 @@ describe('Course Controller', () => {
       expect(res.responseData.success).toBe(true);
       expect(res.responseData.data).toHaveLength(1);
       expect(res.responseData.data[0].difficulty).toBe('beginner');
+    });
+
+    it('should hide premium courses from unauthenticated or non-premium users', async () => {
+      // make one course premium
+      await Course.findOneAndUpdate({ title: 'JavaScript Advanced' }, { isPremium: true });
+      const req = mockRequest(); // no user
+      const res = mockResponse();
+
+      await getAllCourses(req, res);
+      expect(res.responseData.data.every(c => !c.isPremium)).toBe(true);
+      // logged in non-premium
+      const user = await User.create({ name: 'Free', email: 'free@ex.com', password: 'pw', isEmailVerified: true });
+      const req2 = mockRequest({}, {}, {}, { _id: user._id });
+      const res2 = mockResponse();
+      await getAllCourses(req2, res2);
+      expect(res2.responseData.data.every(c => !c.isPremium)).toBe(true);
+    });
+
+    it('should show premium courses to premium users', async () => {
+      await Course.findOneAndUpdate({ title: 'JavaScript Advanced' }, { isPremium: true });
+      const prem = await User.create({ name: 'Premium', email: 'prem@ex.com', password: 'pw', isEmailVerified: true, subscriptionPlan: 'premium', subscriptionStatus: 'active' });
+      const req = mockRequest({}, {}, {}, { _id: prem._id });
+      const res = mockResponse();
+      await getAllCourses(req, res);
+      expect(res.responseData.data.some(c => c.isPremium)).toBe(true);
     });
   });
 
@@ -359,6 +385,31 @@ describe('Course Controller', () => {
       expect(res.responseData.success).toBe(false);
       expect(res.responseData.message).toBe('Course not found');
     });
+
+    it('should prevent free user from enrolling in premium course', async () => {
+      // make course premium
+      await Course.findByIdAndUpdate(courseId, { isPremium: true });
+      const req = mockRequest({ courseId }, {}, {}, { _id: userId });
+      const res = mockResponse();
+      await enrollInCourse(req, res);
+      expect(res.statusCode).toBe(403);
+      expect(res.responseData.success).toBe(false);
+      expect(res.responseData.message).toBe('Only premium users can enroll in this course');
+    });
+
+    it('should allow premium user to enroll in premium course', async () => {
+      // upgrade user to premium
+      await User.findByIdAndUpdate(userId, { subscriptionPlan: 'premium', subscriptionStatus: 'active' });
+      // make course premium
+      await Course.findByIdAndUpdate(courseId, { isPremium: true });
+      const req = mockRequest({ courseId }, {}, {}, { _id: userId });
+      const res = mockResponse();
+      await enrollInCourse(req, res);
+      expect(res.statusCode).toBe(201);
+      expect(res.responseData.success).toBe(true);
+      const enrollment = await CourseEnrollment.findOne({ user: userId, course: courseId });
+      expect(enrollment).toBeTruthy();
+    });
   });
 
   describe('getUserEnrolledCourses', () => {
@@ -408,6 +459,36 @@ describe('Course Controller', () => {
         { user: userId, course: courseId1, overallProgress: 50, enrolledAt: new Date() },
         { user: userId, course: courseId2, overallProgress: 25, enrolledAt: new Date() }
       ]);
+    });
+  });
+
+  // admin controller premium course creation
+  describe('courseAdminController.createCourse', () => {
+    it('should allow admin to create a premium course', async () => {
+      const admin = await User.create({
+        name: 'AdminUser',
+        email: 'admin2@example.com',
+        password: 'password123',
+        role: 'admin',
+        isEmailVerified: true,
+      });
+      const req = mockRequest({
+        title: 'Premium Admin Course',
+        description: 'Description',
+        shortDescription: 'Short',
+        language: 'python',
+        category: 'web-development',
+        difficulty: 'intermediate',
+        estimatedHours: 5,
+        isPremium: true,
+      }, {}, {}, { _id: admin._id });
+      const res = mockResponse();
+      await courseAdminController.createCourse(req, res);
+      expect(res.statusCode).toBe(201);
+      expect(res.responseData.success).toBe(true);
+      expect(res.responseData.data.isPremium).toBe(true);
+    });
+  });
     });
 
     it('should get user enrolled courses', async () => {
