@@ -1,4 +1,6 @@
 import stripeService from "../services/stripeService.js";
+import SubscriptionCancellation from "../models/SubscriptionCancellation.js";
+import { createNotification } from "./notificationController.js";
 
 // Create a checkout session and return the URL
 export const createCheckoutSession = async (req, res) => {
@@ -73,8 +75,51 @@ export const stripeWebhook = async (req, res) => {
   res.status(200).json({ received: true });
 };
 
+export const cancelSubscription = async (req, res) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    if (!user.stripeSubscriptionId) {
+      return res.status(400).json({ success: false, message: 'No active subscription found' });
+    }
+    const sub = await stripeService.cancelSubscription(user);
+
+    // log cancellation event
+    try {
+      await SubscriptionCancellation.create({
+        user: user._id,
+        stripeSubscriptionId: user.stripeSubscriptionId,
+        cancelledAt: new Date(),
+        ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
+        userAgent: req.headers['user-agent'] || null,
+      });
+    } catch (logErr) {
+      console.error('Failed to record cancellation event:', logErr);
+    }
+
+    // create notification about cancellation
+    try {
+      await createNotification({
+        userId: user._id,
+        type: 'subscription',
+        message: 'Your premium subscription has been cancelled. You have been moved to the free plan.',
+      });
+    } catch (notifErr) {
+      console.error('Failed to create cancellation notification:', notifErr);
+    }
+
+    res.status(200).json({ success: true, data: sub });
+  } catch (error) {
+    console.error('Error cancelling subscription:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 export default {
   createCheckoutSession,
   getSubscriptionStatus,
   stripeWebhook,
+  cancelSubscription,
 };

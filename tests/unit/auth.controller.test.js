@@ -141,6 +141,24 @@ describe('Authentication Controller', () => {
       expect(res.responseData.data.user.email).toBe('test@example.com');
     });
 
+    it('should create a notification on successful signin', async () => {
+      const notifSpy = jest.spyOn(require('../../src/controllers/notificationController.js'), 'createNotification');
+      notifSpy.mockResolvedValue({});
+
+      const req = mockRequest({
+        email: 'test@example.com',
+        password: 'password123'
+      });
+      const res = mockResponse();
+
+      await signin(req, res);
+
+      expect(notifSpy).toHaveBeenCalledWith(expect.objectContaining({
+        userId: expect.anything(),
+        type: 'login'
+      }));
+    });
+
     it('should reject signin with wrong password', async () => {
       const req = mockRequest({
         email: 'test@example.com',

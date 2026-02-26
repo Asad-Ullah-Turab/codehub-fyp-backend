@@ -2,7 +2,7 @@
 
 A robust Node.js backend application for CodeHub, featuring user authentication, email verification, and secure code execution in Docker containers.
 
-## 🚀 Features
+## Features
 
 - **User Authentication**: JWT-based authentication with OTP email verification
 - **Code Execution**: Multi-language code execution (Python, JavaScript, C++) in secure Docker containers with **full input support**
@@ -101,7 +101,7 @@ BCRYPT_ROUNDS=12
 SESSION_SECRET=your_session_secret_key
 ```
 
-## 🚀 Usage
+## Usage
 
 ### Development Mode
 ```bash
@@ -150,7 +150,7 @@ npm run test:watch
 - 🔧 **[Troubleshooting Guide](docs/TEST_TROUBLESHOOTING_GUIDE.md)** - Common issues and solutions
 - ✅ **[Persistent Container Tests](tests/integration/persistentContainers.test.js)** - Input support validation
 
-## 📚 API Documentation
+## API Documentation
 
 ### Authentication Endpoints
 
@@ -219,7 +219,7 @@ Content-Type: application/json
 
 📖 **See full input guide**: [User Input Guide](docs/User_Input_Guide.md)
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 codehub-backend/
@@ -270,7 +270,7 @@ CodeHub uses persistent Docker containers with WebSocket communication for fast,
 - ✅ **Python**: `input()`, `int(input())`, `float(input())`
 - ✅ **C++**: `cin >>`, `getline()`, `scanf()`
 - ✅ **JavaScript**: `process.stdin`, event-based input
-- 📚 **Full Documentation**: [User Input Guide](docs/User_Input_Guide.md)
+- **Full Documentation**: [User Input Guide](docs/User_Input_Guide.md)
 - 🧪 **21 Tests**: All input scenarios validated (100% passing)
 
 ### Security Features
@@ -308,7 +308,7 @@ npm run db:reset
 npm run db:seed
 ```
 
-## 🚀 Deployment
+## Deployment
 
 ### Environment Setup
 1. Set `NODE_ENV=production`
@@ -346,7 +346,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Documentation**: Check the `/docs` folder for detailed guides
   - 📖 [User Input Guide](docs/User_Input_Guide.md) - How to use input in code
   - 🎯 [Quick Reference](docs/Quick_Reference_Input.md) - Input examples
-  - 🏗️ [Container Architecture](docs/Persistent_Container_Architecture.md) - Technical details
+  - [Container Architecture](docs/Persistent_Container_Architecture.md) - Technical details
 - **Issues**: Report bugs via GitHub Issues
 - **Testing**: See [Testing Documentation](docs/TESTING_DOCUMENTATION.md)
 - **Troubleshooting**: See [Troubleshooting Guide](docs/TEST_TROUBLESHOOTING_GUIDE.md)
@@ -362,4 +362,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-**Built with ❤️ for the CodeHub community**
+**Built with care for the CodeHub community**

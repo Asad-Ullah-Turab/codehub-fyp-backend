@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import emailService from "../services/emailService.js";
+import { createNotification } from "./notificationController.js";
 
 const signToken = (id) => {
   return jwt.sign(
@@ -166,6 +167,17 @@ export const signup = async (req, res) => {
             needsVerification: true,
           },
         });
+
+        // notify user that account was created
+        try {
+          await createNotification({
+            userId: newUser._id,
+            type: 'welcome',
+            message: 'Welcome to CodeHub! Please verify your email to get started.',
+          });
+        } catch (notifErr) {
+          console.error('Signup notification failed:', notifErr);
+        }
       } catch (emailError) {
         // If email fails, delete the user and return error
         await User.findByIdAndDelete(newUser._id);
@@ -272,6 +284,16 @@ export const verifyEmail = async (req, res) => {
     await user.clearEmailVerificationOTP();
 
     // Send JWT token
+    // notify user email verified
+    try {
+      await createNotification({
+        userId: user._id,
+        type: 'emailVerified',
+        message: 'Your email has been verified! Welcome aboard.',
+      });
+    } catch (notifErr) {
+      console.error('Email verification notification failed:', notifErr);
+    }
     createSendToken(user, 200, res);
   } catch (error) {
     console.error("Email verification error:", error);
@@ -284,6 +306,7 @@ export const verifyEmail = async (req, res) => {
 
 // Resend verification OTP
 export const resendVerificationOTP = async (req, res) => {
+    // optionally notify user that new OTP was sent
   try {
     const { email } = req.body;
 
@@ -321,6 +344,16 @@ export const resendVerificationOTP = async (req, res) => {
           status: "success",
           message: "Verification code sent to your email",
         });
+        // notify user of OTP resend
+        try {
+          await createNotification({
+            userId: user._id,
+            type: 'verification',
+            message: 'A new verification code has been sent to your email.',
+          });
+        } catch (notifErr) {
+          console.error('Verification resend notification failed:', notifErr);
+        }
       } catch (emailError) {
         res.status(500).json({
           status: "error",
@@ -464,6 +497,17 @@ export const signin = async (req, res) => {
     // Update last login
     await user.updateLastLogin();
 
+    // send notification about successful login
+    try {
+      await createNotification({
+        userId: user._id,
+        type: 'login',
+        message: 'You have successfully signed in to CodeHub.',
+      });
+    } catch (notifErr) {
+      console.error('Login notification failed:', notifErr);
+    }
+
     createSendToken(user, 200, res);
   } catch (error) {
     console.error("Signin error:", error);
@@ -551,7 +595,7 @@ export const logout = (req, res) => {
 };
 
 // OAuth success callback
-export const oauthSuccess = (req, res) => {
+export const oauthSuccess = async (req, res) => {
   // User is authenticated via passport
   const user = req.user;
 
@@ -570,6 +614,18 @@ export const oauthSuccess = (req, res) => {
 
   // Update last login
   user.updateLastLogin();
+
+  // create login notification (provider info may be on user.provider)
+  try {
+    const providerMsg = user.provider ? ` via ${user.provider}` : '';
+    await createNotification({
+      userId: user._id,
+      type: 'login',
+      message: `You have signed in to CodeHub${providerMsg}.`,
+    });
+  } catch (notifErr) {
+    console.error('OAuth login notification failed:', notifErr);
+  }
 
   // Create JWT token
   const token = jwt.sign(
@@ -644,6 +700,16 @@ export const requestPasswordReset = async (req, res) => {
           status: "success",
           message: "Password reset code sent to your email",
         });
+        // notify user that reset OTP sent
+        try {
+          await createNotification({
+            userId: user._id,
+            type: 'passwordResetOTP',
+            message: 'Password reset code has been sent to your email.',
+          });
+        } catch (notifErr) {
+          console.error('Password reset OTP notification failed:', notifErr);
+        }
       } catch (emailError) {
         res.status(500).json({
           status: "error",
@@ -779,6 +845,15 @@ export const resetPassword = async (req, res) => {
     await user.save();
 
     // Generate JWT token for automatic login
+    try {
+      await createNotification({
+        userId: user._id,
+        type: 'passwordReset',
+        message: 'Your password has been reset successfully.',
+      });
+    } catch (notifErr) {
+      console.error('Password reset notification failed:', notifErr);
+    }
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET || "your-super-secret-jwt-key",

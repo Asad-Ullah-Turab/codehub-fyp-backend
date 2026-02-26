@@ -21,6 +21,7 @@ export const createCourse = async (req, res) => {
       certificateTemplate,
       tags,
       prerequisites,
+      isPremium,
     } = req.body;
 
     // Validation
@@ -43,6 +44,7 @@ export const createCourse = async (req, res) => {
       certificateTemplate,
       tags,
       prerequisites,
+      isPremium: !!isPremium,
       isPublished: false,
     });
 
@@ -98,6 +100,7 @@ export const updateCourse = async (req, res) => {
       "certificateTemplate",
       "tags",
       "thumbnail",
+      "isPremium",
     ];
 
     allowedUpdates.forEach((field) => {

@@ -34,7 +34,7 @@ export const subscribe = async (req, res) => {
       if (subscription.isActive) {
         return res.status(200).json({
           status: "success",
-          message: "You're already subscribed to CodeHub newsletter! Thanks for your continued interest. 🎉",
+          message: "You're already subscribed to CodeHub newsletter! Thanks for your continued interest.",
         });
       } else {
         // Reactivate subscription
@@ -57,14 +57,14 @@ export const subscribe = async (req, res) => {
     // Send welcome email
     try {
       const welcomeMessage = `
-        <h2>Welcome to CodeHub Newsletter! 🎉</h2>
+        <h2>Welcome to CodeHub Newsletter!</h2>
         <p>Thank you for subscribing to our newsletter. You've successfully joined the CodeHub community!</p>
         <p>You can expect to receive:</p>
         <ul>
-          <li>🚀 Latest coding tutorials and tips</li>
-          <li>📚 New course announcements</li>
-          <li>💡 Programming insights and best practices</li>
-          <li>🔧 Tool recommendations and resources</li>
+          <li>Latest coding tutorials and tips</li>
+          <li>New course announcements</li>
+          <li>Programming insights and best practices</li>
+          <li>Tool recommendations and resources</li>
         </ul>
         <p>We're excited to help you on your coding journey!</p>
         <p>Happy coding!</p>
@@ -73,7 +73,7 @@ export const subscribe = async (req, res) => {
 
       await emailService.sendCustomEmail(
         email,
-        "Welcome to CodeHub Newsletter! 🎉",
+        "Welcome to CodeHub Newsletter",
         welcomeMessage,
         "Subscriber"
       );
@@ -99,7 +99,7 @@ export const subscribe = async (req, res) => {
     if (error.code === 11000) {
       return res.status(200).json({
         status: "success",
-        message: "You're already subscribed to CodeHub newsletter! Thanks for your continued interest. 🎉",
+        message: "You're already subscribed to CodeHub newsletter! Thanks for your continued interest.",
       });
     }
 

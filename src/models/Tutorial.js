@@ -1,102 +1,110 @@
 import mongoose from "mongoose";
 
-const codeExampleSchema = new mongoose.Schema({
-  title: String,
-  description: String,
-  code: String,
-  input: String,
-  expectedOutput: String,
-  order: Number
-}, { _id: true });
+const codeExampleSchema = new mongoose.Schema(
+  {
+    title: String,
+    description: String,
+    code: String,
+    input: String,
+    expectedOutput: String,
+    order: Number,
+  },
+  { _id: true },
+);
 
 const tutorialSchema = new mongoose.Schema(
   {
     // Core tutorial information
-    title: { 
-      type: String, 
-      required: true, 
-      trim: true 
+    title: {
+      type: String,
+      required: true,
+      trim: true,
     },
-    
+
     description: {
       type: String,
-      required: true
+      required: true,
     },
-    
+
     // Detailed content
-    content: { 
-      type: String, 
-      required: true 
+    content: {
+      type: String,
+      required: true,
     },
-    
+
     // Programming language
-    language: { 
-      type: String, 
+    language: {
+      type: String,
       enum: ["python", "cpp", "javascript"],
       default: "python",
-      lowercase: true
+      lowercase: true,
     },
-    
+
     // Concept name (e.g., "Variables", "Functions", "Loops")
     concept: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
     },
-    
+
     // Difficulty level
     difficulty: {
       type: String,
       enum: ["beginner", "intermediate", "advanced"],
       default: "beginner",
     },
-    
+
     // Code examples for this tutorial
     codeExamples: [codeExampleSchema],
-    
+
     // Additional notes
     notes: [String],
     tips: [String],
-    
+
     // Tracking
-    createdBy: { 
-      type: mongoose.Schema.Types.ObjectId, 
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      default: null
+      default: null,
     },
     isPreGenerated: {
       type: Boolean,
-      default: true
+      default: true,
     },
-    isAIgenerated: { 
-      type: Boolean, 
-      default: false 
-    },
-    isPublished: {
+    isAIgenerated: {
+      type: Boolean,
+      default: false,
+    },    // premium lock: only premium users can view
+    isPremium: {
       type: Boolean,
       default: false
+    },    isPublished: {
+      type: Boolean,
+      default: false,
     },
-    
+
     // Metadata
     tags: [String],
-    averageRating: { 
-      type: Number, 
-      default: 0 
+    averageRating: {
+      type: Number,
+      default: 0,
     },
     viewCount: {
       type: Number,
-      default: 0
+      default: 0,
     },
-    feedbacks: [{ 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "Feedback" 
-    }],
-    pdfLink: { 
-      type: String, 
-      default: null 
+    feedbacks: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Feedback",
+      },
+    ],
+    pdfLink: {
+      type: String,
+      default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Indexes for efficient querying

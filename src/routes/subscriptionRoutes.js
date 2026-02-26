@@ -10,6 +10,9 @@ router.post('/create-checkout-session', auth, subscriptionController.createCheck
 // get current status
 router.get('/status', auth, subscriptionController.getSubscriptionStatus);
 
+// cancel a subscription for logged-in user
+router.post('/cancel', auth, subscriptionController.cancelSubscription);
+
 // stripe webhook endpoint (no auth)
 router.post('/webhook', express.raw({ type: 'application/json' }), subscriptionController.stripeWebhook);
 

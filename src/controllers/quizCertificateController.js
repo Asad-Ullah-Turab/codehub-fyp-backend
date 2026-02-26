@@ -2,6 +2,7 @@ import Quiz from "../models/Quiz.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Certificate from "../models/Certificate.js";
 import Course from "../models/Course.js";
+import { createNotification } from "./notificationController.js";
 
 // ========== QUIZ SUBMISSION ==========
 
@@ -168,6 +169,18 @@ export const submitQuizAnswers = async (req, res) => {
         );
 
         enrollment.certificate = certificate._id;
+
+        // notify user about course completion
+        try {
+          await createNotification({
+            userId,
+            type: 'courseCompletion',
+            message: `Congratulations! You completed the course \"${course.title}\".`,
+            link: `/courses/${course._id}`,
+          });
+        } catch (notifErr) {
+          console.error('Completion notification failed:', notifErr);
+        }
       }
 
       await enrollment.save();

@@ -120,7 +120,7 @@ export const getAllUsers = async (req, res) => {
     if (plan) filter.subscriptionPlan = plan;
 
     const users = await User.find(filter)
-      .select("name email role accountStatus profileImage createdAt subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining")
+      .select("name email role accountStatus profileImage createdAt lastLogin subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining")
       .limit(parseInt(limit))
       .skip(skip)
       .sort({ createdAt: -1 });
@@ -164,8 +164,21 @@ export const updateUserStatus = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    // Send notification email
+    // Send notification email and in-app notification
     await notifyUserStatusChange(user, accountStatus, reason);
+    try {
+      const msg =
+        accountStatus === 'suspended'
+          ? 'Your account has been suspended.'
+          : 'Your account has been activated.';
+      await createNotification({
+        userId: user._id,
+        type: 'accountStatus',
+        message: msg,
+      });
+    } catch (notifErr) {
+      console.error('Account status notification failed:', notifErr);
+    }
 
     res.status(200).json({
       success: true,
@@ -179,6 +192,7 @@ export const updateUserStatus = async (req, res) => {
 
 // Change user role (promote to admin)
 export const changeUserRole = async (req, res) => {
+  // notify target user of role change
   try {
     const { userId } = req.params;
     const { role } = req.body;
@@ -206,6 +220,17 @@ export const changeUserRole = async (req, res) => {
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    // send in-app notification about role change
+    try {
+      await createNotification({
+        userId: user._id,
+        type: 'roleChange',
+        message: `Your role has been changed to ${role}.`,
+      });
+    } catch (notifErr) {
+      console.error('Role change notification failed:', notifErr);
     }
 
     res.status(200).json({
@@ -702,6 +727,18 @@ export const approveCertificate = async (req, res) => {
     certificate.approvedBy = adminId;
     certificate.approvalDate = new Date();
     await certificate.save();
+
+    // notify user about certificate approval
+    try {
+      await createNotification({
+        userId: certificate.user,
+        type: 'certificateApproved',
+        message: `Your certificate for the course \"${certificate.courseTitle || certificate.course}\" has been approved!`,
+        link: '/profile/certificates',
+      });
+    } catch (notifErr) {
+      console.error('Certificate approval notification failed:', notifErr);
+    }
 
     res.status(200).json({
       success: true,
