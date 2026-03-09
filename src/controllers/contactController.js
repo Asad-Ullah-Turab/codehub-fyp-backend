@@ -102,7 +102,7 @@ export const getAllContacts = async (req, res) => {
     }
 
     const contacts = await Contact.find(query)
-      .populate("userId", "username email")
+      .populate("userId", "username email name subscriptionPlan")
       .populate("respondedBy", "username email")
       .sort({ createdAt: -1 })
       .limit(parseInt(limit))
@@ -137,7 +137,7 @@ export const getContactById = async (req, res) => {
     const { id } = req.params;
 
     const contact = await Contact.findById(id)
-      .populate("userId", "username email")
+      .populate("userId", "username email name subscriptionPlan")
       .populate("respondedBy", "username email");
 
     if (!contact) {
