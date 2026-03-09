@@ -25,6 +25,7 @@ import {
   approveCertificate,
   rejectCertificate,
   getNewsletterSubscriptions,
+  triggerMonthlyReset,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -70,5 +71,8 @@ router.put("/certificates/:certificateId/reject", rejectCertificate);
 
 // Newsletter Management
 router.get("/newsletter-subscriptions", getNewsletterSubscriptions);
+
+// System Management
+router.post("/trigger-monthly-reset", triggerMonthlyReset);
 
 export default router;

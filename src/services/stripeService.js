@@ -97,8 +97,10 @@ export async function handleWebhookEvent(event) {
       user.subscriptionStatus = sub.status;
       if (sub.status !== "active") {
         user.subscriptionPlan = "free";
-        // Don't reset query limits when downgrading - preserve current consumed values
-        // Only reset when upgrading to premium (handled in subscription creation)
+        // Reset to free tier limits when downgrading
+        user.chatQueriesRemaining = 5;
+        user.codeQueriesRemaining = 5;
+        user.tutorialGenRemaining = 5;
       }
       await user.save({ validateBeforeSave: false });
       return user;
@@ -137,7 +139,10 @@ export async function cancelSubscription(user) {
       // update user record to free plan
       user.subscriptionStatus = "canceled";
       user.subscriptionPlan = "free";
-      // Don't reset query limits - preserve current consumed values
+      // Reset to free tier limits when downgrading
+      user.chatQueriesRemaining = 5;
+      user.codeQueriesRemaining = 5;
+      user.tutorialGenRemaining = 5;
       user.stripeSubscriptionId = undefined;
       await user.save({ validateBeforeSave: false });
       // return a fake response so controller still works
@@ -150,7 +155,10 @@ export async function cancelSubscription(user) {
   user.subscriptionStatus = sub.status;
   if (sub.status !== "active") {
     user.subscriptionPlan = "free";
-    // Don't reset query limits - preserve current consumed values
+    // Reset to free tier limits when downgrading
+    user.chatQueriesRemaining = 5;
+    user.codeQueriesRemaining = 5;
+    user.tutorialGenRemaining = 5;
   }
   await user.save({ validateBeforeSave: false });
   return sub;

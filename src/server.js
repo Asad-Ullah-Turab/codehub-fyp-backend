@@ -2,6 +2,7 @@ import http from "http";
 import app from "../src/app.js";
 import containerManager from "../src/services/containerManager.js";
 import codeExecutorWSService from "../src/services/codeExecutorWSService.js";
+import monthlyResetService from "../src/services/monthlyResetService.js";
 
 const PORT = process.env.PORT || 5000;
 
@@ -11,6 +12,9 @@ const server = http.createServer(app);
 async function startServer() {
   try {
     await containerManager.startAllContainers();
+    
+    // Start monthly reset service for free tier users
+    monthlyResetService.start();
 
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on PORT: ${PORT}`);
@@ -30,6 +34,9 @@ async function shutdown() {
 
   // Close WebSocket connections
   codeExecutorWSService.closeAllConnections();
+
+  // Stop monthly reset service
+  monthlyResetService.stop();
 
   // Stop all containers
   await containerManager.stopAllContainers();

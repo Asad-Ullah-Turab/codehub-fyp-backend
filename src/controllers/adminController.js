@@ -6,6 +6,7 @@ import Course from "../models/Course.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Certificate from "../models/Certificate.js";
 import NewsletterSubscription from "../models/NewsletterSubscription.js";
+import monthlyResetService from "../services/monthlyResetService.js";
 
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {
@@ -965,6 +966,27 @@ export const getNewsletterSubscriptions = async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: "Failed to fetch newsletter subscriptions" 
+    });
+  }
+};
+
+// Trigger monthly reset manually
+export const triggerMonthlyReset = async (req, res) => {
+  try {
+    console.log(`Admin ${req.user.id} triggered manual monthly reset`);
+    
+    await monthlyResetService.triggerReset();
+    
+    res.status(200).json({
+      success: true,
+      message: "Monthly reset completed successfully",
+    });
+  } catch (error) {
+    console.error("Error triggering monthly reset:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to trigger monthly reset",
+      error: error.message 
     });
   }
 };
