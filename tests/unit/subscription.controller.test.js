@@ -1,17 +1,26 @@
-import { createCheckoutSession, getSubscriptionStatus, cancelSubscription } from '../../src/controllers/subscriptionController.js';
+import { jest } from '@jest/globals';
+
+import { createCheckoutSession, getSubscriptionStatus, cancelSubscription, __setStripeService, __setSubscriptionCancellationModel } from '../../src/controllers/subscriptionController.js';
 import User from '../../src/models/User.js';
-import SubscriptionCancellation from '../../src/models/SubscriptionCancellation.js';
+import * as notifController from '../../src/controllers/notificationController.js';
 
-// Mock stripe service so we don't hit external API
-jest.mock('../../src/services/stripeService.js', () => ({
+// create a simple mock stripe service that tests can manipulate
+const mockStripe = {
   createCheckoutSession: jest.fn(),
-}));
-import stripeService from '../../src/services/stripeService.js';
+  cancelSubscription: jest.fn(),
+};
+// override the controller's stripe service reference
+__setStripeService(mockStripe);
 
-// mock cancellation model
-jest.mock('../../src/models/SubscriptionCancellation.js', () => ({
-  create: jest.fn(),
-}));
+// create a mock subscription cancellation model
+const mockCancellation = { create: jest.fn() };
+__setSubscriptionCancellationModel(mockCancellation);
+
+// use mock objects for assertions later
+const stripeService = mockStripe;
+const SubscriptionCancellation = mockCancellation;
+
+
 
 describe('Subscription Controller', () => {
   let req, res;
@@ -22,11 +31,17 @@ describe('Subscription Controller', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
     };
-    stripeService.createCheckoutSession.mockReset();
+
+    // reset mocks on stripe service
+    if (stripeService.createCheckoutSession && stripeService.createCheckoutSession.mockReset) {
+      stripeService.createCheckoutSession.mockReset();
+    }
     if (stripeService.cancelSubscription && stripeService.cancelSubscription.mockReset) {
       stripeService.cancelSubscription.mockReset();
     }
-    if (SubscriptionCancellation.create) {
+
+    // reset subscription cancellation mock
+    if (SubscriptionCancellation.create && SubscriptionCancellation.create.mockReset) {
       SubscriptionCancellation.create.mockReset();
     }
   });
@@ -79,10 +94,10 @@ describe('Subscription Controller', () => {
 
   it('should cancel an existing subscription when user has one', async () => {
     req.user = { _id: 'u1', stripeSubscriptionId: 'sub_123' };
-    stripeService.cancelSubscription = jest.fn().mockResolvedValue({ id: 'sub_123', status: 'canceled' });
+    stripeService.cancelSubscription.mockResolvedValue({ id: 'sub_123', status: 'canceled' });
     SubscriptionCancellation.create.mockResolvedValue({});
     // also mock notification creation
-    const notifSpy = jest.spyOn(require('../../src/controllers/notificationController.js'), 'createNotification');
+    const notifSpy = jest.spyOn(notifController, 'createNotification');
     notifSpy.mockResolvedValue({});
 
     await cancelSubscription(req, res);
@@ -101,7 +116,7 @@ describe('Subscription Controller', () => {
 
   it('should still respond success when cancellation record fails', async () => {
     req.user = { _id: 'u1', stripeSubscriptionId: 'sub_123' };
-    stripeService.cancelSubscription = jest.fn().mockResolvedValue({ id: 'sub_123', status: 'canceled' });
+    stripeService.cancelSubscription.mockResolvedValue({ id: 'sub_123', status: 'canceled' });
     SubscriptionCancellation.create.mockRejectedValue(new Error('db error'));
     await cancelSubscription(req, res);
     expect(stripeService.cancelSubscription).toHaveBeenCalledWith(req.user);
@@ -121,5 +136,18 @@ describe('Subscription Controller', () => {
     await cancelSubscription(req, res);
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({ success: false, message: 'Unauthorized' });
+  });
+
+  it('should respond success when stripe reports missing subscription id', async () => {
+    req.user = { _id: 'u1', stripeSubscriptionId: 'sub_123' };
+    stripeService.cancelSubscription.mockResolvedValue({ id: null, status: 'canceled' });
+
+    await cancelSubscription(req, res);
+    expect(stripeService.cancelSubscription).toHaveBeenCalledWith(req.user);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({
+      success: true,
+      data: { id: null, status: 'canceled' },
+    });
   });
 });

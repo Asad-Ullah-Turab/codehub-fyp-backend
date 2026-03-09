@@ -36,7 +36,8 @@ export async function createCheckoutSession(user) {
  */
 export async function handleWebhookEvent(event) {
   const User = (await import("../models/User.js")).default;
-  const { createNotification } = await import("../controllers/notificationController.js");
+  const { createNotification } =
+    await import("../controllers/notificationController.js");
 
   switch (event.type) {
     case "checkout.session.completed": {
@@ -68,11 +69,12 @@ export async function handleWebhookEvent(event) {
       try {
         await createNotification({
           userId: user._id,
-          type: 'subscription',
-          message: 'Your subscription to Premium is now active! Enjoy unlimited access.',
+          type: "subscription",
+          message:
+            "Your subscription to Premium is now active! Enjoy unlimited access.",
         });
       } catch (notifErr) {
-        console.error('Failed to create upgrade notification:', notifErr);
+        console.error("Failed to create upgrade notification:", notifErr);
       }
 
       return user;
@@ -108,7 +110,6 @@ export async function handleWebhookEvent(event) {
   }
 }
 
-
 /**
  * Cancel an existing subscription in Stripe and update local user record.
  * @param {Object} user - Mongoose user document
@@ -116,15 +117,42 @@ export async function handleWebhookEvent(event) {
  */
 export async function cancelSubscription(user) {
   if (!user.stripeSubscriptionId) {
-    throw new Error('No active subscription to cancel');
+    throw new Error("No active subscription to cancel");
   }
-  // cancel immediately; you could also set cancel_at_period_end if desired
-  const sub = await stripe.subscriptions.del(user.stripeSubscriptionId);
+
+  let sub;
+  try {
+    // cancel immediately; you could also set cancel_at_period_end if desired
+    sub = await stripe.subscriptions.del(user.stripeSubscriptionId);
+  } catch (err) {
+    // if the subscription was already removed on Stripe side, treat as cancelled
+    if (
+      err &&
+      err.type === "StripeInvalidRequestError" &&
+      err.code === "resource_missing"
+    ) {
+      console.warn(
+        "Stripe subscription not found, clearing local subscription id for user",
+        user._id,
+      );
+      // update user record to free plan
+      user.subscriptionStatus = "canceled";
+      user.subscriptionPlan = "free";
+      user.chatQueriesRemaining = 5;
+      user.codeQueriesRemaining = 5;
+      user.tutorialGenRemaining = 5;
+      user.stripeSubscriptionId = undefined;
+      await user.save({ validateBeforeSave: false });
+      // return a fake response so controller still works
+      return { id: user.stripeSubscriptionId || null, status: "canceled" };
+    }
+    throw err;
+  }
 
   // update local record to match Stripe state (the webhook handler will also cover this)
   user.subscriptionStatus = sub.status;
-  if (sub.status !== 'active') {
-    user.subscriptionPlan = 'free';
+  if (sub.status !== "active") {
+    user.subscriptionPlan = "free";
     user.chatQueriesRemaining = 5;
     user.codeQueriesRemaining = 5;
     user.tutorialGenRemaining = 5;

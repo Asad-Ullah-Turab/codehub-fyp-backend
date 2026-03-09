@@ -1,6 +1,19 @@
 import stripeService from "../services/stripeService.js";
 import SubscriptionCancellation from "../models/SubscriptionCancellation.js";
+
+// allow swapping subscription cancellation model in tests
+let SubscriptionCancelModel = SubscriptionCancellation;
+export function __setSubscriptionCancellationModel(model) {
+  SubscriptionCancelModel = model;
+}
 import { createNotification } from "./notificationController.js";
+
+// allow swapping out the stripe service during tests
+let stripeSvc = stripeService;
+export function __setStripeService(newSvc) {
+  stripeSvc = newSvc;
+}
+
 
 // Create a checkout session and return the URL
 export const createCheckoutSession = async (req, res) => {
@@ -9,7 +22,7 @@ export const createCheckoutSession = async (req, res) => {
     if (!user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-    const session = await stripeService.createCheckoutSession(user);
+    const session = await stripeSvc.createCheckoutSession(user);
     res.status(200).json({ success: true, data: { url: session.url } });
   } catch (error) {
     console.error("Error creating checkout session:", error);
@@ -84,11 +97,11 @@ export const cancelSubscription = async (req, res) => {
     if (!user.stripeSubscriptionId) {
       return res.status(400).json({ success: false, message: 'No active subscription found' });
     }
-    const sub = await stripeService.cancelSubscription(user);
+    const sub = await stripeSvc.cancelSubscription(user);
 
     // log cancellation event
     try {
-      await SubscriptionCancellation.create({
+      await SubscriptionCancelModel.create({
         user: user._id,
         stripeSubscriptionId: user.stripeSubscriptionId,
         cancelledAt: new Date(),
