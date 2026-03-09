@@ -7,6 +7,7 @@ import Course from "../models/Course.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Certificate from "../models/Certificate.js";
 import NewsletterSubscription from "../models/NewsletterSubscription.js";
+import SubscriptionTransaction from "../models/SubscriptionTransaction.js";
 import monthlyResetService from "../services/monthlyResetService.js";
 
 // Get dashboard statistics
@@ -77,6 +78,41 @@ export const getDashboardStats = async (req, res) => {
       ? (((recentChats - previousChats) / previousChats) * 100).toFixed(1)
       : "0.0";
 
+    // Calculate subscription earnings from actual transactions
+    const PREMIUM_PRICE = 9.99; // Monthly subscription price
+    const monthlyRecurringRevenue = (premiumUsers * PREMIUM_PRICE).toFixed(2);
+    const annualRecurringRevenue = (premiumUsers * PREMIUM_PRICE * 12).toFixed(2);
+
+    // Get total revenue from completed transactions
+    const totalRevenueData = await SubscriptionTransaction.getTotalRevenue();
+    const totalRevenue = totalRevenueData.totalRevenue || 0;
+    const totalTransactions = totalRevenueData.totalTransactions || 0;
+
+    // Calculate revenue from last 30 days
+    const revenueByDateLast30Days = await SubscriptionTransaction.getRevenueByDateRange(
+      thirtyDaysAgo,
+      new Date()
+    );
+    const revenueGrowth = revenueByDateLast30Days.reduce((sum, item) => sum + parseFloat(item.revenue), 0).toFixed(2);
+
+    // Calculate revenue from previous 30 days for growth rate
+    const revenueByDatePrevious30Days = await SubscriptionTransaction.getRevenueByDateRange(
+      sixtyDaysAgo,
+      thirtyDaysAgo
+    );
+    const previousRevenue = revenueByDatePrevious30Days.reduce((sum, item) => sum + parseFloat(item.revenue), 0);
+
+    const revenueGrowthRate = previousRevenue > 0
+      ? (((parseFloat(revenueGrowth) - previousRevenue) / previousRevenue) * 100).toFixed(1)
+      : parseFloat(revenueGrowth) > 0 ? "100.0" : "0.0";
+
+    // Count new subscriptions in last 30 days
+    const newPremiumUsersLast30Days = await SubscriptionTransaction.countDocuments({
+      type: 'subscription_created',
+      status: 'completed',
+      transactionDate: { $gte: thirtyDaysAgo }
+    });
+
     res.status(200).json({
       success: true,
       data: {
@@ -95,6 +131,19 @@ export const getDashboardStats = async (req, res) => {
         enrollmentGrowthRate,
         tutorialGrowthRate,
         chatGrowthRate,
+        // Earnings data (from actual transactions)
+        monthlyRecurringRevenue: parseFloat(monthlyRecurringRevenue),
+        annualRecurringRevenue: parseFloat(annualRecurringRevenue),
+        revenueGrowth: parseFloat(revenueGrowth),
+        revenueGrowthRate: parseFloat(revenueGrowthRate),
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        totalTransactions,
+        newPremiumUsersLast30Days,
+        revenueByDate: revenueByDateLast30Days.map(item => ({
+          date: item._id,
+          revenue: parseFloat(item.revenue),
+          count: item.count
+        })),
       },
     });
   } catch (error) {
@@ -638,6 +687,58 @@ export const getAnalytics = async (req, res) => {
       topContent = [...topContent, ...formattedTutorials].slice(0, 10);
     }
 
+    // Calculate subscription earnings from actual transactions
+    const PREMIUM_PRICE = 9.99;
+    const premiumUsers = await User.countDocuments({ 
+      subscriptionPlan: "premium", 
+      subscriptionStatus: "active" 
+    });
+    const totalUsers = await User.countDocuments();
+    const activeUsers = await User.countDocuments({ accountStatus: "active" });
+    const totalTutorials = await Tutorial.countDocuments();
+
+    const monthlyRecurringRevenue = (premiumUsers * PREMIUM_PRICE).toFixed(2);
+    const annualRecurringRevenue = (premiumUsers * PREMIUM_PRICE * 12).toFixed(2);
+
+    // Get total revenue from all completed transactions
+    const totalRevenueData = await SubscriptionTransaction.getTotalRevenue();
+    const totalRevenue = totalRevenueData.totalRevenue || 0;
+    const totalSubscriptionTransactions = totalRevenueData.totalTransactions || 0;
+
+    // Revenue over time (last 30 days) from actual transactions
+    const revenueOverTime = await SubscriptionTransaction.getRevenueByDateRange(
+      thirtyDaysAgo,
+      new Date()
+    );
+
+    // Calculate cumulative revenue
+    let cumulativeSum = 0;
+    const formattedRevenueData = revenueOverTime.map((item) => {
+      cumulativeSum += parseFloat(item.revenue);
+      return {
+        date: item._id,
+        newSubscriptions: item.count,
+        revenue: parseFloat(item.revenue),
+        cumulativeRevenue: parseFloat(cumulativeSum.toFixed(2))
+      };
+    });
+
+    // Get transaction breakdown by type
+    const transactionsByType = await SubscriptionTransaction.aggregate([
+      {
+        $match: {
+          transactionDate: { $gte: thirtyDaysAgo }
+        }
+      },
+      {
+        $group: {
+          _id: "$type",
+          count: { $sum: 1 },
+          totalAmount: { $sum: "$amount" }
+        }
+      }
+    ]);
+
     res.status(200).json({
       success: true,
       data: {
@@ -647,7 +748,27 @@ export const getAnalytics = async (req, res) => {
         totalProgress,
         userGrowth,
         chatbotCategories,
-        topContent
+        topContent,
+        // User stats
+        totalUsers,
+        premiumUsers,
+        activeUsers,
+        totalTutorials,
+        // Earnings data (from actual transactions)
+        monthlyRecurringRevenue: parseFloat(monthlyRecurringRevenue),
+        annualRecurringRevenue: parseFloat(annualRecurringRevenue),
+        totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        totalSubscriptionTransactions,
+        revenueOverTime: formattedRevenueData,
+        transactionsByType: transactionsByType.map(t => ({
+          type: t._id,
+          count: t.count,
+          totalAmount: parseFloat(t.totalAmount.toFixed(2))
+        })),
+        premiumConversionRate: ((premiumUsers / totalUsers) * 100).toFixed(2),
+        averageRevenuePerUser: premiumUsers > 0 
+          ? parseFloat((totalRevenue / totalSubscriptionTransactions).toFixed(2))
+          : 0,
       },
     });
   } catch (error) {
