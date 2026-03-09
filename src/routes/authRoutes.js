@@ -1,6 +1,7 @@
 import express from 'express';
 import passport, { isStrategyAvailable } from '../config/oauthConfig.js';
 import User from '../models/User.js';
+import { authLimiter, verificationLimiter } from '../middleware/rateLimitMiddleware.js';
 import { 
   signup, 
   signin, 
@@ -17,19 +18,19 @@ import {
 
 const router = express.Router();
 
-// Public routes
-router.post('/signup', signup);
-router.post('/signin', signin);
+// Public routes - with rate limiting
+router.post('/signup', authLimiter, signup);
+router.post('/signin', authLimiter, signin);
 router.post('/logout', logout);
 
-// Email verification routes
-router.post('/verify-email', verifyEmail);
-router.post('/resend-verification', resendVerificationOTP);
+// Email verification routes - with strict rate limiting
+router.post('/verify-email', verificationLimiter, verifyEmail);
+router.post('/resend-verification', verificationLimiter, resendVerificationOTP);
 
-// Password reset routes
-router.post('/forgot-password', requestPasswordReset);
-router.post('/verify-reset-otp', verifyPasswordResetOTP);
-router.post('/reset-password', resetPassword);
+// Password reset routes - with strict rate limiting
+router.post('/forgot-password', verificationLimiter, requestPasswordReset);
+router.post('/verify-reset-otp', verificationLimiter, verifyPasswordResetOTP);
+router.post('/reset-password', verificationLimiter, resetPassword);
 
 // Google OAuth routes
 router.get('/google', (req, res, next) => {

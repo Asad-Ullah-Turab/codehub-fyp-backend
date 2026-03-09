@@ -1,11 +1,12 @@
 import express from 'express';
 import aiChatController from '../controllers/aiChatController.js';
 import { auth } from '../middleware/authMiddleware.js';
+import { aiLimiter } from '../middleware/rateLimitMiddleware.js';
 
 const router = express.Router();
 
 // Send message to AI chatbot
-router.post('/message', auth, aiChatController.sendMessage);
+router.post('/message', auth, aiLimiter, aiChatController.sendMessage);
 
 // Clear all chats for the user
 router.delete('/clear', auth, aiChatController.clearChats);

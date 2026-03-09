@@ -1,15 +1,16 @@
 import express from "express";
 import courseController from "../controllers/courseController.js";
 import quizCertificateController from "../controllers/quizCertificateController.js";
-import auth from "../middleware/authMiddleware.js";
+import { auth } from "../middleware/authMiddleware.js";
+import { generalLimiter } from "../middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
 
-// ========== PUBLIC ROUTES ==========
-router.get("/", courseController.getAllCourses);
-router.get("/language/:language", courseController.getCoursesByLanguage);
+// ========== PUBLIC ROUTES (with rate limiting) ==========
+router.get("/", generalLimiter, courseController.getAllCourses);
+router.get("/language/:language", generalLimiter, courseController.getCoursesByLanguage);
 // Use auth middleware optionally - will attach user if token exists, but won't fail without it
-router.get("/:id", (req, res, next) => {
+router.get("/:id", generalLimiter, (req, res, next) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (token) {
     return auth(req, res, next);

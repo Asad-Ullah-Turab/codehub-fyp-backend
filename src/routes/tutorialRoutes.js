@@ -1,15 +1,16 @@
 import express from 'express';
 import tutorialController from '../controllers/tutorialController.js';
-import auth from '../middleware/authMiddleware.js';
+import { auth } from '../middleware/authMiddleware.js';
+import { generalLimiter } from '../middleware/rateLimitMiddleware.js';
 
 const router = express.Router();
 
-// Public routes - view tutorials
-router.get('/', tutorialController.getAllTutorials);
-router.get('/languages', tutorialController.getLanguages);
-router.get('/language/:language', tutorialController.getTutorialsByLanguage);
-router.get('/concepts/:language', tutorialController.getConceptsByLanguage);
-router.get('/:id', tutorialController.getTutorialById);
+// Protected routes - view tutorials (authentication required)
+router.get('/', auth, generalLimiter, tutorialController.getAllTutorials);
+router.get('/languages', auth, generalLimiter, tutorialController.getLanguages);
+router.get('/language/:language', auth, generalLimiter, tutorialController.getTutorialsByLanguage);
+router.get('/concepts/:language', auth, generalLimiter, tutorialController.getConceptsByLanguage);
+router.get('/:id', auth, generalLimiter, tutorialController.getTutorialById);
 
 // Protected routes - save/manage tutorials
 router.post('/save', auth, tutorialController.saveTutorial);

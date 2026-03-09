@@ -9,11 +9,12 @@ import {
 } from "../controllers/contactController.js";
 import { auth } from "../middleware/authMiddleware.js";
 import adminMiddleware from "../middleware/adminMiddleware.js";
+import { contactLimiter } from "../middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
 
-// Public route - Submit contact form
-router.post("/", submitContact);
+// Public route - Submit contact form with rate limiting
+router.post("/", contactLimiter, submitContact);
 
 // Admin routes - Manage contact submissions
 router.get("/", auth, adminMiddleware, getAllContacts);

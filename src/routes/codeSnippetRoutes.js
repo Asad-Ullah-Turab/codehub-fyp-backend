@@ -1,6 +1,6 @@
 import express from "express";
 import * as codeSnippetController from "../controllers/codeSnippetController.js";
-import auth from "../middleware/authMiddleware.js";
+import { auth } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
