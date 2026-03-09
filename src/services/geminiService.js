@@ -154,6 +154,57 @@ class GeminiService {
             ],
     };
   }
+
+  async testConnection() {
+    if (!GEMINI_API_KEY) {
+      return { success: false, message: "Gemini API key is not configured" };
+    }
+
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
+      const response = await fetch(url);
+
+      if (response.ok) {
+        return { success: true, message: "Gemini API connection successful" };
+      } else {
+        return { success: false, message: "Gemini API connection failed" };
+      }
+    } catch (error) {
+      return { success: false, message: error.message };
+    }
+  }
+
+  async chatMessage(prompt) {
+    if (!GEMINI_API_KEY) {
+      throw new Error("Gemini API key is not configured");
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+    const body = {
+      contents: [
+        {
+          parts: [{ text: `You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching. Help users debug code, explain concepts, and provide practical coding advice.\n\n${prompt}` }],
+        },
+      ],
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(
+        `Gemini API error: ${error.error?.message || JSON.stringify(error)}`,
+      );
+    }
+
+    return await response.json();
+  }
 }
 
 export default new GeminiService();

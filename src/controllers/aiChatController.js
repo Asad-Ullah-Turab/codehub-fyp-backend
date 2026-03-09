@@ -1,4 +1,4 @@
-import openaiService from "../services/openaiService.js";
+import geminiService from "../services/geminiService.js";
 import AIChat from "../models/AIChat.js";
 
 class AIChatController {
@@ -18,12 +18,12 @@ class AIChatController {
       let systemContext;
       if (context === "course" && contextTitle) {
         systemContext = `You are an AI tutor for "${contextTitle}". Use markdown formatting (##, -, **bold**). Keep answers simple, beginner-friendly, and focused only on ${contextTitle}. If asked about other topics, redirect to the course topic.${
-  contentScope ? `\nReference: ${contentScope}` : ""
-}`;
+          contentScope ? `\nReference: ${contentScope}` : ""
+        }`;
       } else if (context === "tutorial" && contextTitle) {
         systemContext = `You are an AI tutor for tutorial "${contextTitle}". Use markdown formatting (##, -, **bold**). Keep answers simple, beginner-friendly, and focused only on this tutorial topic. If asked about other topics, redirect to the tutorial.${
-  contentScope ? `\nReference: ${contentScope}` : ""
-}`;
+          contentScope ? `\nReference: ${contentScope}` : ""
+        }`;
       } else {
         systemContext = `You are an AI programming assistant. Use markdown formatting and simple language for beginners.`;
       }
@@ -43,9 +43,9 @@ class AIChatController {
         }
       }
 
-      // Call OpenAI API
-      const response = await openaiService.chatMessage(prompt);
-      const aiResponse = response.choices[0].message.content;
+      // Call Gemini API
+      const response = await geminiService.chatMessage(prompt);
+      const aiResponse = geminiService.extractText(response);
 
       // Save to database (optional)
       try {

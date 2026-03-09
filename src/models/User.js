@@ -229,8 +229,7 @@ userSchema.methods.isAccountLocked = function () {
 
 // Helper methods for subscription & limits
 userSchema.methods.isPremium = function () {
-  // Admins are always treated as premium
-  if (this.role === "admin") return true;
+  // Only premium users with active subscriptions bypass limits
   return this.subscriptionPlan === "premium" && this.subscriptionStatus === "active";
 };
 

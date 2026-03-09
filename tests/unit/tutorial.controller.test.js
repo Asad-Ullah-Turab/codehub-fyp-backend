@@ -185,9 +185,9 @@ describe('Tutorial Controller', () => {
     // additional tests for createTutorial notifications
     describe('createTutorial', () => {
       it('should notify user when AI-generated tutorial is created', async () => {
-        // mock OpenAI service
-        const openai = require('../../src/services/openaiService.js');
-        jest.spyOn(openai, 'generateTutorial').mockResolvedValue({
+        // mock Gemini service
+        const gemini = require('../../src/services/geminiService.js');
+        jest.spyOn(gemini, 'generateTutorial').mockResolvedValue({
           title: 'AI Title',
           description: 'AI Desc',
           content: 'AI Content',

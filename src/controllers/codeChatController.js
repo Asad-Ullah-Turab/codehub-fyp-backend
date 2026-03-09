@@ -1,5 +1,5 @@
 import CodeChat from '../models/CodeChat.js';
-import openaiService from '../services/openaiService.js';
+import geminiService from '../services/geminiService.js';
 
 class CodeChatController {
   async sendMessage(req, res) {
@@ -43,9 +43,9 @@ class CodeChatController {
         }
       }
 
-      // Call OpenAI API
-      const response = await openaiService.chatMessage(prompt);
-      const aiResponse = response.choices[0].message.content;
+      // Call Gemini API
+      const response = await geminiService.chatMessage(prompt);
+      const aiResponse = geminiService.extractText(response);
 
       // Save to database
       try {

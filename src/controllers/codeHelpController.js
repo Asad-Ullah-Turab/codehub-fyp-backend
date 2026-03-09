@@ -1,4 +1,4 @@
-import openaiService from '../services/openaiService.js';
+import geminiService from '../services/geminiService.js';
 
 class CodeHelpController {
   async getErrorExplanation(req, res) {
@@ -33,8 +33,20 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
 
       const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide a SHORT, beginner-friendly explanation (max 3-4 sentences) with hints on how to debug. Focus on understanding, not solutions.`;
 
-      const response = await openaiService.chatMessage(prompt);
-      let explanation = response.choices[0].message.content;
+      // enforce limits for free users
+      if (req.user) {
+        try {
+          await req.user.consumeCodeQuery();
+        } catch (limitError) {
+          return res.status(403).json({
+            success: false,
+            message: "You have reached your free code help query limit. Please upgrade to premium for more queries.",
+          });
+        }
+      }
+
+      const response = await geminiService.chatMessage(prompt);
+      const explanation = geminiService.extractText(response);
 
       if (!explanation || explanation.trim() === '') {
         explanation = `Let me help you understand this error:
@@ -114,8 +126,20 @@ ${attempt ? `What they've tried so far:\n\`\`\`${language}\n${attempt}\n\`\`\`` 
 
       const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide guidance for ONE small step they can try next. Keep it brief and encouraging.`;
 
-      const response = await openaiService.chatMessage(prompt);
-      let hint = response.choices[0].message.content;
+      // enforce limits for free users
+      if (req.user) {
+        try {
+          await req.user.consumeCodeQuery();
+        } catch (limitError) {
+          return res.status(403).json({
+            success: false,
+            message: "You have reached your free code help query limit. Please upgrade to premium for more queries.",
+          });
+        }
+      }
+
+      const response = await geminiService.chatMessage(prompt);
+      let hint = geminiService.extractText(response);
 
       // Fallback hint if response is empty
       if (!hint || hint.trim() === '') {
@@ -216,8 +240,20 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
 
       const prompt = `${systemPrompt}\n\n${userPrompt}\n\nProvide a helpful explanation using markdown formatting (##, ###, -, **bold**). Structure your response to help them learn step by step. Keep it beginner-friendly but thorough.`;
 
-      const response = await openaiService.chatMessage(prompt);
-      let answer = response.choices[0].message.content;
+      // enforce limits for free users
+      if (req.user) {
+        try {
+          await req.user.consumeCodeQuery();
+        } catch (limitError) {
+          return res.status(403).json({
+            success: false,
+            message: "You have reached your free code help query limit. Please upgrade to premium for more queries.",
+          });
+        }
+      }
+
+      const response = await geminiService.chatMessage(prompt);
+      let answer = geminiService.extractText(response);
 
       if (!answer || answer.trim() === '') {
         answer = `Great question! Let me guide you through this:

@@ -1,7 +1,7 @@
 import Tutorial from "../models/Tutorial.js";
 import UserSavedTutorial from "../models/UserSavedTutorial.js";
 import Feedback from "../models/Feedback.js";
-import openaiService from "../services/openaiService.js";
+import geminiService from "../services/geminiService.js";
 import { createNotification } from "./notificationController.js";
 
 class TutorialController {
@@ -418,9 +418,9 @@ class TutorialController {
           }
         }
 
-        // --- OPENAI AI GENERATION (primary) ---
+        // --- GEMINI AI GENERATION (primary) ---
         try {
-          const aiContent = await openaiService.generateTutorial(
+          const aiContent = await geminiService.generateTutorial(
             concept,
             language.toLowerCase(),
             difficulty || "beginner",
