@@ -351,6 +351,16 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Testing**: See [Testing Documentation](docs/TESTING_DOCUMENTATION.md)
 - **Troubleshooting**: See [Troubleshooting Guide](docs/TEST_TROUBLESHOOTING_GUIDE.md)
 
+## **Contact**
+
+For any questions or feedback, feel free to reach out:
+
+## **Authors: Israr Ahmad,Asadullah Turab, Muhammad Saad**
+
+## **GitHub: israrahmad831 ,Asad-Ullah-Turab, Saadimehar**
+
+## **LinkedIn: https://www.linkedin.com/in/israrahmad2004/,https://www.linkedin.com/in/asadullah-turab-6946b2236/ ,https://www.linkedin.com/in/muhammad-saad-a58a891a2/**
+
 ## 🎯 Roadmap
 
 - [ ] OAuth integration (Google, GitHub)
