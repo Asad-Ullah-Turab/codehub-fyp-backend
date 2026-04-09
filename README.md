@@ -355,11 +355,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 For any questions or feedback, feel free to reach out:
 
-## **Authors: Israr Ahmad,Asadullah Turab, Muhammad Saad**
+## **Authors**
 
-## **GitHub: israrahmad831 ,Asad-Ullah-Turab, Saadimehar**
+- **Israr Ahmad** - [GitHub](https://github.com/israrahmad831) | [LinkedIn](https://www.linkedin.com/in/israrahmad2004/)
 
-## **LinkedIn: https://www.linkedin.com/in/israrahmad2004/,https://www.linkedin.com/in/asadullah-turab-6946b2236/ ,https://www.linkedin.com/in/muhammad-saad-a58a891a2/**
+- **Asadullah Turab** - [GitHub](https://github.com/Asad-Ullah-Turab) | [LinkedIn](https://www.linkedin.com/in/asadullah-turab-6946b2236/)
+
+- **Muhammad Saad** - [GitHub](https://github.com/Saadimehar) | [LinkedIn](https://www.linkedin.com/in/muhammad-saad-a58a891a2/)
 
 ## 🎯 Roadmap
 
