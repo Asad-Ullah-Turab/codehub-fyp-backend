@@ -225,13 +225,21 @@ export const getQuizDetails = async (req, res) => {
       });
     }
 
-    // Find enrollment to check if user can take this quiz
+    // Resolve course for the quiz. Section quizzes may not have course populated.
+    let quizCourseId = quiz.course;
+    if (!quizCourseId && quiz.section) {
+      const containingCourse = await Course.findOne({ "sections._id": quiz.section });
+      if (containingCourse) {
+        quizCourseId = containingCourse._id;
+      }
+    }
+
     const enrollment = await CourseEnrollment.findOne({
       user: userId,
-      course: quiz.course,
+      course: quizCourseId,
     });
 
-    if (!enrollment && quiz.course) {
+    if (!enrollment) {
       return res.status(403).json({
         success: false,
         message: "You must be enrolled in the course to take this quiz",
@@ -241,8 +249,18 @@ export const getQuizDetails = async (req, res) => {
     // Check retakes limit
     let quizScore;
     if (quiz.type === "section-quiz") {
+      const sectionId =
+        typeof quiz.section === "object" ? quiz.section._id : quiz.section;
+
+      if (!sectionId) {
+        return res.status(400).json({
+          success: false,
+          message: "Section quiz is missing its section reference",
+        });
+      }
+
       const sectionProgress = enrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === quiz.section.toString()
+        (sp) => sp.section.toString() === sectionId.toString()
       );
       quizScore = sectionProgress?.sectionQuizScore;
     } else {

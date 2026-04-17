@@ -1,5 +1,110 @@
 import mongoose from "mongoose";
 
+const lessonSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, "Lesson title is required"],
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: "",
+    },
+    content: {
+      type: String,
+      default: "",
+    },
+    order: {
+      type: Number,
+      required: true,
+    },
+    videoUrl: {
+      type: String,
+      default: null,
+    },
+    duration: {
+      type: Number,
+      default: 0,
+    },
+    difficulty: {
+      type: String,
+      enum: ["beginner", "intermediate", "advanced"],
+      default: "beginner",
+    },
+    estimatedHours: {
+      type: Number,
+      default: 0,
+    },
+    codeExamples: [
+      {
+        title: String,
+        description: String,
+        code: String,
+        language: String,
+        input: String,
+        expectedOutput: String,
+        order: Number,
+        notes: String,
+        explanation: String,
+      },
+    ],
+    notes: [String],
+    tips: [String],
+    resources: [
+      {
+        title: { type: String, required: true },
+        url: { type: String, required: true },
+        type: {
+          type: String,
+          enum: ["documentation", "article", "video", "reference", "example"],
+          default: "reference",
+        },
+        description: { type: String, default: "" },
+        order: { type: Number, default: 0 },
+      },
+    ],
+  },
+  { _id: true }
+);
+
+const sectionSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: [true, "Section title is required"],
+      trim: true,
+    },
+    description: {
+      type: String,
+      default: "",
+    },
+    order: {
+      type: Number,
+      required: true,
+    },
+    lessons: [lessonSchema],
+    estimatedHours: {
+      type: Number,
+      default: 0,
+    },
+    isLocked: {
+      type: Boolean,
+      default: false,
+    },
+    unlockCondition: {
+      type: String,
+      default: null,
+    },
+    sectionQuiz: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Quiz",
+      default: null,
+    },
+  },
+  { _id: true }
+);
+
 const courseSchema = new mongoose.Schema(
   {
     title: {
@@ -41,31 +146,38 @@ const courseSchema = new mongoose.Schema(
       enum: ["beginner", "intermediate", "advanced"],
       default: "beginner",
     },
+    learningObjectives: [String],
+    outcomes: [String],
+    requirements: [String],
+    targetAudience: {
+      type: String,
+      default: "",
+    },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    status: {
+      type: String,
+      enum: ["draft", "published", "archived"],
+      default: "draft",
+    },
     instructor: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
     },
-    // Course content - sections contain lessons and quizzes
-    sections: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "CourseSection",
-      },
-    ],
-    // Final assessment
+    sections: [sectionSchema],
     finalQuiz: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quiz",
       default: null,
     },
-    // Certificate
     certificateTemplate: {
       type: String,
       default: "standard",
       enum: ["standard", "distinguished", "excellence"],
     },
-    // Metadata
     thumbnail: {
       type: String,
       default: null,
@@ -82,7 +194,6 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // Engagement metrics
     enrollmentCount: {
       type: Number,
       default: 0,
@@ -105,12 +216,10 @@ const courseSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    // Access level
     isPremium: {
       type: Boolean,
       default: false,
     },
-    // Status
     isPublished: {
       type: Boolean,
       default: false,

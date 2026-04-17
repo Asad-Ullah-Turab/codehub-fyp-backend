@@ -2,14 +2,32 @@ import mongoose from "mongoose";
 
 const codeExampleSchema = new mongoose.Schema(
   {
-    title: String,
-    description: String,
-    code: String,
-    input: String,
-    expectedOutput: String,
-    order: Number,
+    title: { type: String, default: "" },
+    description: { type: String, default: "" },
+    code: { type: String, default: "" },
+    language: { type: String, default: "" },
+    input: { type: String, default: "" },
+    expectedOutput: { type: String, default: "" },
+    order: { type: Number, default: 0 },
+    notes: { type: String, default: "" },
+    explanation: { type: String, default: "" },
   },
   { _id: true },
+);
+
+const resourceSchema = new mongoose.Schema(
+  {
+    title: { type: String, required: true },
+    url: { type: String, required: true },
+    type: {
+      type: String,
+      enum: ["documentation", "article", "video", "reference", "example"],
+      default: "reference",
+    },
+    description: { type: String, default: "" },
+    order: { type: Number, default: 0 },
+  },
+  { _id: false },
 );
 
 const tutorialSchema = new mongoose.Schema(
@@ -26,7 +44,7 @@ const tutorialSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Detailed content
+    // Main learning content
     content: {
       type: String,
       required: true,
@@ -40,7 +58,7 @@ const tutorialSchema = new mongoose.Schema(
       lowercase: true,
     },
 
-    // Concept name (e.g., "Variables", "Functions", "Loops")
+    // Concept or topic name
     concept: {
       type: String,
       required: true,
@@ -54,14 +72,22 @@ const tutorialSchema = new mongoose.Schema(
       default: "beginner",
     },
 
-    // Code examples for this tutorial
-    codeExamples: [codeExampleSchema],
+    learningObjectives: [String],
+    keyTakeaways: [String],
+    recommendedDurationMinutes: {
+      type: Number,
+      default: 0,
+    },
 
-    // Additional notes
+    // Code examples and supporting resources
+    codeExamples: [codeExampleSchema],
+    resources: [resourceSchema],
+
+    // Additional notes and tips
     notes: [String],
     tips: [String],
 
-    // Tracking
+    // Tracking and ownership
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -74,13 +100,19 @@ const tutorialSchema = new mongoose.Schema(
     isAIgenerated: {
       type: Boolean,
       default: false,
-    },    // premium lock: only premium users can view
+    },
     isPremium: {
       type: Boolean,
-      default: false
-    },    isPublished: {
+      default: false,
+    },
+    isPublished: {
       type: Boolean,
       default: false,
+    },
+    status: {
+      type: String,
+      enum: ["draft", "published", "archived"],
+      default: "published",
     },
 
     // Metadata

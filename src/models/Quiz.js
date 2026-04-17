@@ -65,7 +65,7 @@ const quizSchema = new mongoose.Schema(
     },
     section: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "CourseSection",
+      default: null,
     },
     questions: [questionSchema],
     totalPoints: {

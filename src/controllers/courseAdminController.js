@@ -1,6 +1,5 @@
+import mongoose from "mongoose";
 import Course from "../models/Course.js";
-import CourseSection from "../models/CourseSection.js";
-import CourseLesson from "../models/CourseLesson.js";
 import Quiz from "../models/Quiz.js";
 import Certificate from "../models/Certificate.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
@@ -21,6 +20,10 @@ export const createCourse = async (req, res) => {
       certificateTemplate,
       tags,
       prerequisites,
+      targetAudience,
+      learningObjectives,
+      outcomes,
+      requirements,
       isPremium,
     } = req.body;
 
@@ -29,6 +32,21 @@ export const createCourse = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Missing required fields",
+      });
+    }
+
+    const prerequisiteIds = Array.isArray(prerequisites)
+      ? prerequisites.filter(Boolean)
+      : [];
+
+    const invalidPrerequisites = prerequisiteIds.some(
+      (id) => !mongoose.Types.ObjectId.isValid(id)
+    );
+
+    if (invalidPrerequisites) {
+      return res.status(400).json({
+        success: false,
+        message: "Prerequisites must be valid course IDs.",
       });
     }
 
@@ -43,7 +61,11 @@ export const createCourse = async (req, res) => {
       estimatedHours,
       certificateTemplate,
       tags,
-      prerequisites,
+      prerequisites: prerequisiteIds,
+      targetAudience,
+      learningObjectives,
+      outcomes,
+      requirements,
       isPremium: !!isPremium,
       isPublished: false,
     });
@@ -56,6 +78,14 @@ export const createCourse = async (req, res) => {
       data: course,
     });
   } catch (error) {
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid course data",
+        error: error.message,
+      });
+    }
+
     res.status(500).json({
       success: false,
       message: "Error creating course",
@@ -191,8 +221,6 @@ export const deleteCourse = async (req, res) => {
     }
 
     // Delete related data
-    await CourseSection.deleteMany({ course: id });
-    await CourseLesson.deleteMany({ section: { $in: course.sections } });
     await Quiz.deleteMany({ course: id });
     await CourseEnrollment.deleteMany({ course: id });
     await Course.findByIdAndDelete(id);
@@ -240,23 +268,25 @@ export const addSection = async (req, res) => {
 
     const order = course.sections.length + 1;
 
-    const section = new CourseSection({
-      course: courseId,
+    const section = {
       title,
       description,
       order,
-    });
+      lessons: [],
+      estimatedHours: 0,
+      isLocked: false,
+      unlockCondition: null,
+      sectionQuiz: null,
+    };
 
-    await section.save();
-
-    course.sections.push(section._id);
+    course.sections.push(section);
     course.totalSections = course.sections.length;
     await course.save();
 
     res.status(201).json({
       success: true,
       message: "Section added successfully",
-      data: section,
+      data: course.sections[course.sections.length - 1],
     });
   } catch (error) {
     res.status(500).json({
@@ -273,9 +303,9 @@ export const updateSection = async (req, res) => {
     const { sectionId } = req.params;
     const { title, description } = req.body;
 
-    const section = await CourseSection.findById(sectionId).populate("course");
+    const course = await Course.findOne({ "sections._id": sectionId });
 
-    if (!section) {
+    if (!course) {
       return res.status(404).json({
         success: false,
         message: "Section not found",
@@ -284,7 +314,7 @@ export const updateSection = async (req, res) => {
 
     // Check authorization
     if (
-      section.course.instructor.toString() !== req.user._id.toString() &&
+      course.instructor.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -293,10 +323,18 @@ export const updateSection = async (req, res) => {
       });
     }
 
+    const section = course.sections.id(sectionId);
+    if (!section) {
+      return res.status(404).json({
+        success: false,
+        message: "Section not found",
+      });
+    }
+
     if (title) section.title = title;
     if (description) section.description = description;
 
-    await section.save();
+    await course.save();
 
     res.status(200).json({
       success: true,
@@ -317,9 +355,9 @@ export const deleteSection = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
-    const section = await CourseSection.findById(sectionId).populate("course");
+    const course = await Course.findOne({ "sections._id": sectionId });
 
-    if (!section) {
+    if (!course) {
       return res.status(404).json({
         success: false,
         message: "Section not found",
@@ -328,7 +366,7 @@ export const deleteSection = async (req, res) => {
 
     // Check authorization
     if (
-      section.course.instructor.toString() !== req.user._id.toString() &&
+      course.instructor.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -337,20 +375,26 @@ export const deleteSection = async (req, res) => {
       });
     }
 
-    // Delete lessons and quizzes
-    await CourseLesson.deleteMany({ section: sectionId });
-    if (section.sectionQuiz) {
-      await Quiz.findByIdAndDelete(section.sectionQuiz);
+    const section = course.sections.id(sectionId);
+    if (!section) {
+      return res.status(404).json({
+        success: false,
+        message: "Section not found",
+      });
     }
 
-    // Remove from course
-    section.course.sections = section.course.sections.filter(
-      (s) => s.toString() !== sectionId
-    );
-    section.course.totalSections = section.course.sections.length;
-    await section.course.save();
+    if (section.sectionQuiz) {
+      const sectionQuizId = typeof section.sectionQuiz === "object"
+        ? section.sectionQuiz._id
+        : section.sectionQuiz;
+      if (sectionQuizId) {
+        await Quiz.findByIdAndDelete(sectionQuizId);
+      }
+    }
 
-    await CourseSection.findByIdAndDelete(sectionId);
+    course.sections.id(sectionId).remove();
+    course.totalSections = course.sections.length;
+    await course.save();
 
     res.status(200).json({
       success: true,
@@ -382,9 +426,9 @@ export const addLesson = async (req, res) => {
       codeExamples,
     } = req.body;
 
-    const section = await CourseSection.findById(sectionId).populate("course");
+    const course = await Course.findOne({ "sections._id": sectionId });
 
-    if (!section) {
+    if (!course) {
       return res.status(404).json({
         success: false,
         message: "Section not found",
@@ -393,7 +437,7 @@ export const addLesson = async (req, res) => {
 
     // Check authorization
     if (
-      section.course.instructor.toString() !== req.user._id.toString() &&
+      course.instructor.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -402,10 +446,17 @@ export const addLesson = async (req, res) => {
       });
     }
 
+    const section = course.sections.id(sectionId);
+    if (!section) {
+      return res.status(404).json({
+        success: false,
+        message: "Section not found",
+      });
+    }
+
     const order = section.lessons.length + 1;
 
-    const lesson = new CourseLesson({
-      section: sectionId,
+    const lesson = {
       title,
       description,
       content,
@@ -415,19 +466,23 @@ export const addLesson = async (req, res) => {
       difficulty,
       estimatedHours,
       codeExamples: codeExamples || [],
-    });
+      notes: [],
+      tips: [],
+      resources: [],
+    };
 
-    await lesson.save();
+    section.lessons.push(lesson);
+    course.totalLessons = course.sections.reduce(
+      (count, sec) => count + (sec.lessons?.length || 0),
+      0,
+    );
 
-    section.lessons.push(lesson._id);
-    section.course.totalLessons = (section.course.totalLessons || 0) + 1;
-    await section.save();
-    await section.course.save();
+    await course.save();
 
     res.status(201).json({
       success: true,
       message: "Lesson added successfully",
-      data: lesson,
+      data: section.lessons[section.lessons.length - 1],
     });
   } catch (error) {
     res.status(500).json({
@@ -444,12 +499,9 @@ export const updateLesson = async (req, res) => {
     const { lessonId } = req.params;
     const updates = req.body;
 
-    const lesson = await CourseLesson.findById(lessonId).populate({
-      path: "section",
-      populate: "course",
-    });
+    const course = await Course.findOne({ "sections.lessons._id": lessonId });
 
-    if (!lesson) {
+    if (!course) {
       return res.status(404).json({
         success: false,
         message: "Lesson not found",
@@ -458,12 +510,24 @@ export const updateLesson = async (req, res) => {
 
     // Check authorization
     if (
-      lesson.section.course.instructor.toString() !== req.user._id.toString() &&
+      course.instructor.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized",
+      });
+    }
+
+    const section = course.sections.find((sec) =>
+      sec.lessons.id(lessonId)
+    );
+    const lesson = section?.lessons.id(lessonId);
+
+    if (!lesson) {
+      return res.status(404).json({
+        success: false,
+        message: "Lesson not found",
       });
     }
 
@@ -485,7 +549,7 @@ export const updateLesson = async (req, res) => {
       if (updates[field] !== undefined) lesson[field] = updates[field];
     });
 
-    await lesson.save();
+    await course.save();
 
     res.status(200).json({
       success: true,
@@ -506,12 +570,9 @@ export const deleteLesson = async (req, res) => {
   try {
     const { lessonId } = req.params;
 
-    const lesson = await CourseLesson.findById(lessonId).populate({
-      path: "section",
-      populate: "course",
-    });
+    const course = await Course.findOne({ "sections.lessons._id": lessonId });
 
-    if (!lesson) {
+    if (!course) {
       return res.status(404).json({
         success: false,
         message: "Lesson not found",
@@ -520,7 +581,7 @@ export const deleteLesson = async (req, res) => {
 
     // Check authorization
     if (
-      lesson.section.course.instructor.toString() !== req.user._id.toString() &&
+      course.instructor.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -529,15 +590,23 @@ export const deleteLesson = async (req, res) => {
       });
     }
 
-    lesson.section.lessons = lesson.section.lessons.filter(
-      (l) => l.toString() !== lessonId
-    );
-    lesson.section.course.totalLessons =
-      (lesson.section.course.totalLessons || 0) - 1;
+    const section = course.sections.find((sec) => sec.lessons.id(lessonId));
+    const lesson = section?.lessons.id(lessonId);
 
-    await lesson.section.save();
-    await lesson.section.course.save();
-    await CourseLesson.findByIdAndDelete(lessonId);
+    if (!lesson) {
+      return res.status(404).json({
+        success: false,
+        message: "Lesson not found",
+      });
+    }
+
+    section.lessons.id(lessonId).remove();
+    course.totalLessons = course.sections.reduce(
+      (count, sec) => count + (sec.lessons?.length || 0),
+      0,
+    );
+
+    await course.save();
 
     res.status(200).json({
       success: true,
@@ -557,9 +626,9 @@ export const getSectionLessons = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
-    const section = await CourseSection.findById(sectionId).populate("course");
+    const course = await Course.findOne({ "sections._id": sectionId });
 
-    if (!section) {
+    if (!course) {
       return res.status(404).json({
         success: false,
         message: "Section not found",
@@ -568,7 +637,7 @@ export const getSectionLessons = async (req, res) => {
 
     // Check authorization
     if (
-      section.course.instructor.toString() !== req.user._id.toString() &&
+      course.instructor.toString() !== req.user._id.toString() &&
       req.user.role !== "admin"
     ) {
       return res.status(403).json({
@@ -577,11 +646,17 @@ export const getSectionLessons = async (req, res) => {
       });
     }
 
-    const lessons = await CourseLesson.find({ section: sectionId }).sort({ order: 1 });
+    const section = course.sections.id(sectionId);
+    if (!section) {
+      return res.status(404).json({
+        success: false,
+        message: "Section not found",
+      });
+    }
 
     res.status(200).json({
       success: true,
-      data: lessons,
+      data: section.lessons || [],
     });
   } catch (error) {
     res.status(500).json({
@@ -616,9 +691,11 @@ export const createOrUpdateQuiz = async (req, res) => {
       const targetCourseId = courseId || (existingQuiz.course ? existingQuiz.course._id : null);
       const targetSectionId = sectionId || (existingQuiz.section ? existingQuiz.section._id : null);
 
-      if (targetSectionId) {
-        const section = await CourseSection.findById(targetSectionId).populate("course");
-        course = section.course;
+        if (targetSectionId) {
+        const courseWithSection = await Course.findOne({ "sections._id": targetSectionId });
+        if (courseWithSection) {
+          course = courseWithSection;
+        }
       } else if (targetCourseId) {
         course = await Course.findById(targetCourseId);
       }
@@ -627,8 +704,10 @@ export const createOrUpdateQuiz = async (req, res) => {
       if (courseId) {
         course = await Course.findById(courseId);
       } else if (sectionId) {
-        const section = await CourseSection.findById(sectionId).populate("course");
-        course = section.course;
+        const courseWithSection = await Course.findOne({ "sections._id": sectionId });
+        if (courseWithSection) {
+          course = courseWithSection;
+        }
       }
     }
 
@@ -670,12 +749,13 @@ export const createOrUpdateQuiz = async (req, res) => {
       quiz.maxRetakes = maxRetakes !== undefined ? maxRetakes : quiz.maxRetakes;
     } else {
       // Create new quiz
+      const quizCourseId = courseId || (course ? course._id : null);
       quiz = new Quiz({
         title,
         description,
         questions,
         type: type || "section-quiz",
-        course: courseId,
+        course: quizCourseId,
         section: sectionId,
         passingScore: passingScore || 70,
         timeLimit: timeLimit || 0,
@@ -688,9 +768,11 @@ export const createOrUpdateQuiz = async (req, res) => {
 
     // Link quiz to section or course
     if (sectionId && type !== "final-quiz") {
-      const section = await CourseSection.findById(sectionId);
-      section.sectionQuiz = quiz._id;
-      await section.save();
+      const section = course.sections.id(sectionId);
+      if (section) {
+        section.sectionQuiz = quiz._id;
+        await course.save();
+      }
     } else if (courseId && type === "final-quiz") {
       course.finalQuiz = quiz._id;
       await course.save();
@@ -724,7 +806,6 @@ export const getInstructorCourses = async (req, res) => {
 
     const courses = await Course.find(filter)
       .populate("instructor", "name email")
-      .populate("sections")
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
@@ -774,10 +855,7 @@ export const getCourseSections = async (req, res) => {
       });
     }
 
-    const sections = await CourseSection.find({ course: courseId })
-      .populate("lessons")
-      .populate("sectionQuiz")
-      .sort({ order: 1 });
+    const sections = course.sections || [];
 
     res.status(200).json({
       success: true,
@@ -797,7 +875,7 @@ export const getQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
 
-    const quiz = await Quiz.findById(quizId).populate("course").populate("section");
+    const quiz = await Quiz.findById(quizId).populate("course");
 
     if (!quiz) {
       return res.status(404).json({
@@ -836,7 +914,7 @@ export const deleteQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
 
-    const quiz = await Quiz.findById(quizId).populate("course").populate("section");
+    const quiz = await Quiz.findById(quizId).populate("course");
 
     if (!quiz) {
       return res.status(404).json({
@@ -859,9 +937,15 @@ export const deleteQuiz = async (req, res) => {
 
     // Remove quiz reference from section or course
     if (quiz.section) {
-      await CourseSection.findByIdAndUpdate(quiz.section._id, {
-        $unset: { sectionQuiz: 1 }
-      });
+      const quizSectionId = typeof quiz.section === "object" ? quiz.section._id : quiz.section;
+      const course = await Course.findOne({ "sections._id": quizSectionId });
+      if (course) {
+        const section = course.sections.id(quizSectionId);
+        if (section) {
+          section.sectionQuiz = null;
+          await course.save();
+        }
+      }
     } else if (quiz.course && quiz.type === "final-quiz") {
       await Course.findByIdAndUpdate(quiz.course._id, {
         $unset: { finalQuiz: 1 }

@@ -3,7 +3,6 @@ import mongoose from "mongoose";
 const lessonProgressSchema = new mongoose.Schema({
   lesson: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "CourseLesson",
     required: true,
   },
   isCompleted: {
@@ -21,7 +20,6 @@ const lessonProgressSchema = new mongoose.Schema({
 const sectionProgressSchema = new mongoose.Schema({
   section: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "CourseSection",
     required: true,
   },
   isCompleted: {

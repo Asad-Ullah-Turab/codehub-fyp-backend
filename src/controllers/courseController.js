@@ -1,7 +1,5 @@
 import mongoose from "mongoose";
 import Course from "../models/Course.js";
-import CourseSection from "../models/CourseSection.js";
-import CourseLesson from "../models/CourseLesson.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import Quiz from "../models/Quiz.js";
 import Certificate from "../models/Certificate.js";
@@ -25,7 +23,6 @@ export const getAllCourses = async (req, res) => {
 
     const courses = await Course.find(filter)
       .populate("instructor", "name email profilePicture")
-      .populate("sections", "title order")
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
@@ -58,13 +55,6 @@ export const getCourseById = async (req, res) => {
 
     const course = await Course.findById(id)
       .populate("instructor", "name email profilePicture")
-      .populate({
-        path: "sections",
-        populate: [
-          { path: "lessons" },
-          { path: "sectionQuiz" }
-        ],
-      })
       .populate("finalQuiz");
 
     if (!course) {
@@ -190,20 +180,6 @@ export const enrollInCourse = async (req, res) => {
     course.enrollmentCount = (course.enrollmentCount || 0) + 1;
     await course.save();
 
-    // lesson completed notification (fetch lesson title if possible)
-    try {
-      const lesson = await CourseLesson.findById(lessonId).select('title');
-      const lessonTitle = lesson ? lesson.title : 'a lesson';
-      await createNotification({
-        userId,
-        type: 'lessonComplete',
-        message: `You completed ${lessonTitle}. Keep going!`,
-        link: `/courses/${courseId}`,
-      });
-    } catch (notifErr) {
-      console.error('Lesson complete notification failed:', notifErr);
-    }
-
     // Notification for enrollment
     try {
       await createNotification({
@@ -282,7 +258,7 @@ export const getEnrollmentDetails = async (req, res) => {
     })
       .populate({
         path: "course",
-        populate: ["instructor", "sections"],
+        populate: "instructor",
       })
       .populate("certificate");
 
@@ -299,10 +275,7 @@ export const getEnrollmentDetails = async (req, res) => {
     let completedLessons = 0;
 
     for (const section of course.sections) {
-      const sectionLesson = await CourseLesson.countDocuments({
-        section: section._id,
-      });
-      totalLessons += sectionLesson;
+      totalLessons += Array.isArray(section.lessons) ? section.lessons.length : 0;
 
       const userSectionProgress = enrollment.sectionProgress.find(
         (sp) => sp.section.toString() === section._id.toString()
@@ -466,15 +439,12 @@ export const completeLessonProgress = async (req, res) => {
       course: courseId,
     });
 
-    const course = await Course.findById(courseId).populate("sections");
+    const course = await Course.findById(courseId);
     let totalLessons = 0;
     let completedLessons = 0;
 
     for (const section of course.sections) {
-      const sectionLesson = await CourseLesson.countDocuments({
-        section: section._id,
-      });
-      totalLessons += sectionLesson;
+      totalLessons += Array.isArray(section.lessons) ? section.lessons.length : 0;
 
       const userSectionProgress = updatedEnrollment.sectionProgress.find(
         (sp) => sp.section.toString() === section._id.toString()
