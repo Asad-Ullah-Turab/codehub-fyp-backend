@@ -47,7 +47,23 @@ const userSchema = new mongoose.Schema(
     googleId: { type: String, default: null, sparse: true },
     githubId: { type: String, default: null, sparse: true },
     isEmailVerified: { type: Boolean, default: false },
-    role: { type: String, enum: ["user", "admin"], default: "user" },
+    role: { type: String, enum: ["user", "creator", "admin"], default: "user" },
+    creatorApplication: {
+      status: {
+        type: String,
+        enum: ["none", "pending", "approved", "rejected"],
+        default: "none",
+      },
+      submittedAt: { type: Date, default: null },
+      reviewedAt: { type: Date, default: null },
+      reviewer: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+      reviewComment: { type: String, default: null },
+      details: {
+        message: { type: String, default: null },
+        portfolioLink: { type: String, default: null },
+        experienceSummary: { type: String, default: null },
+      },
+    },
     lastLogin: { type: Date, default: null },
     profilePicture: { type: String, default: null },
 

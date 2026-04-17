@@ -10,6 +10,7 @@ router.get("/", auth, profileController.getProfile);
 router.put("/", auth, profileController.updateProfile);
 router.post("/prompt-shown", auth, profileController.markPromptShown);
 router.post("/upload-picture", auth, upload.single("profilePicture"), profileController.uploadProfilePicture);
+router.post("/creator-application", auth, profileController.submitCreatorApplication);
 
 // ========== PROGRESS TRACKING ==========
 router.get("/progress/courses", auth, profileController.getCourseProgress);

@@ -220,6 +220,81 @@ export const uploadProfilePicture = async (req, res) => {
   }
 };
 
+// Submit creator application
+export const submitCreatorApplication = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const user = await User.findById(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    if (user.role === "creator") {
+      return res.status(400).json({
+        success: false,
+        message: "You are already a content creator",
+      });
+    }
+
+    const { message, portfolioLink, experienceSummary } = req.body;
+
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide a brief explanation for your creator application.",
+      });
+    }
+
+    if (user.creatorApplication?.status === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Your creator application is already pending review",
+      });
+    }
+
+    user.creatorApplication = {
+      status: "pending",
+      submittedAt: new Date(),
+      reviewedAt: null,
+      reviewer: null,
+      reviewComment: null,
+      details: {
+        message: message.trim(),
+        portfolioLink: portfolioLink ? String(portfolioLink).trim() : null,
+        experienceSummary: experienceSummary ? String(experienceSummary).trim() : null,
+      },
+    };
+
+    await user.save();
+
+    try {
+      await createNotification({
+        userId,
+        type: "creatorApplication",
+        message: "Your content creator application has been submitted and is pending review.",
+      });
+    } catch (notifErr) {
+      console.error("Creator application notification failed:", notifErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Creator application submitted successfully",
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Error submitting creator application",
+      error: error.message,
+    });
+  }
+};
+
 // ========== PROGRESS TRACKING ==========
 
 // Get user's course progress

@@ -9,12 +9,14 @@ import Certificate from "../models/Certificate.js";
 import NewsletterSubscription from "../models/NewsletterSubscription.js";
 import SubscriptionTransaction from "../models/SubscriptionTransaction.js";
 import monthlyResetService from "../services/monthlyResetService.js";
+import { createNotification } from "./notificationController.js";
 
 // Get dashboard statistics
 export const getDashboardStats = async (req, res) => {
   try {
     const totalUsers = await User.countDocuments();
     const totalAdmins = await User.countDocuments({ role: "admin" });
+    const totalCreators = await User.countDocuments({ role: "creator" });
     const premiumUsers = await User.countDocuments({ subscriptionPlan: "premium", subscriptionStatus: "active" });
     const activeUsers = await User.countDocuments({ accountStatus: "active" });
     const suspendedUsers = await User.countDocuments({ accountStatus: "suspended" });
@@ -118,6 +120,7 @@ export const getDashboardStats = async (req, res) => {
       data: {
         totalUsers,
         totalAdmins,
+        totalCreators,
         premiumUsers,
         activeUsers,
         suspendedUsers,
@@ -248,7 +251,7 @@ export const changeUserRole = async (req, res) => {
     const { userId } = req.params;
     const { role } = req.body;
 
-    if (!["user", "admin"].includes(role)) {
+    if (!["user", "creator", "admin"].includes(role)) {
       return res.status(400).json({
         success: false,
         message: "Invalid role",
@@ -287,6 +290,125 @@ export const changeUserRole = async (req, res) => {
     res.status(200).json({
       success: true,
       message: `User role changed to ${role}`,
+      data: user,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getPendingCreatorApplications = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const paginationLimit = parseInt(limit, 10);
+    const skip = (parseInt(page, 10) - 1) * paginationLimit;
+
+    const filter = {
+      "creatorApplication.status": "pending",
+    };
+
+    const users = await User.find(filter)
+      .select("name email role accountStatus creatorApplication createdAt lastLogin")
+      .limit(paginationLimit)
+      .skip(skip)
+      .sort({ createdAt: -1 });
+
+    const total = await User.countDocuments(filter);
+
+    res.status(200).json({
+      success: true,
+      data: users,
+      pagination: {
+        total,
+        pages: Math.ceil(total / paginationLimit),
+        currentPage: parseInt(page, 10),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const reviewCreatorApplication = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { action, comment } = req.body;
+
+    if (!["approve", "reject"].includes(action)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid review action",
+      });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    if (user.creatorApplication?.status !== "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "No pending creator application found for this user",
+      });
+    }
+
+    const approved = action === "approve";
+
+    user.creatorApplication.status = approved ? "approved" : "rejected";
+    user.creatorApplication.reviewedAt = new Date();
+    user.creatorApplication.reviewer = req.user._id;
+    user.creatorApplication.reviewComment = comment || null;
+
+    if (approved) {
+      user.role = "creator";
+    } else if (user.role === "creator") {
+      user.role = "user";
+    }
+
+    await user.save();
+
+    try {
+      const emailService = (await import("../services/emailService.js")).default;
+      if (emailService.isAvailable()) {
+        if (approved) {
+          await emailService.sendCustomEmail(
+            user.email,
+            "Congratulations! Your CodeHub creator application has been approved",
+            `Congratulations ${user.name || "Creator"}!<br><br>Your application to become a content creator on CodeHub has been approved. You now have creator access and can start contributing tutorials and content to our community.<br><br>Thank you for your interest and welcome to the CodeHub creator team!`,
+            user.name || "Creator"
+          );
+        } else {
+          const rejectionMessage = comment && comment.trim()
+            ? comment.trim()
+            : "Your application has been rejected. Please review your submission and try again later.";
+          await emailService.sendCustomEmail(
+            user.email,
+            "Your CodeHub creator application has been rejected",
+            `Hello ${user.name || "Creator"},<br><br>We reviewed your creator application and unfortunately it was not approved at this time.<br><br><strong>Admin message:</strong><br>${rejectionMessage.replace(/\n/g, "<br>")}<br><br>You may apply again after improving your submission. Thank you for your interest in CodeHub.`,
+            user.name || "Creator"
+          );
+        }
+      }
+    } catch (emailErr) {
+      console.error("Creator application review email failed:", emailErr);
+    }
+
+    try {
+      await createNotification({
+        userId: user._id,
+        type: "creatorApplication",
+        message: approved
+          ? "Your content creator application has been approved!"
+          : "Your content creator application has been rejected. You may reapply later.",
+      });
+    } catch (notifErr) {
+      console.error("Creator application review notification failed:", notifErr);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: `Creator application ${approved ? "approved" : "rejected"}`,
       data: user,
     });
   } catch (error) {
@@ -694,6 +816,7 @@ export const getAnalytics = async (req, res) => {
       subscriptionStatus: "active" 
     });
     const totalUsers = await User.countDocuments();
+    const totalCreators = await User.countDocuments({ role: "creator" });
     const activeUsers = await User.countDocuments({ accountStatus: "active" });
     const totalTutorials = await Tutorial.countDocuments();
 
@@ -751,6 +874,7 @@ export const getAnalytics = async (req, res) => {
         topContent,
         // User stats
         totalUsers,
+        totalCreators,
         premiumUsers,
         activeUsers,
         totalTutorials,
