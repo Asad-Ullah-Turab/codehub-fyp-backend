@@ -1,4 +1,5 @@
 import Course from "../models/Course.js";
+import CourseEnrollment from "../models/CourseEnrollment.js";
 import { createNotification } from "./notificationController.js";
 
 const allowedCourseFields = [
@@ -235,6 +236,76 @@ export const requestPublishCourse = async (req, res) => {
       success: false,
       message: error.message || "Error requesting publish",
     });
+  }
+};
+
+export const getCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id).populate("instructor", "name email role");
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    if (course.instructor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    res.status(200).json({ success: true, data: course });
+  } catch (error) {
+    console.error("Error fetching course:", error);
+    res.status(500).json({ success: false, message: error.message || "Error fetching course" });
+  }
+};
+
+export const getCourseEnrollments = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    if (course.instructor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    const enrollments = await CourseEnrollment.find({ course: id })
+      .populate("user", "name email")
+      .sort({ enrollmentDate: -1 });
+
+    res.status(200).json({ success: true, data: enrollments });
+  } catch (error) {
+    console.error("Error fetching course enrollments:", error);
+    res.status(500).json({ success: false, message: error.message || "Error fetching course enrollments" });
+  }
+};
+
+export const getCourseRatings = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const course = await Course.findById(id);
+
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    if (course.instructor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Unauthorized" });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        averageRating: course.averageRating || 0,
+        ratingCount: course.ratingCount || 0,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching course ratings:", error);
+    res.status(500).json({ success: false, message: error.message || "Error fetching course ratings" });
   }
 };
 
