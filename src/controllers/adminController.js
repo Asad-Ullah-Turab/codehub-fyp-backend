@@ -1025,19 +1025,41 @@ export const getPendingCertificates = async (req, res) => {
       throw new Error("Certificate model not loaded");
     }
 
-    const certificates = await Certificate.find({ approvalStatus: "pending" })
+    let certificates = await Certificate.find({ approvalStatus: "pending" })
       .populate("user", "name email")
       .populate("course", "title")
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
 
+    const staleCertificateIds = certificates
+      .filter((cert) => !cert.course)
+      .map((cert) => cert._id);
+
+    if (staleCertificateIds.length > 0) {
+      await Certificate.deleteMany({ _id: { $in: staleCertificateIds } });
+      certificates = await Certificate.find({ approvalStatus: "pending" })
+        .populate("user", "name email")
+        .populate("course", "title")
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit));
+    }
+
     const total = await Certificate.countDocuments({ approvalStatus: "pending" });
+
+    const normalizedCertificates = certificates.map((cert) => {
+      const certObj = cert.toObject();
+      if (!certObj.course) {
+        certObj.course = { _id: null, title: "Deleted course" };
+      }
+      return certObj;
+    });
 
     res.setHeader('Content-Type', 'application/json');
     res.status(200).json({
       success: true,
-      data: certificates,
+      data: normalizedCertificates,
       total,
       pages: Math.ceil(total / parseInt(limit)),
     });
