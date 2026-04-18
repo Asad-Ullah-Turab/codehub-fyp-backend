@@ -1,5 +1,6 @@
 import express from "express";
 import auth from "../middleware/authMiddleware.js";
+import creatorMiddleware from "../middleware/creatorMiddleware.js";
 import {
   createCourse,
   getMyCourses,
@@ -9,9 +10,9 @@ import {
 
 const router = express.Router();
 
-router.post("/", auth, createCourse);
-router.get("/my-courses", auth, getMyCourses);
-router.put("/:id", auth, updateCourse);
-router.patch("/:id/publish-request", auth, requestPublishCourse);
+router.post("/", auth, creatorMiddleware, createCourse);
+router.get("/my-courses", auth, creatorMiddleware, getMyCourses);
+router.put("/:id", auth, creatorMiddleware, updateCourse);
+router.patch("/:id/publish-request", auth, creatorMiddleware, requestPublishCourse);
 
 export default router;

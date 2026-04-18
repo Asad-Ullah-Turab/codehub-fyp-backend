@@ -22,10 +22,10 @@ const allowedCourseFields = [
 
 export const createCourse = async (req, res) => {
   try {
-    if (!["creator", "admin"].includes(req.user.role)) {
+    if (req.user.role !== "creator") {
       return res.status(403).json({
         success: false,
-        message: "Only creators and admins can create courses",
+        message: "Only creators can create courses",
       });
     }
 
@@ -156,10 +156,7 @@ export const updateCourse = async (req, res) => {
       });
     }
 
-    if (
-      course.instructor.toString() !== req.user._id.toString() &&
-      req.user.role !== "admin"
-    ) {
+    if (course.instructor.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized to update this course",
@@ -200,10 +197,7 @@ export const requestPublishCourse = async (req, res) => {
       });
     }
 
-    if (
-      course.instructor.toString() !== req.user._id.toString() &&
-      req.user.role !== "admin"
-    ) {
+    if (course.instructor.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
         message: "Unauthorized to request publish for this course",
