@@ -50,6 +50,13 @@ export const createCourse = async (req, res) => {
       });
     }
 
+    if (req.user.role !== "admin") {
+      return res.status(403).json({
+        success: false,
+        message: "Only admins can create courses",
+      });
+    }
+
     const course = new Course({
       title,
       description,
@@ -167,11 +174,7 @@ export const togglePublishCourse = async (req, res) => {
       });
     }
 
-    // Check authorization
-    if (
-      course.instructor.toString() !== req.user._id.toString() &&
-      req.user.role !== "admin"
-    ) {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
         message: "Unauthorized",
@@ -179,6 +182,9 @@ export const togglePublishCourse = async (req, res) => {
     }
 
     course.isPublished = !course.isPublished;
+    course.status = course.isPublished ? "published" : "draft";
+    course.publishRequestedAt = null;
+    course.publishReviewComment = null;
     await course.save();
 
     res.status(200).json({
@@ -209,11 +215,7 @@ export const deleteCourse = async (req, res) => {
       });
     }
 
-    // Check authorization
-    if (
-      course.instructor.toString() !== req.user._id.toString() &&
-      req.user.role !== "admin"
-    ) {
+    if (req.user.role !== "admin") {
       return res.status(403).json({
         success: false,
         message: "Unauthorized",
@@ -833,7 +835,7 @@ export const getInstructorCourses = async (req, res) => {
     if (status === "draft") filter.isPublished = false;
 
     const courses = await Course.find(filter)
-      .populate("instructor", "name email")
+      .populate("instructor", "name email role")
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });

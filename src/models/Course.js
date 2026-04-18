@@ -159,8 +159,16 @@ const courseSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ["draft", "published", "archived"],
+      enum: ["draft", "pending", "published", "archived", "rejected"],
       default: "draft",
+    },
+    publishRequestedAt: {
+      type: Date,
+      default: null,
+    },
+    publishReviewComment: {
+      type: String,
+      default: null,
     },
     instructor: {
       type: mongoose.Schema.Types.ObjectId,
