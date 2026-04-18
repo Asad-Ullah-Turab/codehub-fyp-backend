@@ -355,6 +355,13 @@ export const deleteSection = async (req, res) => {
   try {
     const { sectionId } = req.params;
 
+    if (!mongoose.Types.ObjectId.isValid(sectionId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid section ID",
+      });
+    }
+
     const course = await Course.findOne({ "sections._id": sectionId });
 
     if (!course) {
@@ -383,17 +390,35 @@ export const deleteSection = async (req, res) => {
       });
     }
 
-    if (section.sectionQuiz) {
-      const sectionQuizId = typeof section.sectionQuiz === "object"
-        ? section.sectionQuiz._id
-        : section.sectionQuiz;
-      if (sectionQuizId) {
-        await Quiz.findByIdAndDelete(sectionQuizId);
+    const sectionQuizId = (() => {
+      if (!section.sectionQuiz) return null;
+      if (mongoose.Types.ObjectId.isValid(section.sectionQuiz)) {
+        return section.sectionQuiz.toString();
       }
+      if (
+        typeof section.sectionQuiz === "object" &&
+        section.sectionQuiz._id &&
+        mongoose.Types.ObjectId.isValid(section.sectionQuiz._id)
+      ) {
+        return section.sectionQuiz._id.toString();
+      }
+      return null;
+    })();
+
+    if (sectionQuizId) {
+      await Quiz.findByIdAndDelete(sectionQuizId);
     }
 
-    course.sections.id(sectionId).remove();
+    course.sections = course.sections.filter(
+      (sec) => sec._id.toString() !== sectionId
+    );
+
     course.totalSections = course.sections.length;
+    course.totalLessons = course.sections.reduce(
+      (sum, sec) => sum + (sec.lessons?.length || 0),
+      0
+    );
+
     await course.save();
 
     res.status(200).json({
@@ -401,6 +426,7 @@ export const deleteSection = async (req, res) => {
       message: "Section deleted successfully",
     });
   } catch (error) {
+    console.error("Error deleting section:", error);
     res.status(500).json({
       success: false,
       message: "Error deleting section",
@@ -600,7 +626,9 @@ export const deleteLesson = async (req, res) => {
       });
     }
 
-    section.lessons.id(lessonId).remove();
+    section.lessons = section.lessons.filter(
+      (lessonItem) => lessonItem._id.toString() !== lessonId
+    );
     course.totalLessons = course.sections.reduce(
       (count, sec) => count + (sec.lessons?.length || 0),
       0,
