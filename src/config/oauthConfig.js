@@ -97,7 +97,7 @@ export const initializeGitHubStrategy = () => {
         {
           clientID: process.env.GITHUB_CLIENT_ID,
           clientSecret: process.env.GITHUB_CLIENT_SECRET,
-        callbackURL: `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/github/callback`,
+          callbackURL: `${process.env.BACKEND_URL || "http://localhost:5000"}/api/auth/github/callback`,
         },
         async (accessToken, refreshToken, profile, done) => {
           try {
@@ -200,6 +200,7 @@ export const isStrategyAvailable = (strategyName) => {
   try {
     return passport._strategy(strategyName) !== undefined;
   } catch (error) {
+    console.error("Error checking strategy availability:", error);
     return false;
   }
 };
