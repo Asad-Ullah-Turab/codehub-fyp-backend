@@ -6,6 +6,8 @@ import {
   getMyCourses,
   updateCourse,
   requestPublishCourse,
+  togglePublishCourse,
+  deleteCourse,
   getCourse,
   getCourseEnrollments,
   getCourseRatings,
@@ -19,6 +21,8 @@ router.get("/my-courses", auth, creatorMiddleware, getMyCourses);
 router.get("/:id", auth, creatorMiddleware, getCourse);
 router.put("/:id", auth, creatorMiddleware, updateCourse);
 router.patch("/:id/publish-request", auth, creatorMiddleware, requestPublishCourse);
+router.patch("/:id/publish", auth, creatorMiddleware, togglePublishCourse);
+router.delete("/:id", auth, creatorMiddleware, deleteCourse);
 router.get("/:id/enrollments", auth, creatorMiddleware, getCourseEnrollments);
 router.get("/:id/ratings", auth, creatorMiddleware, getCourseRatings);
 

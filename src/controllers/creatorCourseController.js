@@ -1,4 +1,5 @@
 import Course from "../models/Course.js";
+import Quiz from "../models/Quiz.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import { createNotification } from "./notificationController.js";
 
@@ -205,6 +206,13 @@ export const requestPublishCourse = async (req, res) => {
       });
     }
 
+    if (course.hasAdminApprovedPublish) {
+      return res.status(400).json({
+        success: false,
+        message: "This course has already been approved once. Use the publish toggle endpoint to publish or unpublish it directly.",
+      });
+    }
+
     if (course.status === "published") {
       return res.status(400).json({
         success: false,
@@ -239,6 +247,96 @@ export const requestPublishCourse = async (req, res) => {
   }
 };
 
+export const togglePublishCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
+      });
+    }
+
+    if (course.instructor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to change publication status for this course",
+      });
+    }
+
+    if (!course.hasAdminApprovedPublish) {
+      return res.status(400).json({
+        success: false,
+        message: "Course must be approved by an admin once before the creator can publish or unpublish it directly.",
+      });
+    }
+
+    if (course.status === "pending") {
+      return res.status(400).json({
+        success: false,
+        message: "Cannot toggle publish status while a publish request is pending review",
+      });
+    }
+
+    const isNowPublished = !course.isPublished;
+    course.isPublished = isNowPublished;
+    course.status = isNowPublished ? "published" : "draft";
+    course.publishRequestedAt = null;
+    course.publishReviewComment = null;
+    await course.save();
+
+    res.status(200).json({
+      success: true,
+      message: `Course ${isNowPublished ? "published" : "unpublished"} successfully`,
+      data: course,
+    });
+  } catch (error) {
+    console.error("Error toggling creator publish status:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error toggling publish status",
+    });
+  }
+};
+
+export const deleteCourse = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const course = await Course.findById(id);
+    if (!course) {
+      return res.status(404).json({
+        success: false,
+        message: "Course not found",
+      });
+    }
+
+    if (course.instructor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "Unauthorized to delete this course",
+      });
+    }
+
+    await Quiz.deleteMany({ course: id });
+    await CourseEnrollment.deleteMany({ course: id });
+    await Course.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Course deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting creator course:", error);
+    res.status(500).json({
+      success: false,
+      message: error.message || "Error deleting course",
+    });
+  }
+};
+
 export const getCourse = async (req, res) => {
   try {
     const { id } = req.params;
@@ -248,7 +346,12 @@ export const getCourse = async (req, res) => {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
 
-    if (course.instructor.toString() !== req.user._id.toString()) {
+    const instructorId =
+      course.instructor && typeof course.instructor === "object"
+        ? course.instructor._id?.toString()
+        : course.instructor?.toString();
+
+    if (instructorId !== req.user._id.toString()) {
       return res.status(403).json({ success: false, message: "Unauthorized" });
     }
 
@@ -388,6 +491,7 @@ export const reviewPublishRequest = async (req, res) => {
       course.isPublished = true;
       course.publishRequestedAt = null;
       course.publishReviewComment = null;
+      course.hasAdminApprovedPublish = true;
     } else {
       course.status = "rejected";
       course.isPublished = false;

@@ -236,6 +236,10 @@ const courseSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    hasAdminApprovedPublish: {
+      type: Boolean,
+      default: false,
+    },
     tags: [String],
     prerequisites: [
       {
