@@ -34,14 +34,16 @@ connectDB();
 
 // Initialize OAuth strategies
 const oauthStrategies = initializeOAuthStrategies();
-console.log('OAuth strategies initialized:', oauthStrategies);
+console.log("OAuth strategies initialized:", oauthStrategies);
 
 // Initialize email service
 emailService.initialize();
 
 // warn if stripe config missing
 if (!process.env.STRIPE_PRICE_ID_PREMIUM || !process.env.STRIPE_SECRET_KEY) {
-  console.warn('Stripe subscription not fully configured: check STRIPE_SECRET_KEY and STRIPE_PRICE_ID_PREMIUM in environment variables');
+  console.warn(
+    "Stripe subscription not fully configured: check STRIPE_SECRET_KEY and STRIPE_PRICE_ID_PREMIUM in environment variables",
+  );
 }
 
 const app = express();
@@ -49,7 +51,7 @@ const app = express();
 // when running behind a proxy (e.g. Azure App Service or load balancer)
 // we need to trust the forwarded protocol so req.protocol reflects HTTPS.
 // Without this Passport will generate redirect URIs with http:// instead of https://.
-app.set('trust proxy', true);
+app.set("trust proxy", true);
 
 const environment = process.env.NODE_ENV || "development";
 const logger = loggerConfig[environment];
@@ -64,7 +66,7 @@ app.use(
   cors({
     origin: [process.env.FRONTEND_URL, "http://localhost:5173"],
     credentials: true,
-  })
+  }),
 );
 
 // 🔥 CRITICAL: Webhook route MUST come BEFORE express.json() middleware
@@ -93,14 +95,14 @@ app.use(
       secure: process.env.NODE_ENV === "production",
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
     },
-  })
+  }),
 );
 
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.get("/", (req, res) => {
+app.get("/", (_req, res) => {
   res.send("CodeHub Backend API 🚀");
 });
 
@@ -129,16 +131,16 @@ app.use("/api/notifications", notificationRoutes);
 app.use((req, res) => {
   res.status(404).json({
     status: "error",
-    message: `Route ${req.method} ${req.originalUrl} not found`
+    message: `Route ${req.method} ${req.originalUrl} not found`,
   });
 });
 
 // Global error handler
-app.use((err, req, res) => {
+app.use((err, _req, res) => {
   console.error("Error:", err);
   res.status(err.status || 500).json({
     status: "error",
-    message: err.message || "Internal server error"
+    message: err.message || "Internal server error",
   });
 });
 
