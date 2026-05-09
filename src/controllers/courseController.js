@@ -18,7 +18,6 @@ export const getAllCourses = async (req, res) => {
     if (category) filter.category = category.toLowerCase();
     if (difficulty) filter.difficulty = difficulty.toLowerCase();
 
-
     const skip = (page - 1) * limit;
 
     const courses = await Course.find(filter)
@@ -184,12 +183,12 @@ export const enrollInCourse = async (req, res) => {
     try {
       await createNotification({
         userId,
-        type: 'enrollment',
+        type: "enrollment",
         message: `You have been enrolled in the course "${course.title}".`,
         link: `/courses/${course._id}`,
       });
     } catch (notifErr) {
-      console.error('Enrollment notification failed:', notifErr);
+      console.error("Enrollment notification failed:", notifErr);
     }
 
     res.status(201).json({
@@ -275,15 +274,17 @@ export const getEnrollmentDetails = async (req, res) => {
     let completedLessons = 0;
 
     for (const section of course.sections) {
-      totalLessons += Array.isArray(section.lessons) ? section.lessons.length : 0;
+      totalLessons += Array.isArray(section.lessons)
+        ? section.lessons.length
+        : 0;
 
       const userSectionProgress = enrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === section._id.toString()
+        (sp) => sp.section.toString() === section._id.toString(),
       );
 
       if (userSectionProgress) {
         completedLessons += userSectionProgress.lessons.filter(
-          (lp) => lp.isCompleted
+          (lp) => lp.isCompleted,
         ).length;
       }
     }
@@ -328,7 +329,7 @@ export const completeLessonProgress = async (req, res) => {
 
     // Check if section progress exists
     const sectionExists = enrollment.sectionProgress.some(
-      (sp) => sp.section.toString() === sectionId
+      (sp) => sp.section.toString() === sectionId,
     );
 
     if (!sectionExists) {
@@ -339,12 +340,14 @@ export const completeLessonProgress = async (req, res) => {
           $push: {
             sectionProgress: {
               section: sectionId,
-              lessons: [{
-                lesson: lessonId,
-                isCompleted: true,
-                completedAt: new Date(),
-                timeSpentMinutes: timeSpentMinutes,
-              }],
+              lessons: [
+                {
+                  lesson: lessonId,
+                  isCompleted: true,
+                  completedAt: new Date(),
+                  timeSpentMinutes: timeSpentMinutes,
+                },
+              ],
               isCompleted: false,
               lastAccessedAt: new Date(),
               timeSpentMinutes: timeSpentMinutes,
@@ -356,16 +359,16 @@ export const completeLessonProgress = async (req, res) => {
           $inc: {
             totalTimeSpentMinutes: timeSpentMinutes,
           },
-        }
+        },
       );
     } else {
       // Check if lesson progress exists
       const sectionProgress = enrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === sectionId
+        (sp) => sp.section.toString() === sectionId,
       );
 
       const lessonExists = sectionProgress.lessons.some(
-        (lp) => lp.lesson.toString() === lessonId
+        (lp) => lp.lesson.toString() === lessonId,
       );
 
       if (!lessonExists) {
@@ -393,12 +396,12 @@ export const completeLessonProgress = async (req, res) => {
               "sectionProgress.$.timeSpentMinutes": timeSpentMinutes,
               totalTimeSpentMinutes: timeSpentMinutes,
             },
-          }
+          },
         );
       } else {
         // Update existing lesson progress
         const existingLesson = sectionProgress.lessons.find(
-          (lp) => lp.lesson.toString() === lessonId
+          (lp) => lp.lesson.toString() === lessonId,
         );
         const previousTime = existingLesson.timeSpentMinutes || 0;
         const timeDifference = timeSpentMinutes - previousTime;
@@ -414,7 +417,8 @@ export const completeLessonProgress = async (req, res) => {
             $set: {
               "sectionProgress.$[sp].lessons.$[lp].isCompleted": true,
               "sectionProgress.$[sp].lessons.$[lp].completedAt": new Date(),
-              "sectionProgress.$[sp].lessons.$[lp].timeSpentMinutes": timeSpentMinutes,
+              "sectionProgress.$[sp].lessons.$[lp].timeSpentMinutes":
+                timeSpentMinutes,
               "sectionProgress.$[sp].lastAccessedAt": new Date(),
               lastAccessedAt: new Date(),
             },
@@ -428,7 +432,7 @@ export const completeLessonProgress = async (req, res) => {
               { "sp.section": sectionId },
               { "lp.lesson": lessonId },
             ],
-          }
+          },
         );
       }
     }
@@ -444,15 +448,17 @@ export const completeLessonProgress = async (req, res) => {
     let completedLessons = 0;
 
     for (const section of course.sections) {
-      totalLessons += Array.isArray(section.lessons) ? section.lessons.length : 0;
+      totalLessons += Array.isArray(section.lessons)
+        ? section.lessons.length
+        : 0;
 
       const userSectionProgress = updatedEnrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === section._id.toString()
+        (sp) => sp.section.toString() === section._id.toString(),
       );
 
       if (userSectionProgress) {
         completedLessons += userSectionProgress.lessons.filter(
-          (lp) => lp.isCompleted
+          (lp) => lp.isCompleted,
         ).length;
       }
     }
@@ -461,7 +467,7 @@ export const completeLessonProgress = async (req, res) => {
 
     await CourseEnrollment.updateOne(
       { user: userId, course: courseId },
-      { $set: { overallProgress } }
+      { $set: { overallProgress } },
     );
 
     // Return updated enrollment

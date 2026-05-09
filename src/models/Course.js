@@ -65,7 +65,7 @@ const lessonSchema = new mongoose.Schema(
       },
     ],
   },
-  { _id: true }
+  { _id: true },
 );
 
 const sectionSchema = new mongoose.Schema(
@@ -102,7 +102,7 @@ const sectionSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { _id: true }
+  { _id: true },
 );
 
 const courseSchema = new mongoose.Schema(
@@ -259,7 +259,7 @@ const courseSchema = new mongoose.Schema(
       },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Indexes for better query performance

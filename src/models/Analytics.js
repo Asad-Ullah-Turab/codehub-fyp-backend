@@ -11,7 +11,7 @@ const analyticsSchema = new mongoose.Schema(
       { type: mongoose.Schema.Types.ObjectId, ref: "Tutorial" },
     ],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Analytics = mongoose.model("Analytics", analyticsSchema);

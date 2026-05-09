@@ -12,7 +12,7 @@ const progressSchema = new mongoose.Schema(
     lastAccessed: { type: Date, default: Date.now },
     timeSpentMinutes: { type: Number, default: 0 },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const Progress = mongoose.model("Progress", progressSchema);

@@ -34,13 +34,15 @@ const userSchema = new mongoose.Schema(
           // Strong password requirements:
           // - At least 8 characters
           // - At least one lowercase letter
-          // - At least one uppercase letter  
+          // - At least one uppercase letter
           // - At least one number
           // - At least one special character
-          const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+          const strongPasswordRegex =
+            /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
           return strongPasswordRegex.test(password);
         },
-        message: "Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, one number, and one special character"
+        message:
+          "Password must be at least 8 characters long and contain at least one lowercase letter, one uppercase letter, one number, and one special character",
       },
       select: false,
     },
@@ -56,7 +58,11 @@ const userSchema = new mongoose.Schema(
       },
       submittedAt: { type: Date, default: null },
       reviewedAt: { type: Date, default: null },
-      reviewer: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
+      reviewer: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        default: null,
+      },
       reviewComment: { type: String, default: null },
       details: {
         message: { type: String, default: null },
@@ -172,7 +178,7 @@ const userSchema = new mongoose.Schema(
     codeQueriesRemaining: { type: Number, default: 5 },
     tutorialGenRemaining: { type: Number, default: 5 },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // 🔐 Password hashing
@@ -246,7 +252,9 @@ userSchema.methods.isAccountLocked = function () {
 // Helper methods for subscription & limits
 userSchema.methods.isPremium = function () {
   // Only premium users with active subscriptions bypass limits
-  return this.subscriptionPlan === "premium" && this.subscriptionStatus === "active";
+  return (
+    this.subscriptionPlan === "premium" && this.subscriptionStatus === "active"
+  );
 };
 
 userSchema.methods.consumeChatQuery = function () {

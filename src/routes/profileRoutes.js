@@ -9,8 +9,17 @@ const router = express.Router();
 router.get("/", auth, profileController.getProfile);
 router.put("/", auth, profileController.updateProfile);
 router.post("/prompt-shown", auth, profileController.markPromptShown);
-router.post("/upload-picture", auth, upload.single("profilePicture"), profileController.uploadProfilePicture);
-router.post("/creator-application", auth, profileController.submitCreatorApplication);
+router.post(
+  "/upload-picture",
+  auth,
+  upload.single("profilePicture"),
+  profileController.uploadProfilePicture,
+);
+router.post(
+  "/creator-application",
+  auth,
+  profileController.submitCreatorApplication,
+);
 
 // ========== PROGRESS TRACKING ==========
 router.get("/progress/courses", auth, profileController.getCourseProgress);
@@ -18,10 +27,19 @@ router.get("/dashboard", auth, profileController.getDashboardStats);
 
 // ========== ENROLLMENT MANAGEMENT ==========
 router.get("/enrollments", auth, profileController.getUserEnrollments);
-router.put("/enrollments/:enrollmentId/status", auth, profileController.updateEnrollmentStatus);
+router.put(
+  "/enrollments/:enrollmentId/status",
+  auth,
+  profileController.updateEnrollmentStatus,
+);
 
 // ========== CERTIFICATES ==========
 router.get("/certificates", auth, profileController.getUserCertificates);
-router.get("/certificates/:certificateId/download", auth, profileController.downloadCertificatePdf);
+router.get(
+  "/certificates/:certificateId/download",
+  auth,
+  profileController.downloadCertificatePdf,
+);
 
 export default router;
+

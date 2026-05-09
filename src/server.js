@@ -12,7 +12,7 @@ const server = http.createServer(app);
 async function startServer() {
   try {
     await containerManager.startAllContainers();
-    
+
     // Start monthly reset service for free tier users
     monthlyResetService.start();
 

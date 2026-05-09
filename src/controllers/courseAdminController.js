@@ -40,7 +40,7 @@ export const createCourse = async (req, res) => {
       : [];
 
     const invalidPrerequisites = prerequisiteIds.some(
-      (id) => !mongoose.Types.ObjectId.isValid(id)
+      (id) => !mongoose.Types.ObjectId.isValid(id),
     );
 
     if (invalidPrerequisites) {
@@ -412,13 +412,13 @@ export const deleteSection = async (req, res) => {
     }
 
     course.sections = course.sections.filter(
-      (sec) => sec._id.toString() !== sectionId
+      (sec) => sec._id.toString() !== sectionId,
     );
 
     course.totalSections = course.sections.length;
     course.totalLessons = course.sections.reduce(
       (sum, sec) => sum + (sec.lessons?.length || 0),
-      0
+      0,
     );
 
     await course.save();
@@ -547,9 +547,7 @@ export const updateLesson = async (req, res) => {
       });
     }
 
-    const section = course.sections.find((sec) =>
-      sec.lessons.id(lessonId)
-    );
+    const section = course.sections.find((sec) => sec.lessons.id(lessonId));
     const lesson = section?.lessons.id(lessonId);
 
     if (!lesson) {
@@ -629,7 +627,7 @@ export const deleteLesson = async (req, res) => {
     }
 
     section.lessons = section.lessons.filter(
-      (lessonItem) => lessonItem._id.toString() !== lessonId
+      (lessonItem) => lessonItem._id.toString() !== lessonId,
     );
     course.totalLessons = course.sections.reduce(
       (count, sec) => count + (sec.lessons?.length || 0),
@@ -702,14 +700,25 @@ export const getSectionLessons = async (req, res) => {
 // Create or update quiz
 export const createOrUpdateQuiz = async (req, res) => {
   try {
-    const { courseId, sectionId, type, title, description, questions, passingScore, timeLimit, maxRetakes } = req.body;
+    const {
+      courseId,
+      sectionId,
+      type,
+      title,
+      description,
+      questions,
+      passingScore,
+      timeLimit,
+      maxRetakes,
+    } = req.body;
     const { quizId } = req.params;
 
     let course;
 
     if (quizId) {
       // Update existing quiz - find course from existing quiz data
-      const existingQuiz = await Quiz.findById(quizId).populate('course section');
+      const existingQuiz =
+        await Quiz.findById(quizId).populate("course section");
       if (!existingQuiz) {
         return res.status(404).json({
           success: false,
@@ -718,11 +727,15 @@ export const createOrUpdateQuiz = async (req, res) => {
       }
 
       // Use course/section from existing quiz if not provided in body
-      const targetCourseId = courseId || (existingQuiz.course ? existingQuiz.course._id : null);
-      const targetSectionId = sectionId || (existingQuiz.section ? existingQuiz.section._id : null);
+      const targetCourseId =
+        courseId || (existingQuiz.course ? existingQuiz.course._id : null);
+      const targetSectionId =
+        sectionId || (existingQuiz.section ? existingQuiz.section._id : null);
 
-        if (targetSectionId) {
-        const courseWithSection = await Course.findOne({ "sections._id": targetSectionId });
+      if (targetSectionId) {
+        const courseWithSection = await Course.findOne({
+          "sections._id": targetSectionId,
+        });
         if (courseWithSection) {
           course = courseWithSection;
         }
@@ -734,7 +747,9 @@ export const createOrUpdateQuiz = async (req, res) => {
       if (courseId) {
         course = await Course.findById(courseId);
       } else if (sectionId) {
-        const courseWithSection = await Course.findOne({ "sections._id": sectionId });
+        const courseWithSection = await Course.findOne({
+          "sections._id": sectionId,
+        });
         if (courseWithSection) {
           course = courseWithSection;
         }
@@ -772,9 +787,11 @@ export const createOrUpdateQuiz = async (req, res) => {
       }
 
       quiz.title = title !== undefined ? title : quiz.title;
-      quiz.description = description !== undefined ? description : quiz.description;
+      quiz.description =
+        description !== undefined ? description : quiz.description;
       quiz.questions = questions !== undefined ? questions : quiz.questions;
-      quiz.passingScore = passingScore !== undefined ? passingScore : quiz.passingScore;
+      quiz.passingScore =
+        passingScore !== undefined ? passingScore : quiz.passingScore;
       quiz.timeLimit = timeLimit !== undefined ? timeLimit : quiz.timeLimit;
       quiz.maxRetakes = maxRetakes !== undefined ? maxRetakes : quiz.maxRetakes;
     } else {
@@ -810,7 +827,9 @@ export const createOrUpdateQuiz = async (req, res) => {
 
     res.status(quizId ? 200 : 201).json({
       success: true,
-      message: quizId ? "Quiz updated successfully" : "Quiz created successfully",
+      message: quizId
+        ? "Quiz updated successfully"
+        : "Quiz created successfully",
       data: quiz,
     });
   } catch (error) {
@@ -967,7 +986,8 @@ export const deleteQuiz = async (req, res) => {
 
     // Remove quiz reference from section or course
     if (quiz.section) {
-      const quizSectionId = typeof quiz.section === "object" ? quiz.section._id : quiz.section;
+      const quizSectionId =
+        typeof quiz.section === "object" ? quiz.section._id : quiz.section;
       const course = await Course.findOne({ "sections._id": quizSectionId });
       if (course) {
         const section = course.sections.id(quizSectionId);
@@ -978,7 +998,7 @@ export const deleteQuiz = async (req, res) => {
       }
     } else if (quiz.course && quiz.type === "final-quiz") {
       await Course.findByIdAndUpdate(quiz.course._id, {
-        $unset: { finalQuiz: 1 }
+        $unset: { finalQuiz: 1 },
       });
     }
 

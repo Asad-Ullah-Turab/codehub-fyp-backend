@@ -10,14 +10,14 @@ class CertificateHtmlService {
    * @returns {string} HTML string
    */
   static generateCertificate(certificateData) {
-    const { 
-      user, 
-      course, 
-      certificateNumber, 
-      finalScore, 
+    const {
+      user,
+      course,
+      certificateNumber,
+      finalScore,
       averageScore,
       quizzesAttempted,
-      issuedDate 
+      issuedDate,
     } = certificateData;
 
     const issueDate = issuedDate
@@ -431,3 +431,4 @@ class CertificateHtmlService {
 }
 
 export default CertificateHtmlService;
+

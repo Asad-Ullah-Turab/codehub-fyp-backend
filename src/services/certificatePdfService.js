@@ -21,14 +21,14 @@ class CertificatePdfService {
   static async generateCertificate(certificateData) {
     return new Promise((resolve, reject) => {
       try {
-        const { 
-          user, 
-          course, 
-          certificateNumber, 
-          finalScore, 
+        const {
+          user,
+          course,
+          certificateNumber,
+          finalScore,
           averageScore,
           quizzesAttempted,
-          issuedDate 
+          issuedDate,
         } = certificateData;
 
         // Create PDF document in landscape orientation
@@ -69,12 +69,9 @@ class CertificatePdfService {
 
         // Top decorative elements
         const topY = 50;
-        
+
         // Left decoration
-        doc
-          .fillColor("#d4af37")
-          .fontSize(18)
-          .text("★", 60, topY);
+        doc.fillColor("#d4af37").fontSize(18).text("★", 60, topY);
 
         // Right decoration
         doc.text("★", pageWidth - 100, topY);
@@ -114,10 +111,15 @@ class CertificatePdfService {
           .fillColor("#333333")
           .fontSize(11)
           .font("Helvetica")
-          .text("For successfully completing and demonstrating mastery of", 50, 230, {
-            align: "center",
-            width: pageWidth - 100,
-          });
+          .text(
+            "For successfully completing and demonstrating mastery of",
+            50,
+            230,
+            {
+              align: "center",
+              width: pageWidth - 100,
+            },
+          );
 
         // ===== COURSE NAME (HIGHLIGHTED) =====
         doc
@@ -173,7 +175,11 @@ class CertificatePdfService {
           .fillColor("#8e44ad")
           .fontSize(valueFontSize)
           .font("Helvetica-Bold")
-          .text(`${quizzesAttempted || 1} Assessments`, leftCol, detailsStartY + 90);
+          .text(
+            `${quizzesAttempted || 1} Assessments`,
+            leftCol,
+            detailsStartY + 90,
+          );
 
         // Right column
         // Certificate Number
@@ -276,7 +282,7 @@ class CertificatePdfService {
             {
               align: "center",
               width: pageWidth - 100,
-            }
+            },
           );
 
         // Bottom decorative line

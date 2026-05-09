@@ -58,7 +58,9 @@ export const createCourse = async (req, res) => {
     }
 
     const prerequisiteIds = Array.isArray(prerequisites)
-      ? prerequisites.filter((id) => typeof id === "string" && id.trim().length > 0)
+      ? prerequisites.filter(
+          (id) => typeof id === "string" && id.trim().length > 0,
+        )
       : [];
 
     if (!Array.isArray(prerequisites) && prerequisites !== undefined) {
@@ -114,7 +116,13 @@ export const getMyCourses = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { instructor: req.user._id };
-    const allowedStatuses = ["draft", "pending", "published", "archived", "rejected"];
+    const allowedStatuses = [
+      "draft",
+      "pending",
+      "published",
+      "archived",
+      "rejected",
+    ];
     if (status && allowedStatuses.includes(String(status).toLowerCase())) {
       filter.status = String(status).toLowerCase();
     }
@@ -209,7 +217,8 @@ export const requestPublishCourse = async (req, res) => {
     if (course.hasAdminApprovedPublish) {
       return res.status(400).json({
         success: false,
-        message: "This course has already been approved once. Use the publish toggle endpoint to publish or unpublish it directly.",
+        message:
+          "This course has already been approved once. Use the publish toggle endpoint to publish or unpublish it directly.",
       });
     }
 
@@ -269,14 +278,16 @@ export const togglePublishCourse = async (req, res) => {
     if (!course.hasAdminApprovedPublish) {
       return res.status(400).json({
         success: false,
-        message: "Course must be approved by an admin once before the creator can publish or unpublish it directly.",
+        message:
+          "Course must be approved by an admin once before the creator can publish or unpublish it directly.",
       });
     }
 
     if (course.status === "pending") {
       return res.status(400).json({
         success: false,
-        message: "Cannot toggle publish status while a publish request is pending review",
+        message:
+          "Cannot toggle publish status while a publish request is pending review",
       });
     }
 
@@ -340,10 +351,15 @@ export const deleteCourse = async (req, res) => {
 export const getCourse = async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await Course.findById(id).populate("instructor", "name email role");
+    const course = await Course.findById(id).populate(
+      "instructor",
+      "name email role",
+    );
 
     if (!course) {
-      return res.status(404).json({ success: false, message: "Course not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
     }
 
     const instructorId =
@@ -358,7 +374,12 @@ export const getCourse = async (req, res) => {
     res.status(200).json({ success: true, data: course });
   } catch (error) {
     console.error("Error fetching course:", error);
-    res.status(500).json({ success: false, message: error.message || "Error fetching course" });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: error.message || "Error fetching course",
+      });
   }
 };
 
@@ -368,7 +389,9 @@ export const getCourseEnrollments = async (req, res) => {
     const course = await Course.findById(id);
 
     if (!course) {
-      return res.status(404).json({ success: false, message: "Course not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
     }
 
     if (course.instructor.toString() !== req.user._id.toString()) {
@@ -382,7 +405,12 @@ export const getCourseEnrollments = async (req, res) => {
     res.status(200).json({ success: true, data: enrollments });
   } catch (error) {
     console.error("Error fetching course enrollments:", error);
-    res.status(500).json({ success: false, message: error.message || "Error fetching course enrollments" });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: error.message || "Error fetching course enrollments",
+      });
   }
 };
 
@@ -392,7 +420,9 @@ export const getCourseRatings = async (req, res) => {
     const course = await Course.findById(id);
 
     if (!course) {
-      return res.status(404).json({ success: false, message: "Course not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
     }
 
     if (course.instructor.toString() !== req.user._id.toString()) {
@@ -408,7 +438,12 @@ export const getCourseRatings = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching course ratings:", error);
-    res.status(500).json({ success: false, message: error.message || "Error fetching course ratings" });
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: error.message || "Error fetching course ratings",
+      });
   }
 };
 
@@ -471,7 +506,10 @@ export const reviewPublishRequest = async (req, res) => {
       });
     }
 
-    const course = await Course.findById(id).populate("instructor", "name email");
+    const course = await Course.findById(id).populate(
+      "instructor",
+      "name email",
+    );
     if (!course) {
       return res.status(404).json({
         success: false,

@@ -11,17 +11,17 @@ export const incrementTutorialView = async (req, res) => {
     const tutorial = await Tutorial.findByIdAndUpdate(
       tutorialId,
       { $inc: { viewCount: 1 } },
-      { 
-        new: true, 
+      {
+        new: true,
         select: "viewCount",
-        timestamps: false // Prevent updatedAt from being modified
-      }
+        timestamps: false, // Prevent updatedAt from being modified
+      },
     );
 
     if (!tutorial) {
       return res.status(404).json({
         success: false,
-        message: "Tutorial not found"
+        message: "Tutorial not found",
       });
     }
 
@@ -29,15 +29,15 @@ export const incrementTutorialView = async (req, res) => {
       success: true,
       message: "View tracked successfully",
       data: {
-        viewCount: tutorial.viewCount
-      }
+        viewCount: tutorial.viewCount,
+      },
     });
   } catch (error) {
     console.error("Error tracking tutorial view:", error);
     res.status(500).json({
       success: false,
       message: "Failed to track tutorial view",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -52,17 +52,17 @@ export const incrementCourseView = async (req, res) => {
     const course = await Course.findByIdAndUpdate(
       courseId,
       { $inc: { viewCount: 1 } },
-      { 
-        new: true, 
+      {
+        new: true,
         select: "viewCount",
-        timestamps: false // Prevent updatedAt from being modified
-      }
+        timestamps: false, // Prevent updatedAt from being modified
+      },
     );
 
     if (!course) {
       return res.status(404).json({
         success: false,
-        message: "Course not found"
+        message: "Course not found",
       });
     }
 
@@ -70,15 +70,15 @@ export const incrementCourseView = async (req, res) => {
       success: true,
       message: "View tracked successfully",
       data: {
-        viewCount: course.viewCount
-      }
+        viewCount: course.viewCount,
+      },
     });
   } catch (error) {
     console.error("Error tracking course view:", error);
     res.status(500).json({
       success: false,
       message: "Failed to track course view",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -98,14 +98,14 @@ export const getMostViewedTutorials = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: tutorials
+      data: tutorials,
     });
   } catch (error) {
     console.error("Error fetching most viewed tutorials:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch most viewed tutorials",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -120,19 +120,21 @@ export const getMostViewedCourses = async (req, res) => {
     const courses = await Course.find({ isPublished: true, isArchived: false })
       .sort({ viewCount: -1 })
       .limit(limit)
-      .select("title language category difficulty viewCount enrollmentCount createdAt")
+      .select(
+        "title language category difficulty viewCount enrollmentCount createdAt",
+      )
       .populate("instructor", "name");
 
     res.status(200).json({
       success: true,
-      data: courses
+      data: courses,
     });
   } catch (error) {
     console.error("Error fetching most viewed courses:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch most viewed courses",
-      error: error.message
+      error: error.message,
     });
   }
 };
@@ -161,8 +163,16 @@ export const getMostViewedContent = async (req, res) => {
       .lean();
 
     // Add type field
-    const tutorialsWithType = tutorials.map(t => ({ ...t, type: "tutorial", views: t.viewCount }));
-    const coursesWithType = courses.map(c => ({ ...c, type: "course", views: c.viewCount }));
+    const tutorialsWithType = tutorials.map((t) => ({
+      ...t,
+      type: "tutorial",
+      views: t.viewCount,
+    }));
+    const coursesWithType = courses.map((c) => ({
+      ...c,
+      type: "course",
+      views: c.viewCount,
+    }));
 
     // Combine and sort
     const combined = [...tutorialsWithType, ...coursesWithType]
@@ -171,14 +181,14 @@ export const getMostViewedContent = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      data: combined
+      data: combined,
     });
   } catch (error) {
     console.error("Error fetching most viewed content:", error);
     res.status(500).json({
       success: false,
       message: "Failed to fetch most viewed content",
-      error: error.message
+      error: error.message,
     });
   }
 };

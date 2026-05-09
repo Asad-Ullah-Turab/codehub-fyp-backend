@@ -1,85 +1,95 @@
-import express from 'express';
-import passport, { isStrategyAvailable } from '../config/oauthConfig.js';
-import User from '../models/User.js';
-import { authLimiter, verificationLimiter } from '../middleware/rateLimitMiddleware.js';
-import { 
-  signup, 
-  signin, 
-  logout, 
-  protect, 
-  oauthSuccess, 
+import express from "express";
+import passport, { isStrategyAvailable } from "../config/oauthConfig.js";
+import User from "../models/User.js";
+import {
+  authLimiter,
+  verificationLimiter,
+} from "../middleware/rateLimitMiddleware.js";
+import {
+  signup,
+  signin,
+  logout,
+  protect,
+  oauthSuccess,
   oauthFailure,
   verifyEmail,
   resendVerificationOTP,
   requestPasswordReset,
   verifyPasswordResetOTP,
-  resetPassword
-} from '../controllers/authController.js';
+  resetPassword,
+} from "../controllers/authController.js";
 
 const router = express.Router();
 
 // Public routes - with rate limiting
-router.post('/signup', authLimiter, signup);
-router.post('/signin', authLimiter, signin);
-router.post('/logout', logout);
+router.post("/signup", authLimiter, signup);
+router.post("/signin", authLimiter, signin);
+router.post("/logout", logout);
 
 // Email verification routes - with strict rate limiting
-router.post('/verify-email', verificationLimiter, verifyEmail);
-router.post('/resend-verification', verificationLimiter, resendVerificationOTP);
+router.post("/verify-email", verificationLimiter, verifyEmail);
+router.post("/resend-verification", verificationLimiter, resendVerificationOTP);
 
 // Password reset routes - with strict rate limiting
-router.post('/forgot-password', verificationLimiter, requestPasswordReset);
-router.post('/verify-reset-otp', verificationLimiter, verifyPasswordResetOTP);
-router.post('/reset-password', verificationLimiter, resetPassword);
+router.post("/forgot-password", verificationLimiter, requestPasswordReset);
+router.post("/verify-reset-otp", verificationLimiter, verifyPasswordResetOTP);
+router.post("/reset-password", verificationLimiter, resetPassword);
 
 // Google OAuth routes
-router.get('/google', (req, res, next) => {
-  console.log('[oauth] incoming /google', {
+router.get("/google", (req, res, next) => {
+  console.log("[oauth] incoming /google", {
     protocol: req.protocol,
-    forwarded: req.headers['x-forwarded-proto'],
+    forwarded: req.headers["x-forwarded-proto"],
     host: req.headers.host,
-    secure: req.secure
+    secure: req.secure,
   });
 
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
     return res.status(500).json({
-      status: 'error',
-      message: 'Google OAuth is not configured'
+      status: "error",
+      message: "Google OAuth is not configured",
     });
   }
-  
+
   // Check if Google strategy is available
-  if (!isStrategyAvailable('google')) {
+  if (!isStrategyAvailable("google")) {
     return res.status(500).json({
-      status: 'error',
-      message: 'Google OAuth strategy is not available. Please check server configuration.'
+      status: "error",
+      message:
+        "Google OAuth strategy is not available. Please check server configuration.",
     });
   }
-  
-  passport.authenticate('google', {
-    scope: ['profile', 'email']
+
+  passport.authenticate("google", {
+    scope: ["profile", "email"],
   })(req, res, next);
 });
 
-router.get('/google/callback', (req, res, next) => {
+router.get("/google/callback", (req, res, next) => {
   if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
-    return res.redirect(`${process.env.FRONTEND_URL}/signin?error=oauth_not_configured`);
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/signin?error=oauth_not_configured`,
+    );
   }
-  
-  if (!isStrategyAvailable('google')) {
-    return res.redirect(`${process.env.FRONTEND_URL}/signin?error=oauth_strategy_unavailable`);
+
+  if (!isStrategyAvailable("google")) {
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/signin?error=oauth_strategy_unavailable`,
+    );
   }
-  
-  passport.authenticate('google', (err, user, info) => {
+
+  passport.authenticate("google", (err, user, info) => {
     if (err) {
       return next(err);
     }
     if (!user) {
       // Check if it's a suspended account
-      if (info && info.message === 'Account is suspended') {
-        return res.redirect(`${process.env.FRONTEND_URL}/signin?error=account_suspended`);
+      if (info && info.message === "Account is suspended") {
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/signin?error=account_suspended`,
+        );
       }
-      return res.redirect('/api/auth/failure');
+      return res.redirect("/api/auth/failure");
     }
     // Manually log in the user
     req.logIn(user, (loginErr) => {
@@ -92,52 +102,59 @@ router.get('/google/callback', (req, res, next) => {
 });
 
 // GitHub OAuth routes
-router.get('/github', (req, res, next) => {
-  console.log('[oauth] incoming /github', {
+router.get("/github", (req, res, next) => {
+  console.log("[oauth] incoming /github", {
     protocol: req.protocol,
-    forwarded: req.headers['x-forwarded-proto'],
+    forwarded: req.headers["x-forwarded-proto"],
     host: req.headers.host,
-    secure: req.secure
+    secure: req.secure,
   });
 
   if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
     return res.status(500).json({
-      status: 'error',
-      message: 'GitHub OAuth is not configured'
+      status: "error",
+      message: "GitHub OAuth is not configured",
     });
   }
-  
-  if (!isStrategyAvailable('github')) {
+
+  if (!isStrategyAvailable("github")) {
     return res.status(500).json({
-      status: 'error',
-      message: 'GitHub OAuth strategy is not available. Please check server configuration.'
+      status: "error",
+      message:
+        "GitHub OAuth strategy is not available. Please check server configuration.",
     });
   }
-  
-  passport.authenticate('github', {
-    scope: ['user:email']
+
+  passport.authenticate("github", {
+    scope: ["user:email"],
   })(req, res, next);
 });
 
-router.get('/github/callback', (req, res, next) => {
+router.get("/github/callback", (req, res, next) => {
   if (!process.env.GITHUB_CLIENT_ID || !process.env.GITHUB_CLIENT_SECRET) {
-    return res.redirect(`${process.env.FRONTEND_URL}/signin?error=oauth_not_configured`);
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/signin?error=oauth_not_configured`,
+    );
   }
-  
-  if (!isStrategyAvailable('github')) {
-    return res.redirect(`${process.env.FRONTEND_URL}/signin?error=oauth_strategy_unavailable`);
+
+  if (!isStrategyAvailable("github")) {
+    return res.redirect(
+      `${process.env.FRONTEND_URL}/signin?error=oauth_strategy_unavailable`,
+    );
   }
-  
-  passport.authenticate('github', (err, user, info) => {
+
+  passport.authenticate("github", (err, user, info) => {
     if (err) {
       return next(err);
     }
     if (!user) {
       // Check if it's a suspended account
-      if (info && info.message === 'Account is suspended') {
-        return res.redirect(`${process.env.FRONTEND_URL}/signin?error=account_suspended`);
+      if (info && info.message === "Account is suspended") {
+        return res.redirect(
+          `${process.env.FRONTEND_URL}/signin?error=account_suspended`,
+        );
       }
-      return res.redirect('/api/auth/failure');
+      return res.redirect("/api/auth/failure");
     }
     // Manually log in the user
     req.logIn(user, (loginErr) => {
@@ -150,29 +167,29 @@ router.get('/github/callback', (req, res, next) => {
 });
 
 // OAuth failure route
-router.get('/failure', oauthFailure);
+router.get("/failure", oauthFailure);
 
 // Test protected route
-router.get('/me', protect, (req, res) => {
+router.get("/me", protect, (req, res) => {
   res.status(200).json({
-    status: 'success',
+    status: "success",
     data: {
-      user: req.user
-    }
+      user: req.user,
+    },
   });
 });
 
 // Development only endpoints
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NODE_ENV === "development") {
   // Check account status
-  router.get('/dev/account-status/:email', async (req, res) => {
+  router.get("/dev/account-status/:email", async (req, res) => {
     try {
       const { email } = req.params;
       const user = await User.findOne({ email });
-      
+
       if (user) {
-        res.json({ 
-          status: 'success', 
+        res.json({
+          status: "success",
           data: {
             email: user.email,
             name: user.name,
@@ -180,37 +197,44 @@ if (process.env.NODE_ENV === 'development') {
             accountStatus: user.accountStatus,
             hasOTP: !!user.emailVerificationOTP,
             otpExpires: user.emailVerificationOTPExpires,
-            createdAt: user.createdAt
-          }
+            createdAt: user.createdAt,
+          },
         });
       } else {
-        res.status(404).json({ status: 'fail', message: 'Account not found' });
+        res.status(404).json({ status: "fail", message: "Account not found" });
       }
     } catch {
-      res.status(500).json({ status: 'error', message: 'Failed to check account' });
+      res
+        .status(500)
+        .json({ status: "error", message: "Failed to check account" });
     }
   });
 
   // Delete unverified account
-  router.delete('/dev/delete-unverified/:email', async (req, res) => {
+  router.delete("/dev/delete-unverified/:email", async (req, res) => {
     try {
       const { email } = req.params;
-      const user = await User.findOne({ 
-        email, 
-        accountStatus: 'pending',
-        isEmailVerified: false 
+      const user = await User.findOne({
+        email,
+        accountStatus: "pending",
+        isEmailVerified: false,
       });
-      
+
       if (user) {
         await User.findByIdAndDelete(user._id);
-        res.json({ status: 'success', message: 'Unverified account deleted' });
+        res.json({ status: "success", message: "Unverified account deleted" });
       } else {
-        res.status(404).json({ status: 'fail', message: 'No unverified account found' });
+        res
+          .status(404)
+          .json({ status: "fail", message: "No unverified account found" });
       }
     } catch {
-      res.status(500).json({ status: 'error', message: 'Failed to delete account' });
+      res
+        .status(500)
+        .json({ status: "error", message: "Failed to delete account" });
     }
   });
 }
 
 export default router;
+

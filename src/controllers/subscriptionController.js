@@ -14,7 +14,6 @@ export function __setStripeService(newSvc) {
   stripeSvc = newSvc;
 }
 
-
 // Create a checkout session and return the URL
 export const createCheckoutSession = async (req, res) => {
   try {
@@ -78,10 +77,10 @@ export const stripeWebhook = async (req, res) => {
   try {
     const result = await stripeService.handleWebhookEvent(event);
     if (result) {
-      console.log('Webhook processed successfully for user:', result.email);
+      console.log("Webhook processed successfully for user:", result.email);
     }
   } catch (processError) {
-    console.error('Error processing webhook event:', processError.message);
+    console.error("Error processing webhook event:", processError.message);
     // still return 200 to avoid retries if our endpoint is misbehaving
   }
 
@@ -92,10 +91,12 @@ export const cancelSubscription = async (req, res) => {
   try {
     const user = req.user;
     if (!user) {
-      return res.status(401).json({ success: false, message: 'Unauthorized' });
+      return res.status(401).json({ success: false, message: "Unauthorized" });
     }
     if (!user.stripeSubscriptionId) {
-      return res.status(400).json({ success: false, message: 'No active subscription found' });
+      return res
+        .status(400)
+        .json({ success: false, message: "No active subscription found" });
     }
     const sub = await stripeSvc.cancelSubscription(user);
 
@@ -105,27 +106,29 @@ export const cancelSubscription = async (req, res) => {
         user: user._id,
         stripeSubscriptionId: user.stripeSubscriptionId,
         cancelledAt: new Date(),
-        ipAddress: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-        userAgent: req.headers['user-agent'] || null,
+        ipAddress:
+          req.headers["x-forwarded-for"] || req.connection.remoteAddress,
+        userAgent: req.headers["user-agent"] || null,
       });
     } catch (logErr) {
-      console.error('Failed to record cancellation event:', logErr);
+      console.error("Failed to record cancellation event:", logErr);
     }
 
     // create notification about cancellation
     try {
       await createNotification({
         userId: user._id,
-        type: 'subscription',
-        message: 'Your premium subscription has been cancelled. You have been moved to the free plan.',
+        type: "subscription",
+        message:
+          "Your premium subscription has been cancelled. You have been moved to the free plan.",
       });
     } catch (notifErr) {
-      console.error('Failed to create cancellation notification:', notifErr);
+      console.error("Failed to create cancellation notification:", notifErr);
     }
 
     res.status(200).json({ success: true, data: sub });
   } catch (error) {
-    console.error('Error cancelling subscription:', error);
+    console.error("Error cancelling subscription:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

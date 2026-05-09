@@ -56,7 +56,8 @@ export const submitContact = async (req, res) => {
 
     res.status(201).json({
       status: "success",
-      message: "Your message has been sent successfully. We'll get back to you soon!",
+      message:
+        "Your message has been sent successfully. We'll get back to you soon!",
       data: {
         contactId: contact._id,
       },
@@ -94,10 +95,10 @@ export const getAllContacts = async (req, res) => {
     // Add search functionality
     if (search) {
       query.$or = [
-        { fullName: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } },
-        { subject: { $regex: search, $options: 'i' } },
-        { message: { $regex: search, $options: 'i' } }
+        { fullName: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { subject: { $regex: search, $options: "i" } },
+        { message: { $regex: search, $options: "i" } },
       ];
     }
 
@@ -201,7 +202,7 @@ export const updateContactStatus = async (req, res) => {
           contact.email,
           contact.fullName,
           contact.subject,
-          response
+          response,
         );
       } catch (emailError) {
         console.error("Failed to send response email:", emailError);
@@ -252,7 +253,7 @@ export const replyToContact = async (req, res) => {
         originalSubject: contact.subject,
         subject,
         message,
-        adminName: req.user.username || "CodeHub Admin"
+        adminName: req.user.username || "CodeHub Admin",
       });
     } catch (emailError) {
       console.error("Failed to send reply email:", emailError);
@@ -264,7 +265,7 @@ export const replyToContact = async (req, res) => {
 
     // Update contact status and response
     const updateData = {
-      status: 'replied',
+      status: "replied",
       response: message,
       respondedAt: new Date(),
       respondedBy: req.user._id,
@@ -273,7 +274,8 @@ export const replyToContact = async (req, res) => {
     const updatedContact = await Contact.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true,
-    }).populate("userId", "username email")
+    })
+      .populate("userId", "username email")
       .populate("respondedBy", "username email");
 
     res.status(200).json({

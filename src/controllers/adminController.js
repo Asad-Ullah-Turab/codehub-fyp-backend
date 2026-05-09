@@ -17,9 +17,14 @@ export const getDashboardStats = async (req, res) => {
     const totalUsers = await User.countDocuments();
     const totalAdmins = await User.countDocuments({ role: "admin" });
     const totalCreators = await User.countDocuments({ role: "creator" });
-    const premiumUsers = await User.countDocuments({ subscriptionPlan: "premium", subscriptionStatus: "active" });
+    const premiumUsers = await User.countDocuments({
+      subscriptionPlan: "premium",
+      subscriptionStatus: "active",
+    });
     const activeUsers = await User.countDocuments({ accountStatus: "active" });
-    const suspendedUsers = await User.countDocuments({ accountStatus: "suspended" });
+    const suspendedUsers = await User.countDocuments({
+      accountStatus: "suspended",
+    });
     const totalTutorials = await Tutorial.countDocuments();
     const totalChats = await AIChat.countDocuments();
     const totalCourses = await Course.countDocuments();
@@ -37,9 +42,13 @@ export const getDashboardStats = async (req, res) => {
       createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
     });
 
-    const userGrowthRate = previousPeriodUsers > 0 
-      ? (((newUsersLast30Days - previousPeriodUsers) / previousPeriodUsers) * 100).toFixed(1)
-      : "0.0";
+    const userGrowthRate =
+      previousPeriodUsers > 0
+        ? (
+            ((newUsersLast30Days - previousPeriodUsers) / previousPeriodUsers) *
+            100
+          ).toFixed(1)
+        : "0.0";
 
     // Get recent enrollments (last 30 days)
     const recentEnrollments = await CourseEnrollment.countDocuments({
@@ -50,9 +59,13 @@ export const getDashboardStats = async (req, res) => {
       enrolledAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
     });
 
-    const enrollmentGrowthRate = previousEnrollments > 0
-      ? (((recentEnrollments - previousEnrollments) / previousEnrollments) * 100).toFixed(1)
-      : "0.0";
+    const enrollmentGrowthRate =
+      previousEnrollments > 0
+        ? (
+            ((recentEnrollments - previousEnrollments) / previousEnrollments) *
+            100
+          ).toFixed(1)
+        : "0.0";
 
     // Get recent tutorials (last 30 days)
     const recentTutorials = await Tutorial.countDocuments({
@@ -63,9 +76,13 @@ export const getDashboardStats = async (req, res) => {
       createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
     });
 
-    const tutorialGrowthRate = previousTutorials > 0
-      ? (((recentTutorials - previousTutorials) / previousTutorials) * 100).toFixed(1)
-      : "0.0";
+    const tutorialGrowthRate =
+      previousTutorials > 0
+        ? (
+            ((recentTutorials - previousTutorials) / previousTutorials) *
+            100
+          ).toFixed(1)
+        : "0.0";
 
     // Get recent AI chats (last 30 days)
     const recentChats = await AIChat.countDocuments({
@@ -76,14 +93,17 @@ export const getDashboardStats = async (req, res) => {
       createdAt: { $gte: sixtyDaysAgo, $lt: thirtyDaysAgo },
     });
 
-    const chatGrowthRate = previousChats > 0
-      ? (((recentChats - previousChats) / previousChats) * 100).toFixed(1)
-      : "0.0";
+    const chatGrowthRate =
+      previousChats > 0
+        ? (((recentChats - previousChats) / previousChats) * 100).toFixed(1)
+        : "0.0";
 
     // Calculate subscription earnings from actual transactions
     const PREMIUM_PRICE = 9.99; // Monthly subscription price
     const monthlyRecurringRevenue = (premiumUsers * PREMIUM_PRICE).toFixed(2);
-    const annualRecurringRevenue = (premiumUsers * PREMIUM_PRICE * 12).toFixed(2);
+    const annualRecurringRevenue = (premiumUsers * PREMIUM_PRICE * 12).toFixed(
+      2,
+    );
 
     // Get total revenue from completed transactions
     const totalRevenueData = await SubscriptionTransaction.getTotalRevenue();
@@ -91,29 +111,43 @@ export const getDashboardStats = async (req, res) => {
     const totalTransactions = totalRevenueData.totalTransactions || 0;
 
     // Calculate revenue from last 30 days
-    const revenueByDateLast30Days = await SubscriptionTransaction.getRevenueByDateRange(
-      thirtyDaysAgo,
-      new Date()
-    );
-    const revenueGrowth = revenueByDateLast30Days.reduce((sum, item) => sum + parseFloat(item.revenue), 0).toFixed(2);
+    const revenueByDateLast30Days =
+      await SubscriptionTransaction.getRevenueByDateRange(
+        thirtyDaysAgo,
+        new Date(),
+      );
+    const revenueGrowth = revenueByDateLast30Days
+      .reduce((sum, item) => sum + parseFloat(item.revenue), 0)
+      .toFixed(2);
 
     // Calculate revenue from previous 30 days for growth rate
-    const revenueByDatePrevious30Days = await SubscriptionTransaction.getRevenueByDateRange(
-      sixtyDaysAgo,
-      thirtyDaysAgo
+    const revenueByDatePrevious30Days =
+      await SubscriptionTransaction.getRevenueByDateRange(
+        sixtyDaysAgo,
+        thirtyDaysAgo,
+      );
+    const previousRevenue = revenueByDatePrevious30Days.reduce(
+      (sum, item) => sum + parseFloat(item.revenue),
+      0,
     );
-    const previousRevenue = revenueByDatePrevious30Days.reduce((sum, item) => sum + parseFloat(item.revenue), 0);
 
-    const revenueGrowthRate = previousRevenue > 0
-      ? (((parseFloat(revenueGrowth) - previousRevenue) / previousRevenue) * 100).toFixed(1)
-      : parseFloat(revenueGrowth) > 0 ? "100.0" : "0.0";
+    const revenueGrowthRate =
+      previousRevenue > 0
+        ? (
+            ((parseFloat(revenueGrowth) - previousRevenue) / previousRevenue) *
+            100
+          ).toFixed(1)
+        : parseFloat(revenueGrowth) > 0
+          ? "100.0"
+          : "0.0";
 
     // Count new subscriptions in last 30 days
-    const newPremiumUsersLast30Days = await SubscriptionTransaction.countDocuments({
-      type: 'subscription_created',
-      status: 'completed',
-      transactionDate: { $gte: thirtyDaysAgo }
-    });
+    const newPremiumUsersLast30Days =
+      await SubscriptionTransaction.countDocuments({
+        type: "subscription_created",
+        status: "completed",
+        transactionDate: { $gte: thirtyDaysAgo },
+      });
 
     res.status(200).json({
       success: true,
@@ -142,10 +176,10 @@ export const getDashboardStats = async (req, res) => {
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
         totalTransactions,
         newPremiumUsersLast30Days,
-        revenueByDate: revenueByDateLast30Days.map(item => ({
+        revenueByDate: revenueByDateLast30Days.map((item) => ({
           date: item._id,
           revenue: parseFloat(item.revenue),
-          count: item.count
+          count: item.count,
         })),
       },
     });
@@ -157,7 +191,14 @@ export const getDashboardStats = async (req, res) => {
 // Get all users with pagination
 export const getAllUsers = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "", role = "", status = "", plan = "" } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      search = "",
+      role = "",
+      status = "",
+      plan = "",
+    } = req.query;
     const skip = (page - 1) * limit;
 
     let filter = {};
@@ -174,7 +215,9 @@ export const getAllUsers = async (req, res) => {
     if (plan) filter.subscriptionPlan = plan;
 
     const users = await User.find(filter)
-      .select("name email role accountStatus profileImage createdAt lastLogin subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining")
+      .select(
+        "name email role accountStatus profileImage createdAt lastLogin subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining",
+      )
       .limit(parseInt(limit))
       .skip(skip)
       .sort({ createdAt: -1 });
@@ -211,27 +254,29 @@ export const updateUserStatus = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { accountStatus },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Send notification email and in-app notification
     await notifyUserStatusChange(user, accountStatus, reason);
     try {
       const msg =
-        accountStatus === 'suspended'
-          ? 'Your account has been suspended.'
-          : 'Your account has been activated.';
+        accountStatus === "suspended"
+          ? "Your account has been suspended."
+          : "Your account has been activated.";
       await createNotification({
         userId: user._id,
-        type: 'accountStatus',
+        type: "accountStatus",
         message: msg,
       });
     } catch (notifErr) {
-      console.error('Account status notification failed:', notifErr);
+      console.error("Account status notification failed:", notifErr);
     }
 
     res.status(200).json({
@@ -269,22 +314,24 @@ export const changeUserRole = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { role },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // send in-app notification about role change
     try {
       await createNotification({
         userId: user._id,
-        type: 'roleChange',
+        type: "roleChange",
         message: `Your role has been changed to ${role}.`,
       });
     } catch (notifErr) {
-      console.error('Role change notification failed:', notifErr);
+      console.error("Role change notification failed:", notifErr);
     }
 
     res.status(200).json({
@@ -308,7 +355,9 @@ export const getPendingCreatorApplications = async (req, res) => {
     };
 
     const users = await User.find(filter)
-      .select("name email role accountStatus creatorApplication createdAt lastLogin")
+      .select(
+        "name email role accountStatus creatorApplication createdAt lastLogin",
+      )
       .limit(paginationLimit)
       .skip(skip)
       .sort({ createdAt: -1 });
@@ -343,7 +392,9 @@ export const reviewCreatorApplication = async (req, res) => {
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     if (user.creatorApplication?.status !== "pending") {
@@ -369,24 +420,26 @@ export const reviewCreatorApplication = async (req, res) => {
     await user.save();
 
     try {
-      const emailService = (await import("../services/emailService.js")).default;
+      const emailService = (await import("../services/emailService.js"))
+        .default;
       if (emailService.isAvailable()) {
         if (approved) {
           await emailService.sendCustomEmail(
             user.email,
             "Congratulations! Your CodeHub creator application has been approved",
             `Congratulations ${user.name || "Creator"}!<br><br>Your application to become a content creator on CodeHub has been approved. You now have creator access and can start contributing tutorials and content to our community.<br><br>Thank you for your interest and welcome to the CodeHub creator team!`,
-            user.name || "Creator"
+            user.name || "Creator",
           );
         } else {
-          const rejectionMessage = comment && comment.trim()
-            ? comment.trim()
-            : "Your application has been rejected. Please review your submission and try again later.";
+          const rejectionMessage =
+            comment && comment.trim()
+              ? comment.trim()
+              : "Your application has been rejected. Please review your submission and try again later.";
           await emailService.sendCustomEmail(
             user.email,
             "Your CodeHub creator application has been rejected",
             `Hello ${user.name || "Creator"},<br><br>We reviewed your creator application and unfortunately it was not approved at this time.<br><br><strong>Admin message:</strong><br>${rejectionMessage.replace(/\n/g, "<br>")}<br><br>You may apply again after improving your submission. Thank you for your interest in CodeHub.`,
-            user.name || "Creator"
+            user.name || "Creator",
           );
         }
       }
@@ -403,7 +456,10 @@ export const reviewCreatorApplication = async (req, res) => {
           : "Your content creator application has been rejected. You may reapply later.",
       });
     } catch (notifErr) {
-      console.error("Creator application review notification failed:", notifErr);
+      console.error(
+        "Creator application review notification failed:",
+        notifErr,
+      );
     }
 
     res.status(200).json({
@@ -432,7 +488,9 @@ export const deleteUser = async (req, res) => {
     const user = await User.findByIdAndDelete(userId);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     res.status(200).json({
@@ -452,7 +510,9 @@ export const getUserDetails = async (req, res) => {
     const user = await User.findById(userId).select("-password");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     res.status(200).json({
@@ -468,26 +528,38 @@ export const getUserDetails = async (req, res) => {
 export const updateUserDetails = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { name, email, bio, profilePicture, skills, programmingLanguages, interests, experience } = req.body;
+    const {
+      name,
+      email,
+      bio,
+      profilePicture,
+      skills,
+      programmingLanguages,
+      interests,
+      experience,
+    } = req.body;
 
     const updateData = {};
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (bio !== undefined) updateData.bio = bio;
-    if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
+    if (profilePicture !== undefined)
+      updateData.profilePicture = profilePicture;
     if (skills) updateData.skills = skills;
-    if (programmingLanguages) updateData.programmingLanguages = programmingLanguages;
+    if (programmingLanguages)
+      updateData.programmingLanguages = programmingLanguages;
     if (interests) updateData.interests = interests;
     if (experience && experience !== "") updateData.experience = experience;
 
-    const user = await User.findByIdAndUpdate(
-      userId,
-      updateData,
-      { new: true, runValidators: true }
-    ).select("-password");
+    const user = await User.findByIdAndUpdate(userId, updateData, {
+      new: true,
+      runValidators: true,
+    }).select("-password");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     res.status(200).json({
@@ -516,11 +588,13 @@ export const sendEmailToUser = async (req, res) => {
     const user = await User.findById(userId);
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "User not found" });
     }
 
     // Import email service
-    const emailService = (await import('../services/emailService.js')).default;
+    const emailService = (await import("../services/emailService.js")).default;
 
     if (!emailService.isAvailable()) {
       return res.status(503).json({
@@ -542,10 +616,14 @@ export const sendEmailToUser = async (req, res) => {
 };
 
 // Send notification email on account status change
-export const notifyUserStatusChange = async (user, accountStatus, reason = "") => {
+export const notifyUserStatusChange = async (
+  user,
+  accountStatus,
+  reason = "",
+) => {
   try {
-    const emailService = (await import('../services/emailService.js')).default;
-    
+    const emailService = (await import("../services/emailService.js")).default;
+
     if (!emailService.isAvailable()) {
       /* email service not available - skipping notification (log removed) */
       return;
@@ -576,7 +654,12 @@ export const notifyUserStatusChange = async (user, accountStatus, reason = "") =
     }
 
     if (subject && message) {
-      await emailService.sendCustomEmail(user.email, subject, message, user.name);
+      await emailService.sendCustomEmail(
+        user.email,
+        subject,
+        message,
+        user.name,
+      );
     }
   } catch (error) {
     console.error("Failed to send notification email:", error);
@@ -626,14 +709,15 @@ export const updateTutorial = async (req, res) => {
     const { tutorialId } = req.params;
     const updateData = req.body;
 
-    const tutorial = await Tutorial.findByIdAndUpdate(
-      tutorialId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const tutorial = await Tutorial.findByIdAndUpdate(tutorialId, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!tutorial) {
-      return res.status(404).json({ success: false, message: "Tutorial not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tutorial not found" });
     }
 
     res.status(200).json({
@@ -654,7 +738,9 @@ export const deleteTutorial = async (req, res) => {
     const tutorial = await Tutorial.findByIdAndDelete(tutorialId);
 
     if (!tutorial) {
-      return res.status(404).json({ success: false, message: "Tutorial not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Tutorial not found" });
     }
 
     res.status(200).json({
@@ -669,7 +755,18 @@ export const deleteTutorial = async (req, res) => {
 // Create new tutorial (by admin)
 export const createTutorial = async (req, res) => {
   try {
-    const { title, description, language, concept, content, difficulty, codeExamples, tags, notes, tips } = req.body;
+    const {
+      title,
+      description,
+      language,
+      concept,
+      content,
+      difficulty,
+      codeExamples,
+      tags,
+      notes,
+      tips,
+    } = req.body;
 
     const tutorial = await Tutorial.create({
       title,
@@ -723,22 +820,22 @@ export const getAnalytics = async (req, res) => {
     // User growth data - last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
+
     const userGrowth = await User.aggregate([
       {
         $match: {
-          createdAt: { $gte: thirtyDaysAgo }
-        }
+          createdAt: { $gte: thirtyDaysAgo },
+        },
       },
       {
         $group: {
-          _id: { 
-            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" }
+          _id: {
+            $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
           },
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
-      { $sort: { _id: 1 } }
+      { $sort: { _id: 1 } },
     ]);
 
     // Chatbot query categories
@@ -746,61 +843,66 @@ export const getAnalytics = async (req, res) => {
       {
         $group: {
           _id: "$context",
-          count: { $sum: 1 }
-        }
+          count: { $sum: 1 },
+        },
       },
-      { $sort: { count: -1 } }
+      { $sort: { count: -1 } },
     ]);
 
     // Code chat queries count
     const codeChatCount = await CodeChat.countDocuments();
-    
+
     // AI-generated tutorials count
-    const aiTutorialsCount = await Tutorial.countDocuments({ isAIgenerated: true });
+    const aiTutorialsCount = await Tutorial.countDocuments({
+      isAIgenerated: true,
+    });
 
     // Add code chat and AI tutorials to categories
     if (codeChatCount > 0) {
-      chatbotCategories.push({ _id: 'code', count: codeChatCount });
+      chatbotCategories.push({ _id: "code", count: codeChatCount });
     }
     if (aiTutorialsCount > 0) {
-      chatbotCategories.push({ _id: 'ai-tutorial', count: aiTutorialsCount });
+      chatbotCategories.push({ _id: "ai-tutorial", count: aiTutorialsCount });
     }
 
     // Top performing courses
     const topCourses = await Course.find({ isPublished: true })
       .sort({ viewCount: -1 })
       .limit(10)
-      .select('title language category viewCount enrollmentCount completedCount estimatedHours isPremium')
+      .select(
+        "title language category viewCount enrollmentCount completedCount estimatedHours isPremium",
+      )
       .lean();
 
     // Calculate completion rates and format course data
-    const formattedCourses = topCourses.map(course => ({
+    const formattedCourses = topCourses.map((course) => ({
       name: course.title,
       category: course.category || course.language,
       views: course.viewCount || 0,
-      completion: course.enrollmentCount > 0 
-        ? Math.round((course.completedCount / course.enrollmentCount) * 100)
-        : 0,
-      avgTime: course.estimatedHours 
+      completion:
+        course.enrollmentCount > 0
+          ? Math.round((course.completedCount / course.enrollmentCount) * 100)
+          : 0,
+      avgTime: course.estimatedHours
         ? `${Math.round(course.estimatedHours * 60)} min`
-        : 'N/A',
-      isPremium: course.isPremium || false
+        : "N/A",
+      isPremium: course.isPremium || false,
     }));
 
     // Top performing tutorials if courses are limited
     const topTutorials = await Tutorial.find({ isPublished: true })
       .sort({ viewCount: -1 })
       .limit(10)
-      .select('title language concept viewCount isPremium')
+      .select("title language concept viewCount isPremium")
       .lean();
 
-    const formattedTutorials = topTutorials.map(tutorial => ({
+    const formattedTutorials = topTutorials.map((tutorial) => ({
       name: tutorial.title,
       category: tutorial.concept || tutorial.language,
       views: tutorial.viewCount || 0,
       completion: Math.floor(Math.random() * 30) + 60, // Estimated completion (60-90%)
       avgTime: `${Math.floor(Math.random() * 30) + 10} min`, // Estimated (10-40 min)
-      isPremium: tutorial.isPremium || false
+      isPremium: tutorial.isPremium || false,
     }));
 
     // Combine courses and tutorials, prioritizing courses
@@ -811,9 +913,9 @@ export const getAnalytics = async (req, res) => {
 
     // Calculate subscription earnings from actual transactions
     const PREMIUM_PRICE = 9.99;
-    const premiumUsers = await User.countDocuments({ 
-      subscriptionPlan: "premium", 
-      subscriptionStatus: "active" 
+    const premiumUsers = await User.countDocuments({
+      subscriptionPlan: "premium",
+      subscriptionStatus: "active",
     });
     const totalUsers = await User.countDocuments();
     const totalCreators = await User.countDocuments({ role: "creator" });
@@ -821,17 +923,20 @@ export const getAnalytics = async (req, res) => {
     const totalTutorials = await Tutorial.countDocuments();
 
     const monthlyRecurringRevenue = (premiumUsers * PREMIUM_PRICE).toFixed(2);
-    const annualRecurringRevenue = (premiumUsers * PREMIUM_PRICE * 12).toFixed(2);
+    const annualRecurringRevenue = (premiumUsers * PREMIUM_PRICE * 12).toFixed(
+      2,
+    );
 
     // Get total revenue from all completed transactions
     const totalRevenueData = await SubscriptionTransaction.getTotalRevenue();
     const totalRevenue = totalRevenueData.totalRevenue || 0;
-    const totalSubscriptionTransactions = totalRevenueData.totalTransactions || 0;
+    const totalSubscriptionTransactions =
+      totalRevenueData.totalTransactions || 0;
 
     // Revenue over time (last 30 days) from actual transactions
     const revenueOverTime = await SubscriptionTransaction.getRevenueByDateRange(
       thirtyDaysAgo,
-      new Date()
+      new Date(),
     );
 
     // Calculate cumulative revenue
@@ -842,7 +947,7 @@ export const getAnalytics = async (req, res) => {
         date: item._id,
         newSubscriptions: item.count,
         revenue: parseFloat(item.revenue),
-        cumulativeRevenue: parseFloat(cumulativeSum.toFixed(2))
+        cumulativeRevenue: parseFloat(cumulativeSum.toFixed(2)),
       };
     });
 
@@ -850,16 +955,16 @@ export const getAnalytics = async (req, res) => {
     const transactionsByType = await SubscriptionTransaction.aggregate([
       {
         $match: {
-          transactionDate: { $gte: thirtyDaysAgo }
-        }
+          transactionDate: { $gte: thirtyDaysAgo },
+        },
       },
       {
         $group: {
           _id: "$type",
           count: { $sum: 1 },
-          totalAmount: { $sum: "$amount" }
-        }
-      }
+          totalAmount: { $sum: "$amount" },
+        },
+      },
     ]);
 
     res.status(200).json({
@@ -884,15 +989,18 @@ export const getAnalytics = async (req, res) => {
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
         totalSubscriptionTransactions,
         revenueOverTime: formattedRevenueData,
-        transactionsByType: transactionsByType.map(t => ({
+        transactionsByType: transactionsByType.map((t) => ({
           type: t._id,
           count: t.count,
-          totalAmount: parseFloat(t.totalAmount.toFixed(2))
+          totalAmount: parseFloat(t.totalAmount.toFixed(2)),
         })),
         premiumConversionRate: ((premiumUsers / totalUsers) * 100).toFixed(2),
-        averageRevenuePerUser: premiumUsers > 0 
-          ? parseFloat((totalRevenue / totalSubscriptionTransactions).toFixed(2))
-          : 0,
+        averageRevenuePerUser:
+          premiumUsers > 0
+            ? parseFloat(
+                (totalRevenue / totalSubscriptionTransactions).toFixed(2),
+              )
+            : 0,
       },
     });
   } catch (error) {
@@ -919,9 +1027,8 @@ export const searchUsers = async (req, res) => {
           { email: { $regex: query, $options: "i" } },
         ],
       },
-      { _id: 1, name: 1, email: 1, role: 1, accountStatus: 1 }
-    )
-      .limit(10);
+      { _id: 1, name: 1, email: 1, role: 1, accountStatus: 1 },
+    ).limit(10);
 
     res.status(200).json({
       success: true,
@@ -1019,7 +1126,7 @@ export const getPendingCertificates = async (req, res) => {
   try {
     const { page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
-    
+
     // Verify Certificate model is available
     if (!Certificate) {
       throw new Error("Certificate model not loaded");
@@ -1046,7 +1153,9 @@ export const getPendingCertificates = async (req, res) => {
         .limit(parseInt(limit));
     }
 
-    const total = await Certificate.countDocuments({ approvalStatus: "pending" });
+    const total = await Certificate.countDocuments({
+      approvalStatus: "pending",
+    });
 
     const normalizedCertificates = certificates.map((cert) => {
       const certObj = cert.toObject();
@@ -1056,7 +1165,7 @@ export const getPendingCertificates = async (req, res) => {
       return certObj;
     });
 
-    res.setHeader('Content-Type', 'application/json');
+    res.setHeader("Content-Type", "application/json");
     res.status(200).json({
       success: true,
       data: normalizedCertificates,
@@ -1064,11 +1173,11 @@ export const getPendingCertificates = async (req, res) => {
       pages: Math.ceil(total / parseInt(limit)),
     });
   } catch (error) {
-    res.setHeader('Content-Type', 'application/json');
-    res.status(500).json({ 
-      success: false, 
+    res.setHeader("Content-Type", "application/json");
+    res.status(500).json({
+      success: false,
       message: error.message,
-      errorType: error.name
+      errorType: error.name,
     });
   }
 };
@@ -1081,7 +1190,9 @@ export const approveCertificate = async (req, res) => {
 
     const certificate = await Certificate.findById(certificateId);
     if (!certificate) {
-      return res.status(404).json({ success: false, message: "Certificate not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Certificate not found" });
     }
 
     certificate.approvalStatus = "approved";
@@ -1093,12 +1204,12 @@ export const approveCertificate = async (req, res) => {
     try {
       await createNotification({
         userId: certificate.user,
-        type: 'certificateApproved',
+        type: "certificateApproved",
         message: `Your certificate for the course \"${certificate.courseTitle || certificate.course}\" has been approved!`,
-        link: '/profile/certificates',
+        link: "/profile/certificates",
       });
     } catch (notifErr) {
-      console.error('Certificate approval notification failed:', notifErr);
+      console.error("Certificate approval notification failed:", notifErr);
     }
 
     res.status(200).json({
@@ -1120,15 +1231,17 @@ export const rejectCertificate = async (req, res) => {
     const adminId = req.user._id; // From auth middleware
 
     if (!rejectionReason) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Rejection reason is required" 
+      return res.status(400).json({
+        success: false,
+        message: "Rejection reason is required",
       });
     }
 
     const certificate = await Certificate.findById(certificateId);
     if (!certificate) {
-      return res.status(404).json({ success: false, message: "Certificate not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Certificate not found" });
     }
 
     certificate.approvalStatus = "rejected";
@@ -1153,19 +1266,25 @@ export const rejectCertificate = async (req, res) => {
 // Get all courses for admin
 export const getAllCourses = async (req, res) => {
   try {
-    const { page = 1, limit = 10, language = "", category = "", search = "" } = req.query;
+    const {
+      page = 1,
+      limit = 10,
+      language = "",
+      category = "",
+      search = "",
+    } = req.query;
     const skip = (page - 1) * limit;
 
     let filter = {};
-    
+
     if (language) {
       filter.language = language.toLowerCase();
     }
-    
+
     if (category) {
       filter.category = category.toLowerCase();
     }
-    
+
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: "i" } },
@@ -1198,23 +1317,24 @@ export const getAllCourses = async (req, res) => {
 // Create new course (by admin)
 export const createCourse = async (req, res) => {
   try {
-    const { 
-      title, 
-      description, 
-      shortDescription, 
-      language, 
-      category, 
-      difficulty, 
+    const {
+      title,
+      description,
+      shortDescription,
+      language,
+      category,
+      difficulty,
       estimatedHours,
       certificateTemplate,
       tags,
-      prerequisites
+      prerequisites,
     } = req.body;
 
     if (!title || !description || !shortDescription || !language || !category) {
       return res.status(400).json({
         success: false,
-        message: "Title, description, shortDescription, language, and category are required"
+        message:
+          "Title, description, shortDescription, language, and category are required",
       });
     }
 
@@ -1250,14 +1370,15 @@ export const updateCourse = async (req, res) => {
     const { courseId } = req.params;
     const updateData = req.body;
 
-    const course = await Course.findByIdAndUpdate(
-      courseId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    const course = await Course.findByIdAndUpdate(courseId, updateData, {
+      new: true,
+      runValidators: true,
+    });
 
     if (!course) {
-      return res.status(404).json({ success: false, message: "Course not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
     }
 
     res.status(200).json({
@@ -1278,7 +1399,9 @@ export const deleteCourse = async (req, res) => {
     const course = await Course.findByIdAndDelete(courseId);
 
     if (!course) {
-      return res.status(404).json({ success: false, message: "Course not found" });
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
     }
 
     res.status(200).json({
@@ -1299,7 +1422,7 @@ export const getNewsletterSubscriptions = async (req, res) => {
 
     // Add search functionality
     if (search) {
-      query.email = { $regex: search, $options: 'i' };
+      query.email = { $regex: search, $options: "i" };
     }
 
     const subscriptions = await NewsletterSubscription.find(query)
@@ -1323,9 +1446,9 @@ export const getNewsletterSubscriptions = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching newsletter subscriptions:", error);
-    res.status(500).json({ 
-      success: false, 
-      message: "Failed to fetch newsletter subscriptions" 
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch newsletter subscriptions",
     });
   }
 };
@@ -1334,19 +1457,19 @@ export const getNewsletterSubscriptions = async (req, res) => {
 export const triggerMonthlyReset = async (req, res) => {
   try {
     console.log(`Admin ${req.user.id} triggered manual monthly reset`);
-    
+
     await monthlyResetService.triggerReset();
-    
+
     res.status(200).json({
       success: true,
       message: "Monthly reset completed successfully",
     });
   } catch (error) {
     console.error("Error triggering monthly reset:", error);
-    res.status(500).json({ 
-      success: false, 
+    res.status(500).json({
+      success: false,
       message: "Failed to trigger monthly reset",
-      error: error.message 
+      error: error.message,
     });
   }
 };

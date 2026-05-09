@@ -9,7 +9,7 @@ const signToken = (id) => {
     process.env.JWT_SECRET || "your-super-secret-jwt-key",
     {
       expiresIn: process.env.JWT_EXPIRES_IN || "90d",
-    }
+    },
   );
 };
 
@@ -19,7 +19,7 @@ const createSendToken = (user, statusCode, res) => {
   const cookieOptions = {
     expires: new Date(
       Date.now() +
-        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000
+        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000,
     ),
     httpOnly: true,
     secure: process.env.NODE_ENV === "production", // Only send over HTTPS in production
@@ -105,7 +105,7 @@ export const signup = async (req, res) => {
             await emailService.sendVerificationOTP(
               email,
               otp,
-              existingUser.name
+              existingUser.name,
             );
 
             return res.status(200).json({
@@ -172,11 +172,12 @@ export const signup = async (req, res) => {
         try {
           await createNotification({
             userId: newUser._id,
-            type: 'welcome',
-            message: 'Welcome to CodeHub! Please verify your email to get started.',
+            type: "welcome",
+            message:
+              "Welcome to CodeHub! Please verify your email to get started.",
           });
         } catch (notifErr) {
-          console.error('Signup notification failed:', notifErr);
+          console.error("Signup notification failed:", notifErr);
         }
       } catch (emailError) {
         // If email fails, delete the user and return error
@@ -190,7 +191,7 @@ export const signup = async (req, res) => {
     } else {
       // If email service not available, auto-verify for development
       console.log(
-        "⚠️  Email service not available - auto-verifying user for development"
+        "⚠️  Email service not available - auto-verifying user for development",
       );
       await newUser.clearEmailVerificationOTP();
 
@@ -240,7 +241,7 @@ export const verifyEmail = async (req, res) => {
             hasOTP: !!user.emailVerificationOTP,
             otpExpires: user.emailVerificationOTPExpires,
           }
-        : "No user found"
+        : "No user found",
     );
 
     if (!user) {
@@ -288,11 +289,11 @@ export const verifyEmail = async (req, res) => {
     try {
       await createNotification({
         userId: user._id,
-        type: 'emailVerified',
-        message: 'Your email has been verified! Welcome aboard.',
+        type: "emailVerified",
+        message: "Your email has been verified! Welcome aboard.",
       });
     } catch (notifErr) {
-      console.error('Email verification notification failed:', notifErr);
+      console.error("Email verification notification failed:", notifErr);
     }
     createSendToken(user, 200, res);
   } catch (error) {
@@ -306,7 +307,7 @@ export const verifyEmail = async (req, res) => {
 
 // Resend verification OTP
 export const resendVerificationOTP = async (req, res) => {
-    // optionally notify user that new OTP was sent
+  // optionally notify user that new OTP was sent
   try {
     const { email } = req.body;
 
@@ -348,11 +349,11 @@ export const resendVerificationOTP = async (req, res) => {
         try {
           await createNotification({
             userId: user._id,
-            type: 'verification',
-            message: 'A new verification code has been sent to your email.',
+            type: "verification",
+            message: "A new verification code has been sent to your email.",
           });
         } catch (notifErr) {
-          console.error('Verification resend notification failed:', notifErr);
+          console.error("Verification resend notification failed:", notifErr);
         }
       } catch (emailError) {
         res.status(500).json({
@@ -400,14 +401,14 @@ export const signin = async (req, res) => {
     // Verify password first
     const isPasswordCorrect = await user.correctPassword(
       password,
-      user.password
+      user.password,
     );
 
     if (!isPasswordCorrect) {
       // Check if account is currently locked (only for wrong password)
       if (user.isAccountLocked()) {
         const lockTimeRemaining = Math.ceil(
-          (user.accountLockedUntil - Date.now()) / (60 * 1000)
+          (user.accountLockedUntil - Date.now()) / (60 * 1000),
         ); // minutes
         return res.status(423).json({
           status: "fail",
@@ -501,11 +502,11 @@ export const signin = async (req, res) => {
     try {
       await createNotification({
         userId: user._id,
-        type: 'login',
-        message: 'You have successfully signed in to CodeHub.',
+        type: "login",
+        message: "You have successfully signed in to CodeHub.",
       });
     } catch (notifErr) {
-      console.error('Login notification failed:', notifErr);
+      console.error("Login notification failed:", notifErr);
     }
 
     createSendToken(user, 200, res);
@@ -541,7 +542,7 @@ export const protect = async (req, res, next) => {
     // Verification token
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || "your-super-secret-jwt-key"
+      process.env.JWT_SECRET || "your-super-secret-jwt-key",
     );
 
     // Check if user still exists
@@ -564,7 +565,7 @@ export const protect = async (req, res, next) => {
     // Check if account is currently locked due to failed login attempts
     if (currentUser.isAccountLocked()) {
       const lockTimeRemaining = Math.ceil(
-        (currentUser.accountLockedUntil - Date.now()) / (60 * 1000)
+        (currentUser.accountLockedUntil - Date.now()) / (60 * 1000),
       ); // minutes
       return res.status(423).json({
         status: "fail",
@@ -601,14 +602,14 @@ export const oauthSuccess = async (req, res) => {
 
   if (!user) {
     return res.redirect(
-      `${process.env.FRONTEND_URL}/signin?error=oauth_failed`
+      `${process.env.FRONTEND_URL}/signin?error=oauth_failed`,
     );
   }
 
   // Check if account is suspended
   if (user.accountStatus === "suspended") {
     return res.redirect(
-      `${process.env.FRONTEND_URL}/signin?error=account_suspended`
+      `${process.env.FRONTEND_URL}/signin?error=account_suspended`,
     );
   }
 
@@ -617,14 +618,14 @@ export const oauthSuccess = async (req, res) => {
 
   // create login notification (provider info may be on user.provider)
   try {
-    const providerMsg = user.provider ? ` via ${user.provider}` : '';
+    const providerMsg = user.provider ? ` via ${user.provider}` : "";
     await createNotification({
       userId: user._id,
-      type: 'login',
+      type: "login",
       message: `You have signed in to CodeHub${providerMsg}.`,
     });
   } catch (notifErr) {
-    console.error('OAuth login notification failed:', notifErr);
+    console.error("OAuth login notification failed:", notifErr);
   }
 
   // Create JWT token
@@ -633,14 +634,14 @@ export const oauthSuccess = async (req, res) => {
     process.env.JWT_SECRET || "your-super-secret-jwt-key",
     {
       expiresIn: process.env.JWT_EXPIRES_IN || "90d",
-    }
+    },
   );
 
   // Set cookie
   const cookieOptions = {
     expires: new Date(
       Date.now() +
-        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000
+        (process.env.JWT_COOKIE_EXPIRES_IN || 90) * 24 * 60 * 60 * 1000,
     ),
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
@@ -704,11 +705,11 @@ export const requestPasswordReset = async (req, res) => {
         try {
           await createNotification({
             userId: user._id,
-            type: 'passwordResetOTP',
-            message: 'Password reset code has been sent to your email.',
+            type: "passwordResetOTP",
+            message: "Password reset code has been sent to your email.",
           });
         } catch (notifErr) {
-          console.error('Password reset OTP notification failed:', notifErr);
+          console.error("Password reset OTP notification failed:", notifErr);
         }
       } catch (emailError) {
         res.status(500).json({
@@ -718,11 +719,12 @@ export const requestPasswordReset = async (req, res) => {
       }
     } else {
       // Email service not available - for development, still return success
-      /* email service not available - debug OTP suppressed */;
-      res.status(200).json({
-        status: "success",
-        message: "Password reset code generated (email service unavailable)",
-      });
+      /* email service not available - debug OTP suppressed */ res
+        .status(200)
+        .json({
+          status: "success",
+          message: "Password reset code generated (email service unavailable)",
+        });
     }
   } catch (error) {
     console.error("Password reset request error:", error);
@@ -774,7 +776,7 @@ export const verifyPasswordResetOTP = async (req, res) => {
         purpose: "password-reset",
       },
       process.env.JWT_SECRET || "your-super-secret-jwt-key",
-      { expiresIn: "10m" }
+      { expiresIn: "10m" },
     );
 
     res.status(200).json({
@@ -816,7 +818,7 @@ export const resetPassword = async (req, res) => {
     try {
       decoded = jwt.verify(
         resetToken,
-        process.env.JWT_SECRET || "your-super-secret-jwt-key"
+        process.env.JWT_SECRET || "your-super-secret-jwt-key",
       );
 
       if (decoded.purpose !== "password-reset") {
@@ -848,16 +850,16 @@ export const resetPassword = async (req, res) => {
     try {
       await createNotification({
         userId: user._id,
-        type: 'passwordReset',
-        message: 'Your password has been reset successfully.',
+        type: "passwordReset",
+        message: "Your password has been reset successfully.",
       });
     } catch (notifErr) {
-      console.error('Password reset notification failed:', notifErr);
+      console.error("Password reset notification failed:", notifErr);
     }
     const token = jwt.sign(
       { id: user._id },
       process.env.JWT_SECRET || "your-super-secret-jwt-key",
-      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" }
+      { expiresIn: process.env.JWT_EXPIRES_IN || "7d" },
     );
 
     res.status(200).json({

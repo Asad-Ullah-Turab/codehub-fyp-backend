@@ -109,7 +109,7 @@ const quizSchema = new mongoose.Schema(
       default: false,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Calculate total points before saving

@@ -42,9 +42,9 @@ export const getProfile = async (req, res) => {
 export const updateProfile = async (req, res) => {
   try {
     const userId = req.user._id;
-    const { 
-      name, 
-      profilePicture, 
+    const {
+      name,
+      profilePicture,
       dateOfBirth,
       bio,
       location,
@@ -55,23 +55,27 @@ export const updateProfile = async (req, res) => {
       skills,
       interests,
       experience,
-      preferences 
+      preferences,
     } = req.body;
 
     const updateData = {};
     if (name !== undefined && name !== "") updateData.name = name;
-    if (profilePicture !== undefined) updateData.profilePicture = profilePicture;
-    if (dateOfBirth !== undefined && dateOfBirth !== "") updateData.dateOfBirth = dateOfBirth;
+    if (profilePicture !== undefined)
+      updateData.profilePicture = profilePicture;
+    if (dateOfBirth !== undefined && dateOfBirth !== "")
+      updateData.dateOfBirth = dateOfBirth;
     if (bio !== undefined) updateData.bio = bio;
     if (location !== undefined) updateData.location = location;
     if (github !== undefined) updateData.github = github;
     if (linkedin !== undefined) updateData.linkedin = linkedin;
     if (website !== undefined) updateData.website = website;
-    if (programmingLanguages !== undefined) updateData.programmingLanguages = programmingLanguages;
+    if (programmingLanguages !== undefined)
+      updateData.programmingLanguages = programmingLanguages;
     if (skills !== undefined) updateData.skills = skills;
     if (interests !== undefined) updateData.interests = interests;
     // Only set experience if it has a valid value (not empty string)
-    if (experience !== undefined && experience !== "") updateData.experience = experience;
+    if (experience !== undefined && experience !== "")
+      updateData.experience = experience;
     if (preferences !== undefined) updateData.preferences = preferences;
 
     // First update the user
@@ -96,7 +100,7 @@ export const updateProfile = async (req, res) => {
       updatedUser.programmingLanguages?.length > 0 &&
       updatedUser.skills?.length > 0
     );
-    
+
     // Update isProfileComplete if it changed
     if (updatedUser.isProfileComplete !== isComplete) {
       updatedUser.isProfileComplete = isComplete;
@@ -107,11 +111,11 @@ export const updateProfile = async (req, res) => {
     try {
       await createNotification({
         userId,
-        type: 'profileUpdate',
-        message: 'Your profile has been updated.',
+        type: "profileUpdate",
+        message: "Your profile has been updated.",
       });
     } catch (notifErr) {
-      console.error('Profile update notification failed:', notifErr);
+      console.error("Profile update notification failed:", notifErr);
     }
 
     res.status(200).json({
@@ -137,7 +141,7 @@ export const markPromptShown = async (req, res) => {
     const user = await User.findByIdAndUpdate(
       userId,
       { profileCompletionPromptShown: true },
-      { new: true }
+      { new: true },
     ).select("-password -emailVerificationOTP -passwordResetOTP");
 
     res.status(200).json({
@@ -181,18 +185,18 @@ export const uploadProfilePicture = async (req, res) => {
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { profilePicture: fileUrl },
-      { new: true }
+      { new: true },
     ).select("-password -emailVerificationOTP -passwordResetOTP");
 
     // notify user picture updated
     try {
       await createNotification({
         userId,
-        type: 'profilePicture',
-        message: 'Your profile picture has been updated.',
+        type: "profilePicture",
+        message: "Your profile picture has been updated.",
       });
     } catch (notifErr) {
-      console.error('Profile picture notification failed:', notifErr);
+      console.error("Profile picture notification failed:", notifErr);
     }
 
     res.status(200).json({
@@ -245,7 +249,8 @@ export const submitCreatorApplication = async (req, res) => {
     if (!message || typeof message !== "string" || !message.trim()) {
       return res.status(400).json({
         success: false,
-        message: "Please provide a brief explanation for your creator application.",
+        message:
+          "Please provide a brief explanation for your creator application.",
       });
     }
 
@@ -265,7 +270,9 @@ export const submitCreatorApplication = async (req, res) => {
       details: {
         message: message.trim(),
         portfolioLink: portfolioLink ? String(portfolioLink).trim() : null,
-        experienceSummary: experienceSummary ? String(experienceSummary).trim() : null,
+        experienceSummary: experienceSummary
+          ? String(experienceSummary).trim()
+          : null,
       },
     };
 
@@ -275,7 +282,8 @@ export const submitCreatorApplication = async (req, res) => {
       await createNotification({
         userId,
         type: "creatorApplication",
-        message: "Your content creator application has been submitted and is pending review.",
+        message:
+          "Your content creator application has been submitted and is pending review.",
       });
     } catch (notifErr) {
       console.error("Creator application notification failed:", notifErr);
@@ -306,22 +314,28 @@ export const getCourseProgress = async (req, res) => {
     const enrollments = await CourseEnrollment.find({ user: userId })
       .populate({
         path: "course",
-        select: "title description language difficulty instructor duration sections",
+        select:
+          "title description language difficulty instructor duration sections",
         populate: [
           { path: "instructor", select: "name profilePicture" },
-          { path: "sections", select: "title lessons order" }
-        ]
+          { path: "sections", select: "title lessons order" },
+        ],
       })
       .sort({ enrolledAt: -1 });
 
     // Calculate progress for each course
-    const coursesWithProgress = enrollments.map(enrollment => {
+    const coursesWithProgress = enrollments.map((enrollment) => {
       const course = enrollment.course;
       const totalSections = course.sections ? course.sections.length : 0;
-      const completedSections = enrollment.sectionProgress ? enrollment.sectionProgress.filter(sp => sp.isCompleted).length : 0;
-      
-      const progressPercentage = totalSections > 0 ? Math.round((completedSections / totalSections) * 100) : 0;
-      
+      const completedSections = enrollment.sectionProgress
+        ? enrollment.sectionProgress.filter((sp) => sp.isCompleted).length
+        : 0;
+
+      const progressPercentage =
+        totalSections > 0
+          ? Math.round((completedSections / totalSections) * 100)
+          : 0;
+
       return {
         enrollmentId: enrollment._id,
         course: course,
@@ -376,43 +390,51 @@ export const getDashboardStats = async (req, res) => {
     const userId = req.user._id;
 
     // Import UserSavedTutorial dynamically to avoid circular dependencies
-    const UserSavedTutorial = (await import("../models/UserSavedTutorial.js")).default;
+    const UserSavedTutorial = (await import("../models/UserSavedTutorial.js"))
+      .default;
 
     // Get counts
-    const [enrolledCoursesCount, certificates, savedTutorialsCount] = await Promise.all([
-      CourseEnrollment.countDocuments({ user: userId }),
-      Certificate.countDocuments({ user: userId }),
-      UserSavedTutorial.countDocuments({ userId: userId })
-    ]);
+    const [enrolledCoursesCount, certificates, savedTutorialsCount] =
+      await Promise.all([
+        CourseEnrollment.countDocuments({ user: userId }),
+        Certificate.countDocuments({ user: userId }),
+        UserSavedTutorial.countDocuments({ userId: userId }),
+      ]);
 
     // Get course completion stats
-    const courseEnrollments = await CourseEnrollment.find({ user: userId })
-      .populate("course", "sections");
+    const courseEnrollments = await CourseEnrollment.find({
+      user: userId,
+    }).populate("course", "sections");
 
     let totalCourseProgress = 0;
     let completedCourses = 0;
 
-    courseEnrollments.forEach(enrollment => {
+    courseEnrollments.forEach((enrollment) => {
       const course = enrollment.course;
       const totalSections = course.sections ? course.sections.length : 0;
-      const completedSections = enrollment.sectionProgress ? enrollment.sectionProgress.filter(sp => sp.isCompleted).length : 0;
-      
+      const completedSections = enrollment.sectionProgress
+        ? enrollment.sectionProgress.filter((sp) => sp.isCompleted).length
+        : 0;
+
       if (totalSections > 0) {
         const courseProgress = (completedSections / totalSections) * 100;
         totalCourseProgress += courseProgress;
-        
+
         if (courseProgress === 100) {
           completedCourses++;
         }
       }
     });
 
-    const averageCourseProgress = enrolledCoursesCount > 0 ? Math.round(totalCourseProgress / enrolledCoursesCount) : 0;
+    const averageCourseProgress =
+      enrolledCoursesCount > 0
+        ? Math.round(totalCourseProgress / enrolledCoursesCount)
+        : 0;
 
     // Calculate total time spent (from course enrollments)
     const totalTimeSpent = await CourseEnrollment.aggregate([
       { $match: { user: userId } },
-      { $group: { _id: null, totalTime: { $sum: "$totalTimeSpentMinutes" } } }
+      { $group: { _id: null, totalTime: { $sum: "$totalTimeSpentMinutes" } } },
     ]);
 
     const stats = {
@@ -453,8 +475,9 @@ export const getUserEnrollments = async (req, res) => {
     const enrollments = await CourseEnrollment.find(filter)
       .populate({
         path: "course",
-        select: "title description language difficulty instructor duration price thumbnail",
-        populate: { path: "instructor", select: "name profilePicture" }
+        select:
+          "title description language difficulty instructor duration price thumbnail",
+        populate: { path: "instructor", select: "name profilePicture" },
       })
       .skip(skip)
       .limit(parseInt(limit))
@@ -463,11 +486,16 @@ export const getUserEnrollments = async (req, res) => {
     const total = await CourseEnrollment.countDocuments(filter);
 
     // Add progress calculation
-    const enrollmentsWithProgress = enrollments.map(enrollment => {
+    const enrollmentsWithProgress = enrollments.map((enrollment) => {
       const course = enrollment.course;
       const sections = course.sections || [];
-      const completedSections = enrollment.sectionProgress ? enrollment.sectionProgress.filter(sp => sp.isCompleted).length : 0;
-      const progressPercentage = sections.length > 0 ? Math.round((completedSections / sections.length) * 100) : 0;
+      const completedSections = enrollment.sectionProgress
+        ? enrollment.sectionProgress.filter((sp) => sp.isCompleted).length
+        : 0;
+      const progressPercentage =
+        sections.length > 0
+          ? Math.round((completedSections / sections.length) * 100)
+          : 0;
 
       return {
         ...enrollment.toObject(),
@@ -513,7 +541,7 @@ export const updateEnrollmentStatus = async (req, res) => {
     const enrollment = await CourseEnrollment.findOneAndUpdate(
       { _id: enrollmentId, user: userId },
       { status, lastAccessed: new Date() },
-      { new: true }
+      { new: true },
     ).populate("course", "title");
 
     if (!enrollment) {
@@ -525,7 +553,7 @@ export const updateEnrollmentStatus = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: `Successfully ${status === 'withdrawn' ? 'withdrew from' : 'updated'} course`,
+      message: `Successfully ${status === "withdrawn" ? "withdrew from" : "updated"} course`,
       data: enrollment,
     });
   } catch (error) {
@@ -546,7 +574,10 @@ export const getUserCertificates = async (req, res) => {
     const { page = 1, limit = 10 } = req.query;
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const certificates = await Certificate.find({ user: userId, approvalStatus: "approved" })
+    const certificates = await Certificate.find({
+      user: userId,
+      approvalStatus: "approved",
+    })
       .populate("course", "title language category")
       .populate("user", "name email")
       .sort({ approvalDate: -1 })
@@ -606,7 +637,10 @@ export const downloadCertificatePdf = async (req, res) => {
       let count = 0;
 
       // Check section quiz scores
-      if (enrollment.sectionProgress && Array.isArray(enrollment.sectionProgress)) {
+      if (
+        enrollment.sectionProgress &&
+        Array.isArray(enrollment.sectionProgress)
+      ) {
         enrollment.sectionProgress.forEach((section) => {
           if (section.sectionQuizScore && section.sectionQuizScore.score) {
             totalScore += section.sectionQuizScore.score;
@@ -622,13 +656,13 @@ export const downloadCertificatePdf = async (req, res) => {
       }
 
       quizzesAttempted = count;
-      averageScore = count > 0 ? Math.round(totalScore / count) : certificate.finalScore;
+      averageScore =
+        count > 0 ? Math.round(totalScore / count) : certificate.finalScore;
     }
 
     // Import HTML service
-    const { default: CertificateHtmlService } = await import(
-      "../services/certificateHtmlService.js"
-    );
+    const { default: CertificateHtmlService } =
+      await import("../services/certificateHtmlService.js");
 
     // Generate HTML
     const htmlContent = CertificateHtmlService.generateCertificate({
@@ -645,7 +679,7 @@ export const downloadCertificatePdf = async (req, res) => {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     res.setHeader(
       "Content-Disposition",
-      `inline; filename="Certificate_${certificate.certificateNumber}.html"`
+      `inline; filename="Certificate_${certificate.certificateNumber}.html"`,
     );
     res.send(htmlContent);
   } catch (error) {

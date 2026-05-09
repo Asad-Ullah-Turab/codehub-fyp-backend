@@ -11,7 +11,11 @@ import { generalLimiter } from "../middleware/rateLimitMiddleware.js";
 const router = express.Router();
 
 // Track views with rate limiting
-router.post("/tutorials/:tutorialId/view", generalLimiter, incrementTutorialView);
+router.post(
+  "/tutorials/:tutorialId/view",
+  generalLimiter,
+  incrementTutorialView,
+);
 router.post("/courses/:courseId/view", generalLimiter, incrementCourseView);
 
 // Get most viewed content

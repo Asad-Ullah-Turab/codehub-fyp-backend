@@ -65,15 +65,12 @@ const certificateSchema = new mongoose.Schema(
       default: null,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Add unique compound index for user and course (one certificate per user per course)
 // Using sparse index to allow multiple null values
-certificateSchema.index(
-  { user: 1, course: 1 },
-  { unique: true, sparse: true }
-);
+certificateSchema.index({ user: 1, course: 1 }, { unique: true, sparse: true });
 
 // Generate certificate number before saving
 certificateSchema.pre("save", async function (next) {

@@ -1,14 +1,14 @@
-import geminiService from '../services/geminiService.js';
+import geminiService from "../services/geminiService.js";
 
 class CodeHelpController {
   async getErrorExplanation(req, res) {
     try {
       const { error, code, language } = req.body;
-      
+
       if (!error) {
         return res.status(400).json({
           success: false,
-          message: 'Error message is required'
+          message: "Error message is required",
         });
       }
 
@@ -27,7 +27,7 @@ IMPORTANT - TEACHING MODE (NOT SOLVING):
 
 Error encountered: ${error}
 Language: ${language}
-${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
+${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ""}`;
 
       const userPrompt = `A beginner got this error: "${error}". Help them understand what went wrong and guide them to fix it themselves. Don't give them the fixed code - help them think through it.`;
 
@@ -40,7 +40,8 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
         } catch (limitError) {
           return res.status(403).json({
             success: false,
-            message: "You have reached your free code help query limit. Please upgrade to premium for more queries.",
+            message:
+              "You have reached your free code help query limit. Please upgrade to premium for more queries.",
           });
         }
       }
@@ -48,7 +49,7 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
       const response = await geminiService.chatMessage(prompt);
       const explanation = geminiService.extractText(response);
 
-      if (!explanation || explanation.trim() === '') {
+      if (!explanation || explanation.trim() === "") {
         explanation = `Let me help you understand this error:
 
 **What went wrong:** Your code tried to use something that doesn't exist.
@@ -65,13 +66,13 @@ Try running your code again and let me know what the exact error message says!`;
       res.status(200).json({
         success: true,
         data: {
-          explanation
-        }
+          explanation,
+        },
       });
     } catch (error) {
-      console.error('Error in code help:', error);
-      console.error('Error stack:', error.stack);
-      
+      console.error("Error in code help:", error);
+      console.error("Error stack:", error.stack);
+
       // Provide fallback guidance
       res.status(200).json({
         success: true,
@@ -88,8 +89,8 @@ Try:
 2. Looking at the line number it mentions
 3. Checking the code there for typos
 
-Want to tell me more about what your code does?`
-        }
+Want to tell me more about what your code does?`,
+        },
       });
     }
   }
@@ -97,11 +98,11 @@ Want to tell me more about what your code does?`
   async getProblemHint(req, res) {
     try {
       const { problem, code, language, attempt } = req.body;
-      
+
       if (!problem) {
         return res.status(400).json({
           success: false,
-          message: 'Problem description is required'
+          message: "Problem description is required",
         });
       }
 
@@ -120,7 +121,7 @@ IMPORTANT - TEACHING MODE (NOT SOLVING):
 
 Problem: ${problem}
 Language: ${language}
-${attempt ? `What they've tried so far:\n\`\`\`${language}\n${attempt}\n\`\`\`` : ''}`;
+${attempt ? `What they've tried so far:\n\`\`\`${language}\n${attempt}\n\`\`\`` : ""}`;
 
       const userPrompt = `Help this beginner with their problem. Give them a HINT for the next step, not the solution. Ask guiding questions to help them think.`;
 
@@ -133,7 +134,8 @@ ${attempt ? `What they've tried so far:\n\`\`\`${language}\n${attempt}\n\`\`\`` 
         } catch (limitError) {
           return res.status(403).json({
             success: false,
-            message: "You have reached your free code help query limit. Please upgrade to premium for more queries.",
+            message:
+              "You have reached your free code help query limit. Please upgrade to premium for more queries.",
           });
         }
       }
@@ -142,11 +144,11 @@ ${attempt ? `What they've tried so far:\n\`\`\`${language}\n${attempt}\n\`\`\`` 
       let hint = geminiService.extractText(response);
 
       // Fallback hint if response is empty
-      if (!hint || hint.trim() === '') {
+      if (!hint || hint.trim() === "") {
         // Extract line numbers from problem if available
         const lineMatch = problem.match(/Line (\d+)/);
         const lineNumbers = lineMatch ? lineMatch[1] : "the error";
-        
+
         hint = `**Let's fix this step by step:**
 
 1. **Go to line ${lineNumbers}** where the error happened
@@ -165,17 +167,17 @@ What do you see when you look at line ${lineNumbers}?`;
       res.status(200).json({
         success: true,
         data: {
-          hint
-        }
+          hint,
+        },
       });
     } catch (error) {
-      console.error('Error in problem hint:', error);
-      console.error('Error stack:', error.stack);
-      
+      console.error("Error in problem hint:", error);
+      console.error("Error stack:", error.stack);
+
       // Extract line number from problem for specific guidance
       const lineMatch = req.body.problem?.match(/Line (\d+)/);
       const lineNum = lineMatch ? lineMatch[1] : "the error";
-      
+
       // Provide fallback guidance when API fails
       res.status(200).json({
         success: true,
@@ -201,8 +203,8 @@ x = 5     # Define first
 print(x)  # Use it
 \`\`\`
 
-Tell me: **What do you see on lines 15, 16, and 17?** (the lines around the error)`
-        }
+Tell me: **What do you see on lines 15, 16, and 17?** (the lines around the error)`,
+        },
       });
     }
   }
@@ -210,11 +212,11 @@ Tell me: **What do you see on lines 15, 16, and 17?** (the lines around the erro
   async askCodeQuestion(req, res) {
     try {
       const { question, code, language } = req.body;
-      
+
       if (!question) {
         return res.status(400).json({
           success: false,
-          message: 'Question is required'
+          message: "Question is required",
         });
       }
 
@@ -234,7 +236,7 @@ IMPORTANT - TEACHING MODE (NOT GIVING CODE):
 
 Context:
 Language: ${language}
-${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
+${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ""}`;
 
       const userPrompt = `A beginner is asking: "${question}". Help them understand and learn. Don't write the code for them - guide them to write it themselves.`;
 
@@ -247,7 +249,8 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
         } catch (limitError) {
           return res.status(403).json({
             success: false,
-            message: "You have reached your free code help query limit. Please upgrade to premium for more queries.",
+            message:
+              "You have reached your free code help query limit. Please upgrade to premium for more queries.",
           });
         }
       }
@@ -255,7 +258,7 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ''}`;
       const response = await geminiService.chatMessage(prompt);
       let answer = geminiService.extractText(response);
 
-      if (!answer || answer.trim() === '') {
+      if (!answer || answer.trim() === "") {
         answer = `Great question! Let me guide you through this:
 
 Instead of giving you the answer, let me ask you:
@@ -269,13 +272,13 @@ Once I understand what you're working on, I can help you figure it out step by s
       res.status(200).json({
         success: true,
         data: {
-          answer
-        }
+          answer,
+        },
       });
     } catch (error) {
-      console.error('Error in code question:', error);
-      console.error('Error stack:', error.stack);
-      
+      console.error("Error in code question:", error);
+      console.error("Error stack:", error.stack);
+
       // Provide fallback guidance
       res.status(200).json({
         success: true,
@@ -288,8 +291,8 @@ Once I understand what you're working on, I can help you figure it out step by s
 - "Why isn't my code working?"
 - "How do variables work?"
 
-Feel free to describe what you're working on, and I'll guide you through it!`
-        }
+Feel free to describe what you're working on, and I'll guide you through it!`,
+        },
       });
     }
   }

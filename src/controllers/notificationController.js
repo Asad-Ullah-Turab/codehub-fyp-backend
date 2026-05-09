@@ -71,7 +71,10 @@ export const markAllNotificationsRead = async (req, res) => {
     if (!user) {
       return res.status(401).json({ success: false, message: "Unauthorized" });
     }
-    await Notification.updateMany({ user: user._id, isRead: false }, { isRead: true });
+    await Notification.updateMany(
+      { user: user._id, isRead: false },
+      { isRead: true },
+    );
     res.status(200).json({ success: true });
   } catch (err) {
     console.error("Error marking all notifications read:", err);

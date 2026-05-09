@@ -4,10 +4,10 @@ import CodeSnippet from "../models/CodeSnippet.js";
 export const getUserSnippets = async (req, res) => {
   try {
     const userId = req.user._id;
-    
+
     const snippets = await CodeSnippet.find({ owner: userId })
       .sort({ updatedAt: -1 })
-      .select('title language code createdAt updatedAt');
+      .select("title language code createdAt updatedAt");
 
     res.status(200).json({
       success: true,
@@ -132,7 +132,10 @@ export const deleteSnippet = async (req, res) => {
     const userId = req.user._id;
     const { id } = req.params;
 
-    const snippet = await CodeSnippet.findOneAndDelete({ _id: id, owner: userId });
+    const snippet = await CodeSnippet.findOneAndDelete({
+      _id: id,
+      owner: userId,
+    });
 
     if (!snippet) {
       return res.status(404).json({

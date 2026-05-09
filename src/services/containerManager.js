@@ -1,8 +1,8 @@
-import Docker from 'dockerode';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import Docker from "dockerode";
+import path from "path";
+import { fileURLToPath } from "url";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 const execAsync = promisify(exec);
 const __filename = fileURLToPath(import.meta.url);
@@ -14,15 +14,15 @@ class ContainerManager {
     this.containers = {
       python: null,
       javascript: null,
-      cpp: null
+      cpp: null,
     };
     this.containerNames = {
-      python: 'codehub-python-executor',
-      javascript: 'codehub-javascript-executor',
-      cpp: 'codehub-cpp-executor'
+      python: "codehub-python-executor",
+      javascript: "codehub-javascript-executor",
+      cpp: "codehub-cpp-executor",
     };
     // Go up two directories from src/services to reach project root, then into docker
-    this.dockerDir = path.join(__dirname, '..', '..', 'docker');
+    this.dockerDir = path.join(__dirname, "..", "..", "docker");
     this.containerConfigs = {}; // Track successful container configurations
   }
 
@@ -35,39 +35,45 @@ class ContainerManager {
       {
         imageName: `codehub-${language}-fallback`,
         dockerfilePath: `Dockerfile.${language}.fallback`,
-        description: 'secure fallback'
+        description: "secure fallback",
       },
       {
         imageName: `codehub-${language}-secure`,
         dockerfilePath: `Dockerfile.${language}.persistent.secure`,
-        description: 'secure'
+        description: "secure",
       },
       {
         imageName: `codehub-${language}-persistent`,
         dockerfilePath: `Dockerfile.${language}.persistent`,
-        description: 'original'
-      }
+        description: "original",
+      },
     ];
-    
+
     console.log(`Building ${language} image from ${this.dockerDir}...`);
-    
+
     for (const config of configs) {
       try {
-        console.log(`Attempting ${config.description} build for ${language}...`);
+        console.log(
+          `Attempting ${config.description} build for ${language}...`,
+        );
         const { stdout, stderr } = await execAsync(
           `docker build -t ${config.imageName} -f ${config.dockerfilePath} .`,
-          { cwd: this.dockerDir, timeout: 180000 }
+          { cwd: this.dockerDir, timeout: 180000 },
         );
-        
-        if (stderr && !stderr.includes('naming to')) {
+
+        if (stderr && !stderr.includes("naming to")) {
           console.log(`Build output: ${stderr}`);
         }
-        
-        console.log(`${language} ${config.description} image built successfully`);
+
+        console.log(
+          `${language} ${config.description} image built successfully`,
+        );
         this.containerConfigs[language] = config.imageName;
         return true;
       } catch (error) {
-        console.log(`${config.description} build failed for ${language}: ${error.message}`);
+        console.log(
+          `${config.description} build failed for ${language}: ${error.message}`,
+        );
         if (config === configs[configs.length - 1]) {
           console.error(`All build configurations failed for ${language}`);
           return false;
@@ -83,7 +89,8 @@ class ContainerManager {
    */
   async startContainer(language) {
     // Use the successful image configuration, fallback to original
-    const imageName = this.containerConfigs[language] || `codehub-${language}-persistent`;
+    const imageName =
+      this.containerConfigs[language] || `codehub-${language}-persistent`;
     const containerName = this.containerNames[language];
 
     try {
@@ -115,31 +122,31 @@ class ContainerManager {
       Image: imageName,
       name: containerName,
       ExposedPorts: {
-        '8765/tcp': {}
+        "8765/tcp": {},
       },
       HostConfig: {
         PortBindings: {
-          '8765/tcp': [{ HostPort: '0' }] // Random port
+          "8765/tcp": [{ HostPort: "0" }], // Random port
         },
         Memory: 256 * 1024 * 1024, // 256MB memory limit
         CpuQuota: 50000, // 50% CPU limit
-        NetworkMode: 'bridge',
+        NetworkMode: "bridge",
         // Security enhancements
-        CapDrop: ['ALL'], // Drop all capabilities
-        CapAdd: ['SETUID', 'SETGID'], // Add only necessary capabilities
-        SecurityOpt: ['no-new-privileges:true'], // Prevent privilege escalation
+        CapDrop: ["ALL"], // Drop all capabilities
+        CapAdd: ["SETUID", "SETGID"], // Add only necessary capabilities
+        SecurityOpt: ["no-new-privileges:true"], // Prevent privilege escalation
         ReadonlyRootfs: false, // Keep false for compatibility
-        Privileged: false // Ensure not privileged
-      }
+        Privileged: false, // Ensure not privileged
+      },
     });
 
     await container.start();
     console.log(`${language} container started`);
     this.containers[language] = container;
-    
+
     // Wait a moment for the WebSocket server to start
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     return container;
   }
 
@@ -153,7 +160,7 @@ class ContainerManager {
     }
 
     const info = await container.inspect();
-    const port = info.NetworkSettings.Ports['8765/tcp'][0].HostPort;
+    const port = info.NetworkSettings.Ports["8765/tcp"][0].HostPort;
     return port;
   }
 
@@ -194,18 +201,18 @@ class ContainerManager {
    * Stop all containers
    */
   async stopAllContainers() {
-    console.log('Stopping all executor containers...');
+    console.log("Stopping all executor containers...");
     const languages = Object.keys(this.containers);
-    await Promise.all(languages.map(lang => this.stopContainer(lang)));
+    await Promise.all(languages.map((lang) => this.stopContainer(lang)));
   }
 
   /**
    * Start all containers
    */
   async startAllContainers() {
-    console.log('Starting executor containers...');
-    const languages = ['python', 'javascript', 'cpp'];
-    
+    console.log("Starting executor containers...");
+    const languages = ["python", "javascript", "cpp"];
+
     for (const language of languages) {
       try {
         await this.buildImage(language);
@@ -214,8 +221,8 @@ class ContainerManager {
         console.error(`Failed to start ${language} container:`, error.message);
       }
     }
-    
-    console.log('All executor containers started successfully');
+
+    console.log("All executor containers started successfully");
   }
 
   /**

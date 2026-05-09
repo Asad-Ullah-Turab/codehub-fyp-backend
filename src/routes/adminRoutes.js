@@ -44,8 +44,10 @@ router.get("/users/search", searchUsers);
 router.get("/users/:userId", getUserDetails);
 router.put("/users/:userId", updateUserDetails);
 router.put("/users/:userId/status", updateUserStatus);
-router.put("/users/:userId/role", changeUserRole);router.get("/creator-applications/pending", getPendingCreatorApplications);
-router.put("/creator-applications/:userId/review", reviewCreatorApplication);router.post("/users/:userId/send-email", sendEmailToUser);
+router.put("/users/:userId/role", changeUserRole);
+router.get("/creator-applications/pending", getPendingCreatorApplications);
+router.put("/creator-applications/:userId/review", reviewCreatorApplication);
+router.post("/users/:userId/send-email", sendEmailToUser);
 router.delete("/users/:userId", deleteUser);
 
 // Tutorial management

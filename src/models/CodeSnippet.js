@@ -14,7 +14,7 @@ const codeSnippetSchema = new mongoose.Schema(
     sharedLink: { type: String, default: null },
     isPublic: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const CodeSnippet = mongoose.model("CodeSnippet", codeSnippetSchema);

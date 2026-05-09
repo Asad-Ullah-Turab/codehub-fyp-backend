@@ -1,4 +1,4 @@
-import rateLimit from 'express-rate-limit';
+import rateLimit from "express-rate-limit";
 
 // General rate limiter for most routes
 export const generalLimiter = rateLimit({
@@ -6,7 +6,7 @@ export const generalLimiter = rateLimit({
   max: 100, // limit each IP to 100 requests per windowMs
   message: {
     success: false,
-    message: 'Too many requests from this IP, please try again later.',
+    message: "Too many requests from this IP, please try again later.",
   },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
@@ -18,7 +18,8 @@ export const authLimiter = rateLimit({
   max: 5, // limit each IP to 5 requests per windowMs
   message: {
     success: false,
-    message: 'Too many authentication attempts, please try again in 15 minutes.',
+    message:
+      "Too many authentication attempts, please try again in 15 minutes.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -27,11 +28,12 @@ export const authLimiter = rateLimit({
 
 // Limiter for password reset and email verification
 export const verificationLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes 
+  windowMs: 10 * 60 * 1000, // 10 minutes
   max: 3, // limit each IP to 3 requests per windowMs
   message: {
     success: false,
-    message: 'Too many verification attempts, please wait 10 minutes before trying again.',
+    message:
+      "Too many verification attempts, please wait 10 minutes before trying again.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -43,7 +45,7 @@ export const resourceLimiter = rateLimit({
   max: 20, // limit each IP to 20 requests per windowMs
   message: {
     success: false,
-    message: 'Too many resource-intensive requests, please slow down.',
+    message: "Too many resource-intensive requests, please slow down.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -55,7 +57,7 @@ export const contactLimiter = rateLimit({
   max: 5, // limit each IP to 5 contact submissions per hour
   message: {
     success: false,
-    message: 'Too many contact form submissions, please try again in an hour.',
+    message: "Too many contact form submissions, please try again in an hour.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -67,7 +69,8 @@ export const aiLimiter = rateLimit({
   max: 10, // limit each IP to 10 AI requests per 2 minutes
   message: {
     success: false,
-    message: 'Too many AI requests, please wait a moment before sending another.',
+    message:
+      "Too many AI requests, please wait a moment before sending another.",
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -81,3 +84,4 @@ export default {
   contact: contactLimiter,
   ai: aiLimiter,
 };
+

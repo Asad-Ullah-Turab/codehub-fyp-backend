@@ -103,7 +103,7 @@ const courseEnrollmentSchema = new mongoose.Schema(
     lastAccessedAt: Date,
     notes: String,
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 // Compound index for unique enrollment per user per course
@@ -113,6 +113,6 @@ courseEnrollmentSchema.index({ course: 1 });
 
 const CourseEnrollment = mongoose.model(
   "CourseEnrollment",
-  courseEnrollmentSchema
+  courseEnrollmentSchema,
 );
 export default CourseEnrollment;

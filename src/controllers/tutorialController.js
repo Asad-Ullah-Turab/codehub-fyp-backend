@@ -35,7 +35,15 @@ class TutorialController {
         tutorials = tutorials.map((t) => {
           if (t.isPremium) {
             // strip any accidental fields
-            return { _id: t._id, title: t.title, language: t.language, concept: t.concept, difficulty: t.difficulty, tags: t.tags, isPremium: true };
+            return {
+              _id: t._id,
+              title: t.title,
+              language: t.language,
+              concept: t.concept,
+              difficulty: t.difficulty,
+              tags: t.tags,
+              isPremium: true,
+            };
           }
           return t;
         });
@@ -574,7 +582,8 @@ class TutorialController {
       }
 
       // helper to detect AI tags
-      const hasAiTag = (arr) => Array.isArray(arr) && arr.some(t => /ai/i.test(t));
+      const hasAiTag = (arr) =>
+        Array.isArray(arr) && arr.some((t) => /ai/i.test(t));
       const finalPremium = hasAiTag(tags) ? false : !!isPremium;
 
       const tutorial = new Tutorial({
@@ -618,12 +627,15 @@ class TutorialController {
       const updates = req.body;
 
       // helper to detect AI tags
-      const hasAiTag = (arr) => Array.isArray(arr) && arr.some(t => /ai/i.test(t));
+      const hasAiTag = (arr) =>
+        Array.isArray(arr) && arr.some((t) => /ai/i.test(t));
 
       // fetch existing tutorial so we know its tags if not provided
       const existing = await Tutorial.findById(id);
       if (!existing) {
-        return res.status(404).json({ success: false, message: "Tutorial not found" });
+        return res
+          .status(404)
+          .json({ success: false, message: "Tutorial not found" });
       }
 
       // determine if tutorial should be treated as AI-generated

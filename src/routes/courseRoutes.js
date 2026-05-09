@@ -8,43 +8,52 @@ const router = express.Router();
 
 // ========== PUBLIC ROUTES (with rate limiting) ==========
 router.get("/", generalLimiter, courseController.getAllCourses);
-router.get("/language/:language", generalLimiter, courseController.getCoursesByLanguage);
+router.get(
+  "/language/:language",
+  generalLimiter,
+  courseController.getCoursesByLanguage,
+);
 // Use auth middleware optionally - will attach user if token exists, but won't fail without it
-router.get("/:id", generalLimiter, (req, res, next) => {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (token) {
-    return auth(req, res, next);
-  }
-  next();
-}, courseController.getCourseById);
+router.get(
+  "/:id",
+  generalLimiter,
+  (req, res, next) => {
+    const token = req.headers.authorization?.split(" ")[1];
+    if (token) {
+      return auth(req, res, next);
+    }
+    next();
+  },
+  courseController.getCourseById,
+);
 
 // ========== PROTECTED ROUTES - ENROLLMENT ==========
 router.post("/enroll", auth, courseController.enrollInCourse);
 router.get("/user/enrolled", auth, courseController.getUserEnrolledCourses);
-router.get("/:courseId/enrollment", auth, courseController.getEnrollmentDetails);
+router.get(
+  "/:courseId/enrollment",
+  auth,
+  courseController.getEnrollmentDetails,
+);
 
 // ========== PROGRESS TRACKING ==========
 router.put(
   "/:courseId/progress/lesson",
   auth,
-  courseController.completeLessonProgress
+  courseController.completeLessonProgress,
 );
 
 // ========== QUIZ ROUTES (For enrolled users) ==========
-router.get(
-  "/quizzes/:quizId",
-  auth,
-  quizCertificateController.getQuizDetails
-);
+router.get("/quizzes/:quizId", auth, quizCertificateController.getQuizDetails);
 router.post(
   "/quizzes/:quizId/submit",
   auth,
-  quizCertificateController.submitQuizAnswers
+  quizCertificateController.submitQuizAnswers,
 );
 router.get(
   "/quizzes/:quizId/leaderboard",
   auth,
-  quizCertificateController.getQuizLeaderboard
+  quizCertificateController.getQuizLeaderboard,
 );
 
 export default router;

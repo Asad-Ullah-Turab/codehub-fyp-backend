@@ -98,7 +98,7 @@ export const submitQuizAnswers = async (req, res) => {
     // Update enrollment based on quiz type
     if (quiz.type === "section-quiz" && sectionId) {
       sectionProgress = enrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === sectionId
+        (sp) => sp.section.toString() === sectionId,
       );
 
       if (!sectionProgress) {
@@ -131,7 +131,7 @@ export const submitQuizAnswers = async (req, res) => {
     // Recalculate overall progress and check if all sections are completed
     try {
       const course = await Course.findById(courseId).populate("sections");
-      
+
       if (!course) {
         return res.status(404).json({
           success: false,
@@ -143,7 +143,7 @@ export const submitQuizAnswers = async (req, res) => {
 
       for (const section of course.sections) {
         const sectionProgress = enrollment.sectionProgress.find(
-          (sp) => sp.section.toString() === section._id.toString()
+          (sp) => sp.section.toString() === section._id.toString(),
         );
         if (sectionProgress?.isCompleted) {
           completedSections++;
@@ -151,11 +151,14 @@ export const submitQuizAnswers = async (req, res) => {
       }
 
       enrollment.overallProgress = Math.round(
-        (completedSections / course.sections.length) * 100
+        (completedSections / course.sections.length) * 100,
       );
 
       // Check if all sections are completed - if so, issue certificate
-      if (completedSections === course.sections.length && !enrollment.certificateIssued) {
+      if (
+        completedSections === course.sections.length &&
+        !enrollment.certificateIssued
+      ) {
         enrollment.status = "completed";
         enrollment.completionDate = new Date();
         enrollment.certificateIssued = true;
@@ -165,7 +168,7 @@ export const submitQuizAnswers = async (req, res) => {
           userId,
           courseId,
           enrollment._id,
-          scorePercentage
+          scorePercentage,
         );
 
         enrollment.certificate = certificate._id;
@@ -174,12 +177,12 @@ export const submitQuizAnswers = async (req, res) => {
         try {
           await createNotification({
             userId,
-            type: 'courseCompletion',
+            type: "courseCompletion",
             message: `Congratulations! You completed the course \"${course.title}\".`,
             link: `/courses/${course._id}`,
           });
         } catch (notifErr) {
-          console.error('Completion notification failed:', notifErr);
+          console.error("Completion notification failed:", notifErr);
         }
       }
 
@@ -228,7 +231,9 @@ export const getQuizDetails = async (req, res) => {
     // Resolve course for the quiz. Section quizzes may not have course populated.
     let quizCourseId = quiz.course;
     if (!quizCourseId && quiz.section) {
-      const containingCourse = await Course.findOne({ "sections._id": quiz.section });
+      const containingCourse = await Course.findOne({
+        "sections._id": quiz.section,
+      });
       if (containingCourse) {
         quizCourseId = containingCourse._id;
       }
@@ -260,7 +265,7 @@ export const getQuizDetails = async (req, res) => {
       }
 
       const sectionProgress = enrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === sectionId.toString()
+        (sp) => sp.section.toString() === sectionId.toString(),
       );
       quizScore = sectionProgress?.sectionQuizScore;
     } else {
@@ -313,7 +318,7 @@ export const getQuizLeaderboard = async (req, res) => {
           score = enrollment.finalQuizScore;
         } else {
           const sectionProgress = enrollment.sectionProgress.find(
-            (sp) => sp.sectionQuizScore?.quizId?.toString() === quizId
+            (sp) => sp.sectionQuizScore?.quizId?.toString() === quizId,
           );
           score = sectionProgress?.sectionQuizScore;
         }
@@ -350,7 +355,7 @@ const generateCertificate = async (
   userId,
   courseId,
   enrollmentId,
-  finalScore
+  finalScore,
 ) => {
   try {
     // Check if certificate already exists for this user and course

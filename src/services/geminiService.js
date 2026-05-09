@@ -183,7 +183,11 @@ class GeminiService {
     const body = {
       contents: [
         {
-          parts: [{ text: `You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching. Help users debug code, explain concepts, and provide practical coding advice.\n\n${prompt}` }],
+          parts: [
+            {
+              text: `You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching. Help users debug code, explain concepts, and provide practical coding advice.\n\n${prompt}`,
+            },
+          ],
         },
       ],
     };

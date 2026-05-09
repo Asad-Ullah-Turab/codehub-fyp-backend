@@ -1,8 +1,8 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
 const subscriptionCancellationSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     stripeSubscriptionId: { type: String },
     reason: { type: String, default: null },
     cancelledAt: { type: Date, default: Date.now },
@@ -10,11 +10,11 @@ const subscriptionCancellationSchema = new mongoose.Schema(
     ipAddress: { type: String, default: null },
     userAgent: { type: String, default: null },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 const SubscriptionCancellation = mongoose.model(
-  'SubscriptionCancellation',
+  "SubscriptionCancellation",
   subscriptionCancellationSchema,
 );
 

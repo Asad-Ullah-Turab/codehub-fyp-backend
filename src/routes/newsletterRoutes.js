@@ -1,6 +1,13 @@
 import express from "express";
-import { subscribe, unsubscribe, getStatus } from "../controllers/newsletterController.js";
-import { contactLimiter, generalLimiter } from "../middleware/rateLimitMiddleware.js";
+import {
+  subscribe,
+  unsubscribe,
+  getStatus,
+} from "../controllers/newsletterController.js";
+import {
+  contactLimiter,
+  generalLimiter,
+} from "../middleware/rateLimitMiddleware.js";
 
 const router = express.Router();
 
@@ -10,3 +17,4 @@ router.post("/unsubscribe", contactLimiter, unsubscribe);
 router.get("/status", generalLimiter, getStatus);
 
 export default router;
+

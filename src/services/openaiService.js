@@ -245,7 +245,8 @@ Please provide the complete tutorial content now (without any code).`;
         messages: [
           {
             role: "system",
-            content: "You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching. Help users debug code, explain concepts, and provide practical coding advice."
+            content:
+              "You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching. Help users debug code, explain concepts, and provide practical coding advice.",
           },
           {
             role: "user",

@@ -22,16 +22,22 @@ class MonthlyResetService {
     }
 
     // Run on the 1st of every month at 00:00
-    this.cronJob = cron.schedule("0 0 1 * *", async () => {
-      await this.performMonthlyReset();
-    }, {
-      scheduled: false,
-      timezone: "UTC"
-    });
+    this.cronJob = cron.schedule(
+      "0 0 1 * *",
+      async () => {
+        await this.performMonthlyReset();
+      },
+      {
+        scheduled: false,
+        timezone: "UTC",
+      },
+    );
 
     this.cronJob.start();
     this.isRunning = true;
-    console.log("Monthly reset service started - will reset free user queries on 1st of every month at 00:00 UTC");
+    console.log(
+      "Monthly reset service started - will reset free user queries on 1st of every month at 00:00 UTC",
+    );
   }
 
   /**
@@ -51,26 +57,33 @@ class MonthlyResetService {
   async performMonthlyReset() {
     try {
       console.log("Starting monthly query reset for free tier users...");
-      
+
       const result = await User.updateMany(
         { subscriptionPlan: "free" },
         {
           $set: {
             chatQueriesRemaining: 5,
             codeQueriesRemaining: 5,
-            tutorialGenRemaining: 5
-          }
-        }
+            tutorialGenRemaining: 5,
+          },
+        },
       );
 
-      console.log(`Monthly reset completed: Updated ${result.modifiedCount} free tier users`);
-      
+      console.log(
+        `Monthly reset completed: Updated ${result.modifiedCount} free tier users`,
+      );
+
       // Log some statistics
-      const freeUsersCount = await User.countDocuments({ subscriptionPlan: "free" });
-      const premiumUsersCount = await User.countDocuments({ subscriptionPlan: "premium" });
-      
-      console.log(`Current user statistics: ${freeUsersCount} free users, ${premiumUsersCount} premium users`);
-      
+      const freeUsersCount = await User.countDocuments({
+        subscriptionPlan: "free",
+      });
+      const premiumUsersCount = await User.countDocuments({
+        subscriptionPlan: "premium",
+      });
+
+      console.log(
+        `Current user statistics: ${freeUsersCount} free users, ${premiumUsersCount} premium users`,
+      );
     } catch (error) {
       console.error("Error during monthly query reset:", error);
       // In production, you might want to send an alert or notification here
@@ -91,7 +104,7 @@ class MonthlyResetService {
   getStatus() {
     return {
       isRunning: this.isRunning,
-      nextRun: this.cronJob ? this.cronJob.nextDate() : null
+      nextRun: this.cronJob ? this.cronJob.nextDate() : null,
     };
   }
 }
@@ -102,4 +115,6 @@ const monthlyResetService = new MonthlyResetService();
 export default monthlyResetService;
 
 // Export the performMonthlyReset method for direct access (useful for testing/admin triggers)
-export const performMonthlyReset = () => monthlyResetService.performMonthlyReset();
+export const performMonthlyReset = () =>
+  monthlyResetService.performMonthlyReset();
+

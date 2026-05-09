@@ -24,17 +24,21 @@ export const subscribe = async (req, res) => {
     }
 
     // Get request metadata
-    const ipAddress = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+    const ipAddress =
+      req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     const userAgent = req.headers["user-agent"];
 
     // Check if email already exists
-    let subscription = await NewsletterSubscription.findOne({ email: email.toLowerCase() });
+    let subscription = await NewsletterSubscription.findOne({
+      email: email.toLowerCase(),
+    });
 
     if (subscription) {
       if (subscription.isActive) {
         return res.status(200).json({
           status: "success",
-          message: "You're already subscribed to CodeHub newsletter! Thanks for your continued interest.",
+          message:
+            "You're already subscribed to CodeHub newsletter! Thanks for your continued interest.",
         });
       } else {
         // Reactivate subscription
@@ -75,7 +79,7 @@ export const subscribe = async (req, res) => {
         email,
         "Welcome to CodeHub Newsletter",
         welcomeMessage,
-        "Subscriber"
+        "Subscriber",
       );
     } catch (emailError) {
       console.error("Failed to send welcome email:", emailError);
@@ -91,15 +95,15 @@ export const subscribe = async (req, res) => {
         subscribedAt: subscription.subscribedAt,
       },
     });
-
   } catch (error) {
     console.error("Newsletter subscription error:", error);
-    
+
     // Handle duplicate email error specifically
     if (error.code === 11000) {
       return res.status(200).json({
         status: "success",
-        message: "You're already subscribed to CodeHub newsletter! Thanks for your continued interest.",
+        message:
+          "You're already subscribed to CodeHub newsletter! Thanks for your continued interest.",
       });
     }
 
@@ -122,9 +126,9 @@ export const unsubscribe = async (req, res) => {
       });
     }
 
-    const subscription = await NewsletterSubscription.findOne({ 
+    const subscription = await NewsletterSubscription.findOne({
       email: email.toLowerCase(),
-      isActive: true 
+      isActive: true,
     });
 
     if (!subscription) {
@@ -143,7 +147,6 @@ export const unsubscribe = async (req, res) => {
       status: "success",
       message: "You have been successfully unsubscribed from our newsletter",
     });
-
   } catch (error) {
     console.error("Newsletter unsubscribe error:", error);
     res.status(500).json({
@@ -165,8 +168,8 @@ export const getStatus = async (req, res) => {
       });
     }
 
-    const subscription = await NewsletterSubscription.findOne({ 
-      email: email.toLowerCase() 
+    const subscription = await NewsletterSubscription.findOne({
+      email: email.toLowerCase(),
     });
 
     res.status(200).json({
@@ -176,7 +179,6 @@ export const getStatus = async (req, res) => {
         subscribedAt: subscription?.subscribedAt || null,
       },
     });
-
   } catch (error) {
     console.error("Newsletter status check error:", error);
     res.status(500).json({
@@ -185,3 +187,4 @@ export const getStatus = async (req, res) => {
     });
   }
 };
+

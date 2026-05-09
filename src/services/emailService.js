@@ -207,7 +207,7 @@ class EmailService {
   async sendContactConfirmation(email, name, subject) {
     if (!this.isAvailable()) {
       console.log(
-        "Email service not available - skipping contact confirmation email"
+        "Email service not available - skipping contact confirmation email",
       );
       return;
     }
@@ -240,9 +240,7 @@ class EmailService {
     contactId,
   }) {
     if (!this.isAvailable()) {
-      console.log(
-        "Email service not available - skipping admin notification"
-      );
+      console.log("Email service not available - skipping admin notification");
       return;
     }
 
@@ -259,7 +257,7 @@ class EmailService {
         email,
         subject,
         message,
-        contactId
+        contactId,
       ),
     };
 
@@ -267,7 +265,7 @@ class EmailService {
       const info = await this.transporter.sendMail(mailOptions);
       console.log(
         "📧 Contact notification email sent to admin:",
-        info.messageId
+        info.messageId,
       );
       return { success: true, messageId: info.messageId };
     } catch (error) {
@@ -280,7 +278,7 @@ class EmailService {
   async sendContactResponse(email, name, subject, response) {
     if (!this.isAvailable()) {
       console.log(
-        "Email service not available - skipping contact response email"
+        "Email service not available - skipping contact response email",
       );
       return;
     }
@@ -314,9 +312,7 @@ class EmailService {
     adminName,
   }) {
     if (!this.isAvailable()) {
-      console.log(
-        "Email service not available - skipping contact reply email"
-      );
+      console.log("Email service not available - skipping contact reply email");
       return;
     }
 
@@ -331,7 +327,7 @@ class EmailService {
         originalSubject,
         subject,
         message,
-        adminName
+        adminName,
       ),
     };
 
@@ -495,7 +491,7 @@ class EmailService {
     originalSubject,
     replySubject,
     replyMessage,
-    adminName
+    adminName,
   ) {
     return `
     <!DOCTYPE html>
