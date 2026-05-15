@@ -21,7 +21,7 @@ export const getAllCourses = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const courses = await Course.find(filter)
-      .populate("instructor", "name email profilePicture")
+      .populate("instructor", "name email profilePicture role")
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
@@ -53,7 +53,7 @@ export const getCourseById = async (req, res) => {
     const { id } = req.params;
 
     const course = await Course.findById(id)
-      .populate("instructor", "name email profilePicture")
+      .populate("instructor", "name email profilePicture role")
       .populate("finalQuiz");
 
     if (!course) {
@@ -99,7 +99,7 @@ export const getCoursesByLanguage = async (req, res) => {
       isPublished: true,
       isArchived: false,
     })
-      .populate("instructor", "name email profilePicture")
+      .populate("instructor", "name email profilePicture role")
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
