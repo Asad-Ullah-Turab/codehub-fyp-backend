@@ -218,9 +218,9 @@ class CertificateHtmlService {
         .signatures-section {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 60px;
-            margin-top: 60px;
-            padding-top: 40px;
+            gap: 40px;
+            margin-top: 50px;
+            padding-top: 30px;
             border-top: 2px solid #dee2e6;
         }
 
@@ -228,24 +228,28 @@ class CertificateHtmlService {
             text-align: center;
         }
 
+        .signature-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.15rem;
+            color: #1a3a52;
+            font-style: italic;
+            font-weight: 700;
+            min-height: 2em;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            padding-bottom: 6px;
+        }
+
         .signature-line {
             height: 2px;
             background: #333;
-            margin-bottom: 10px;
             width: 200px;
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .signature-name {
-            font-size: 1rem;
-            color: #1a3a52;
-            font-weight: 600;
-            margin-bottom: 4px;
+            margin: 0 auto 8px auto;
         }
 
         .signature-title {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             color: #666;
             font-weight: 500;
             text-transform: uppercase;
@@ -303,26 +307,40 @@ class CertificateHtmlService {
         }
 
         /* Print Styles */
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
+
         @media print {
             body {
                 background: white;
                 padding: 0;
                 margin: 0;
+                display: block;
             }
 
             .certificate-container {
                 box-shadow: none;
                 border-radius: 0;
-                padding: 40px;
+                padding: 32px 40px;
                 max-width: none;
                 width: 100%;
                 margin: 0;
+                min-height: 100vh;
             }
 
+            .logo-title { font-size: 2.2rem; }
+            .certificate-title { font-size: 1.8rem; }
+            .student-name { font-size: 2.6rem; }
+            .course-name { font-size: 1.6rem; margin-bottom: 24px; }
             .details-section {
-                background: white;
+                background: #f8f9fa;
                 border: 2px solid #dee2e6;
+                margin: 24px 0;
+                padding: 20px;
             }
+            .signatures-section { margin-top: 32px; padding-top: 24px; }
         }
 
         /* Responsive Design */
@@ -400,13 +418,13 @@ class CertificateHtmlService {
 
         <div class="signatures-section">
             <div class="signature-block">
+                <p class="signature-name">${signerName || "&nbsp;"}</p>
                 <div class="signature-line"></div>
-                ${signerName ? `<p class="signature-name">${signerName}</p>` : ""}
                 <p class="signature-title">${signerTitle}</p>
             </div>
             <div class="signature-block">
-                <div class="signature-line"></div>
                 <p class="signature-name">${sealLabel}</p>
+                <div class="signature-line"></div>
                 <p class="signature-title">CodeHub</p>
             </div>
         </div>
