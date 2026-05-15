@@ -53,7 +53,7 @@ const seedCourses = async () => {
     }
 
     // Define quiz template
-    const createQuiz = (title, sectionOrder) => {
+    const createQuiz = (title) => {
       const quizData = {
         title: `${title} Quiz`,
         description: `Assessment quiz for ${title}`,
@@ -163,7 +163,7 @@ const seedCourses = async () => {
     // Define section template with quiz and 3 lessons
     const createSection = async (title, order) => {
       // Create quiz first
-      const quizData = createQuiz(title, order);
+      const quizData = createQuiz(title);
       const quiz = await Quiz.create(quizData);
 
       const section = {
@@ -232,6 +232,10 @@ const seedCourses = async () => {
         estimatedHours: 13.5,
         totalLessons: 9,
         totalSections: 3,
+        certificateSignerName: adminUser.name,
+        certificateSignerTitle: "Chief Learning Officer",
+        certificateSealLabel: "CodeHub Official Seal",
+        certificateFooterText: "Verified Achievement • Authenticated Completion • Excellence Recognized",
       },
       {
         title: "Web Development with JavaScript",
@@ -272,6 +276,10 @@ const seedCourses = async () => {
         estimatedHours: 13.5,
         totalLessons: 9,
         totalSections: 3,
+        certificateSignerName: adminUser.name,
+        certificateSignerTitle: "Chief Learning Officer",
+        certificateSealLabel: "CodeHub Official Seal",
+        certificateFooterText: "Verified Achievement • Authenticated Completion • Excellence Recognized",
       },
 
       // ===== CREATOR COURSES (3) =====
@@ -311,6 +319,10 @@ const seedCourses = async () => {
         estimatedHours: 13.5,
         totalLessons: 9,
         totalSections: 3,
+        certificateSignerName: creators[0]?.name || "Creator",
+        certificateSignerTitle: "Senior Instructor",
+        certificateSealLabel: "Official Seal",
+        certificateFooterText: "Verified Achievement • Authenticated Completion • Excellence Recognized",
       },
       {
         title: `${creators[1]?.name || "Creator"}'s SQL Database Design`,
@@ -348,6 +360,10 @@ const seedCourses = async () => {
         estimatedHours: 13.5,
         totalLessons: 9,
         totalSections: 3,
+        certificateSignerName: creators[1]?.name || "Creator",
+        certificateSignerTitle: "Senior Instructor",
+        certificateSealLabel: "Official Seal",
+        certificateFooterText: "Verified Achievement • Authenticated Completion • Excellence Recognized",
       },
       {
         title: `${creators[2]?.name || "Creator"}'s Algorithms & Problem Solving`,
@@ -388,6 +404,10 @@ const seedCourses = async () => {
         estimatedHours: 13.5,
         totalLessons: 9,
         totalSections: 3,
+        certificateSignerName: creators[2]?.name || "Creator",
+        certificateSignerTitle: "Senior Instructor",
+        certificateSealLabel: "Official Seal",
+        certificateFooterText: "Verified Achievement • Authenticated Completion • Excellence Recognized",
       },
     ];
 

@@ -197,6 +197,22 @@ const courseSchema = new mongoose.Schema(
       default: "standard",
       enum: ["standard", "distinguished", "excellence"],
     },
+    certificateSignerName: {
+      type: String,
+      default: "",
+    },
+    certificateSignerTitle: {
+      type: String,
+      default: "",
+    },
+    certificateSealLabel: {
+      type: String,
+      default: "Official Seal",
+    },
+    certificateFooterText: {
+      type: String,
+      default: "Verified Achievement • Authenticated Completion • Excellence Recognized",
+    },
     thumbnail: {
       type: String,
       default: null,

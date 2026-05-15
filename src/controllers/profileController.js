@@ -489,8 +489,6 @@ export const getUserEnrollments = async (req, res) => {
     const filter = { user: userId };
     if (status) filter.status = status;
 
-    const skip = (page - 1) * limit;
-
     const enrollments = await CourseEnrollment.find(filter)
       .populate({
         path: "course",
@@ -498,8 +496,6 @@ export const getUserEnrollments = async (req, res) => {
           "title description language difficulty instructor duration price thumbnail",
         populate: { path: "instructor", select: "name profilePicture" },
       })
-      .skip(skip)
-      .limit(parseInt(limit))
       .sort({ enrolledAt: -1 });
 
     const activeEnrollments = enrollments
@@ -641,7 +637,7 @@ export const downloadCertificatePdf = async (req, res) => {
       approvalStatus: "approved",
     })
       .populate("user", "name email")
-      .populate("course", "title")
+      .populate("course", "title certificateTemplate certificateSignerName certificateSignerTitle certificateSealLabel certificateFooterText")
       .populate("enrollment");
 
     if (!certificate) {
@@ -697,6 +693,10 @@ export const downloadCertificatePdf = async (req, res) => {
       averageScore: averageScore,
       quizzesAttempted: quizzesAttempted,
       issuedDate: certificate.approvalDate,
+      certificateSignerName: certificate.course.certificateSignerName,
+      certificateSignerTitle: certificate.course.certificateSignerTitle,
+      certificateSealLabel: certificate.course.certificateSealLabel,
+      certificateFooterText: certificate.course.certificateFooterText,
     });
 
     // Send HTML

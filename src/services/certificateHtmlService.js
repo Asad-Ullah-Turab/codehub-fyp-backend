@@ -18,7 +18,16 @@ class CertificateHtmlService {
       averageScore,
       quizzesAttempted,
       issuedDate,
+      certificateSignerName,
+      certificateSignerTitle,
+      certificateSealLabel,
+      certificateFooterText,
     } = certificateData;
+
+    const signerName = certificateSignerName || course?.certificateSignerName || "";
+    const signerTitle = certificateSignerTitle || course?.certificateSignerTitle || "Course Instructor";
+    const sealLabel = certificateSealLabel || course?.certificateSealLabel || "Official Seal";
+    const footerText = certificateFooterText || course?.certificateFooterText || "Verified Achievement • Authenticated Completion • Excellence Recognized";
 
     const issueDate = issuedDate
       ? new Date(issuedDate).toLocaleDateString("en-US", {
@@ -228,6 +237,13 @@ class CertificateHtmlService {
             margin-right: auto;
         }
 
+        .signature-name {
+            font-size: 1rem;
+            color: #1a3a52;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
         .signature-title {
             font-size: 0.9rem;
             color: #666;
@@ -385,18 +401,18 @@ class CertificateHtmlService {
         <div class="signatures-section">
             <div class="signature-block">
                 <div class="signature-line"></div>
-                <p class="signature-title">Course Instructor</p>
+                ${signerName ? `<p class="signature-name">${signerName}</p>` : ""}
+                <p class="signature-title">${signerTitle}</p>
             </div>
             <div class="signature-block">
                 <div class="signature-line"></div>
-                <p class="signature-title">CodeHub Director</p>
+                <p class="signature-name">${sealLabel}</p>
+                <p class="signature-title">CodeHub</p>
             </div>
         </div>
 
         <div class="footer">
-            <p class="footer-text">
-                Verified Achievement • Authenticated Completion • Excellence Recognized
-            </p>
+            <p class="footer-text">${footerText}</p>
             <p class="certificate-id">Certificate ID: ${certificateNumber}</p>
         </div>
     </div>

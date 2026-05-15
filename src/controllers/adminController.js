@@ -1326,6 +1326,10 @@ export const createCourse = async (req, res) => {
       difficulty,
       estimatedHours,
       certificateTemplate,
+      certificateSignerName,
+      certificateSignerTitle,
+      certificateSealLabel,
+      certificateFooterText,
       tags,
       prerequisites,
     } = req.body;
@@ -1347,6 +1351,12 @@ export const createCourse = async (req, res) => {
       difficulty: difficulty || "beginner",
       estimatedHours: estimatedHours || 0,
       certificateTemplate: certificateTemplate || "standard",
+      certificateSignerName: certificateSignerName || "",
+      certificateSignerTitle: certificateSignerTitle || "",
+      certificateSealLabel: certificateSealLabel || "Official Seal",
+      certificateFooterText:
+        certificateFooterText ||
+        "Verified Achievement • Authenticated Completion • Excellence Recognized",
       tags: tags || [],
       prerequisites: prerequisites || [],
       instructor: req.user._id,
