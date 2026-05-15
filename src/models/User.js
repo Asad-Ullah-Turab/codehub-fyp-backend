@@ -177,6 +177,23 @@ const userSchema = new mongoose.Schema(
     chatQueriesRemaining: { type: Number, default: 5 },
     codeQueriesRemaining: { type: Number, default: 5 },
     tutorialGenRemaining: { type: Number, default: 5 },
+
+    // Creator Pro subscription
+    creatorPlan: { type: String, enum: ["free", "pro"], default: "free" },
+    creatorPlanStatus: {
+      type: String,
+      enum: ["none", "active", "past_due", "canceled"],
+      default: "none",
+    },
+    stripeCreatorCustomerId: { type: String, default: null },
+    stripeCreatorSubscriptionId: { type: String, default: null },
+    creatorPlanStart: { type: Date, default: null },
+    creatorPlanEnd: { type: Date, default: null },
+
+    // Stripe Connect (for receiving payouts)
+    stripeConnectAccountId: { type: String, default: null },
+    stripeConnectOnboardingComplete: { type: Boolean, default: false },
+    stripeConnectPayoutsEnabled: { type: Boolean, default: false },
   },
   { timestamps: true },
 );
@@ -251,10 +268,12 @@ userSchema.methods.isAccountLocked = function () {
 
 // Helper methods for subscription & limits
 userSchema.methods.isPremium = function () {
-  // Only premium users with active subscriptions bypass limits
   return (
     this.subscriptionPlan === "premium" && this.subscriptionStatus === "active"
   );
+};
+userSchema.methods.isCreatorPro = function () {
+  return this.creatorPlan === "pro" && this.creatorPlanStatus === "active";
 };
 
 userSchema.methods.consumeChatQuery = function () {

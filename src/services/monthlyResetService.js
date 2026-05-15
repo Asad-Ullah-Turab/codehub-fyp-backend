@@ -1,5 +1,6 @@
 import cron from "node-cron";
 import User from "../models/User.js";
+import { processMonthlyCreatorPayouts } from "./stripeService.js";
 
 /**
  * Monthly query reset service for free tier users
@@ -86,7 +87,13 @@ class MonthlyResetService {
       );
     } catch (error) {
       console.error("Error during monthly query reset:", error);
-      // In production, you might want to send an alert or notification here
+    }
+
+    // Process creator revenue share payouts
+    try {
+      await processMonthlyCreatorPayouts();
+    } catch (error) {
+      console.error("Error during monthly creator payouts:", error);
     }
   }
 

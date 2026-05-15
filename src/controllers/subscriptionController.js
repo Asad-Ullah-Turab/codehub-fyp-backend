@@ -1,4 +1,4 @@
-import stripeService from "../services/stripeService.js";
+import stripeService, { handleCreatorWebhookEvent } from "../services/stripeService.js";
 import SubscriptionCancellation from "../models/SubscriptionCancellation.js";
 
 // allow swapping subscription cancellation model in tests
@@ -81,6 +81,12 @@ export const stripeWebhook = async (req, res) => {
     }
   } catch (processError) {
     console.error("Error processing webhook event:", processError.message);
+  }
+
+  try {
+    await handleCreatorWebhookEvent(event);
+  } catch (processError) {
+    console.error("Error processing creator webhook event:", processError.message);
     // still return 200 to avoid retries if our endpoint is misbehaving
   }
 

@@ -73,6 +73,7 @@ app.use(
 // Import and mount webhook route with raw body parsing FIRST
 import subscriptionRoutes from "./routes/subscriptionRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
+import creatorSubscriptionRoutes from "./routes/creatorSubscriptionRoutes.js";
 app.use("/api/subscriptions", subscriptionRoutes);
 
 // NOW apply JSON parsing for all other routes
@@ -125,6 +126,7 @@ app.use("/api/codechat", codeChatRoutes);
 app.use("/api/views", viewTrackingRoutes);
 app.use("/api/newsletter", newsletterRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/creator-subscription", creatorSubscriptionRoutes);
 // 🔥 NOTE: subscription routes moved to top of file for webhook raw body handling
 
 // 404 handler

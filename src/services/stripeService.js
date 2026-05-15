@@ -362,10 +362,277 @@ export async function cancelSubscription(user) {
   return sub;
 }
 
+// ─── Creator Pro ─────────────────────────────────────────────────────────────
+
+/**
+ * Create a checkout session for the Creator Pro plan
+ */
+export async function createCreatorProCheckoutSession(user) {
+  if (!process.env.STRIPE_PRICE_ID_CREATOR_PRO) {
+    throw new Error("Price ID for Creator Pro plan not configured");
+  }
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    mode: "subscription",
+    customer_email: user.email,
+    line_items: [{ price: process.env.STRIPE_PRICE_ID_CREATOR_PRO, quantity: 1 }],
+    metadata: { userId: user._id.toString(), type: "creator_pro" },
+    success_url: `${process.env.FRONTEND_URL}/creator/earnings?session_id={CHECKOUT_SESSION_ID}`,
+    cancel_url: `${process.env.FRONTEND_URL}/creator/earnings`,
+  });
+  return session;
+}
+
+/**
+ * Handle Stripe webhook events for creator subscriptions
+ */
+export async function handleCreatorWebhookEvent(event) {
+  const User = (await import("../models/User.js")).default;
+
+  switch (event.type) {
+    case "checkout.session.completed": {
+      const session = event.data.object;
+      if (session.metadata?.type !== "creator_pro") return null;
+      const user = await User.findOne({ email: session.customer_email });
+      if (!user) return null;
+      user.creatorPlan = "pro";
+      user.creatorPlanStatus = "active";
+      user.stripeCreatorCustomerId = session.customer;
+      user.stripeCreatorSubscriptionId = session.subscription;
+      user.creatorPlanStart = new Date();
+      await user.save({ validateBeforeSave: false });
+      console.log("Creator Pro activated for:", user.email);
+      return user;
+    }
+    case "invoice.payment_failed": {
+      const invoice = event.data.object;
+      const user = await User.findOne({ stripeCreatorSubscriptionId: invoice.subscription });
+      if (!user) return null;
+      user.creatorPlanStatus = "past_due";
+      await user.save({ validateBeforeSave: false });
+      return user;
+    }
+    case "customer.subscription.deleted":
+    case "customer.subscription.updated": {
+      const sub = event.data.object;
+      const user = await User.findOne({ stripeCreatorSubscriptionId: sub.id });
+      if (!user) return null;
+      if (event.type === "customer.subscription.deleted" || sub.status === "canceled") {
+        user.creatorPlan = "free";
+        user.creatorPlanStatus = "canceled";
+      } else {
+        user.creatorPlanStatus = sub.status;
+      }
+      await user.save({ validateBeforeSave: false });
+      return user;
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Cancel the Creator Pro subscription in Stripe and update user
+ */
+export async function cancelCreatorProSubscription(user) {
+  if (!user.stripeCreatorSubscriptionId) {
+    throw new Error("No active Creator Pro subscription to cancel");
+  }
+  const sub = await stripe.subscriptions.cancel(user.stripeCreatorSubscriptionId);
+  user.creatorPlan = "free";
+  user.creatorPlanStatus = "canceled";
+  await user.save({ validateBeforeSave: false });
+  return sub;
+}
+
+// ─── Stripe Connect ───────────────────────────────────────────────────────────
+
+/**
+ * Create a Stripe Connect Express account for a creator and return onboarding URL.
+ * In development mode, skips the real Stripe Connect flow and instantly marks
+ * the creator as connected so the full earnings UI can be tested locally.
+ */
+export async function createConnectAccountLink(user) {
+  if (process.env.NODE_ENV === "development") {
+    user.stripeConnectAccountId = `acct_test_dev_${user._id}`;
+    user.stripeConnectOnboardingComplete = true;
+    user.stripeConnectPayoutsEnabled = true;
+    await user.save({ validateBeforeSave: false });
+    return `${process.env.FRONTEND_URL}/creator/earnings?connect=success`;
+  }
+
+  let accountId = user.stripeConnectAccountId;
+
+  if (!accountId) {
+    const account = await stripe.accounts.create({
+      type: "express",
+      email: user.email,
+      capabilities: { transfers: { requested: true } },
+      metadata: { userId: user._id.toString() },
+    });
+    accountId = account.id;
+    user.stripeConnectAccountId = accountId;
+    await user.save({ validateBeforeSave: false });
+  }
+
+  const link = await stripe.accountLinks.create({
+    account: accountId,
+    refresh_url: `${process.env.FRONTEND_URL}/creator/earnings?connect=refresh`,
+    return_url: `${process.env.FRONTEND_URL}/creator/earnings?connect=success`,
+    type: "account_onboarding",
+  });
+
+  return link.url;
+}
+
+/**
+ * Refresh Connect account status from Stripe and sync to user.
+ * In development, test accounts always report as fully enabled.
+ */
+export async function syncConnectAccountStatus(user) {
+  if (!user.stripeConnectAccountId) return null;
+  if (process.env.NODE_ENV === "development" && user.stripeConnectAccountId.startsWith("acct_test_dev_")) {
+    return { details_submitted: true, payouts_enabled: true };
+  }
+  const account = await stripe.accounts.retrieve(user.stripeConnectAccountId);
+  user.stripeConnectOnboardingComplete = account.details_submitted;
+  user.stripeConnectPayoutsEnabled = account.payouts_enabled;
+  await user.save({ validateBeforeSave: false });
+  return account;
+}
+
+// ─── Monthly payouts ──────────────────────────────────────────────────────────
+
+const CREATOR_REVENUE_SHARE = 0.40; // 40 % of premium revenue goes to creator pool
+
+/**
+ * Calculate and process monthly payouts for all creators.
+ * Called by the monthly cron job.
+ */
+export async function processMonthlyCreatorPayouts() {
+  const User = (await import("../models/User.js")).default;
+  const CourseEnrollment = (await import("../models/CourseEnrollment.js")).default;
+  const Course = (await import("../models/Course.js")).default;
+  const SubscriptionTransaction = (await import("../models/SubscriptionTransaction.js")).default;
+  const CreatorPayout = (await import("../models/CreatorPayout.js")).default;
+
+  const now = new Date();
+  const month = now.getMonth() + 1; // 1-based
+  const year = now.getFullYear();
+
+  // 1. Total premium revenue this month
+  const startOfMonth = new Date(year, now.getMonth(), 1);
+  const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59);
+
+  const revenueAgg = await SubscriptionTransaction.aggregate([
+    {
+      $match: {
+        type: { $in: ["subscription_created", "subscription_renewed"] },
+        status: "completed",
+        transactionDate: { $gte: startOfMonth, $lte: endOfMonth },
+      },
+    },
+    { $group: { _id: null, total: { $sum: "$amount" } } },
+  ]);
+  const totalPremiumRevenue = revenueAgg[0]?.total || 0;
+  const sharePool = totalPremiumRevenue * CREATOR_REVENUE_SHARE;
+
+  if (sharePool === 0) {
+    console.log("No premium revenue this month — skipping creator payouts");
+    return;
+  }
+
+  // 2. Enrollments per creator this month
+  const enrollmentAgg = await CourseEnrollment.aggregate([
+    { $match: { enrollmentDate: { $gte: startOfMonth, $lte: endOfMonth } } },
+    {
+      $lookup: {
+        from: "courses",
+        localField: "course",
+        foreignField: "_id",
+        as: "courseDoc",
+      },
+    },
+    { $unwind: "$courseDoc" },
+    { $match: { "courseDoc.instructor": { $exists: true } } },
+    { $group: { _id: "$courseDoc.instructor", count: { $sum: 1 } } },
+  ]);
+
+  const totalEnrollments = enrollmentAgg.reduce((sum, e) => sum + e.count, 0);
+  if (totalEnrollments === 0) {
+    console.log("No enrollments this month — skipping creator payouts");
+    return;
+  }
+
+  // 3. Create payout record and transfer for each creator
+  for (const entry of enrollmentAgg) {
+    const creator = await User.findById(entry._id);
+    if (!creator || creator.role !== "creator") continue;
+
+    const share = entry.count / totalEnrollments;
+    const payoutAmount = parseFloat((share * sharePool).toFixed(2));
+
+    const payoutDoc = await CreatorPayout.findOneAndUpdate(
+      { creator: creator._id, month, year },
+      {
+        totalPremiumRevenue,
+        creatorEnrollments: entry.count,
+        totalEnrollments,
+        enrollmentShare: share,
+        sharePool,
+        payoutAmount,
+        status: "processing",
+      },
+      { upsert: true, new: true },
+    );
+
+    // Only transfer if creator has Connect account with payouts enabled
+    if (creator.stripeConnectAccountId && creator.stripeConnectPayoutsEnabled) {
+      // Dev test accounts use a fake ID — simulate paid without a real Stripe transfer
+      const isDevAccount = creator.stripeConnectAccountId.startsWith("acct_test_dev_");
+      if (isDevAccount) {
+        payoutDoc.stripeTransferId = `tr_dev_simulated_${Date.now()}`;
+        payoutDoc.status = "paid";
+        payoutDoc.paidAt = new Date();
+      } else {
+        try {
+          const transfer = await stripe.transfers.create({
+            amount: Math.round(payoutAmount * 100), // cents
+            currency: "usd",
+            destination: creator.stripeConnectAccountId,
+            description: `CodeHub creator payout ${month}/${year}`,
+          });
+          payoutDoc.stripeTransferId = transfer.id;
+          payoutDoc.status = "paid";
+          payoutDoc.paidAt = new Date();
+        } catch (err) {
+          payoutDoc.status = "failed";
+          payoutDoc.notes = err.message;
+          console.error(`Payout failed for creator ${creator.email}:`, err.message);
+        }
+      }
+    } else {
+      payoutDoc.status = "pending";
+      payoutDoc.notes = "Creator has not completed Stripe Connect onboarding";
+    }
+
+    await payoutDoc.save();
+    console.log(`Payout ${payoutDoc.status} for ${creator.email}: $${payoutAmount}`);
+  }
+
+  console.log(`Monthly creator payouts processed. Pool: $${sharePool.toFixed(2)} from $${totalPremiumRevenue.toFixed(2)} premium revenue`);
+}
+
 export { stripe };
 export default {
   createCheckoutSession,
   handleWebhookEvent,
   cancelSubscription,
+  createCreatorProCheckoutSession,
+  handleCreatorWebhookEvent,
+  cancelCreatorProSubscription,
+  createConnectAccountLink,
+  syncConnectAccountStatus,
+  processMonthlyCreatorPayouts,
   stripe,
 };
