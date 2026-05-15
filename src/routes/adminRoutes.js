@@ -28,6 +28,11 @@ import {
   rejectCertificate,
   getNewsletterSubscriptions,
   triggerMonthlyReset,
+  getCreatorRevenue,
+  getCreatorPayoutHistory,
+  adminTriggerCreatorPayouts,
+  retryCreatorPayout,
+  getSubscriptionTransactions,
 } from "../controllers/adminController.js";
 
 const router = express.Router();
@@ -78,5 +83,14 @@ router.get("/newsletter-subscriptions", getNewsletterSubscriptions);
 
 // System Management
 router.post("/trigger-monthly-reset", triggerMonthlyReset);
+
+// Creator Revenue Management
+router.get("/creator-revenue", getCreatorRevenue);
+router.get("/creator-revenue/:creatorId/payouts", getCreatorPayoutHistory);
+router.post("/creator-revenue/trigger-payouts", adminTriggerCreatorPayouts);
+router.post("/creator-revenue/payouts/:payoutId/retry", retryCreatorPayout);
+
+// Subscription Transactions
+router.get("/subscription-transactions", getSubscriptionTransactions);
 
 export default router;

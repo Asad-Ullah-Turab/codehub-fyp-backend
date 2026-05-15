@@ -99,16 +99,35 @@ export const getDashboardStats = async (req, res) => {
         : "0.0";
 
     // Calculate subscription earnings from actual transactions
-    const PREMIUM_PRICE = 9.99; // Monthly subscription price
-    const monthlyRecurringRevenue = (premiumUsers * PREMIUM_PRICE).toFixed(2);
-    const annualRecurringRevenue = (premiumUsers * PREMIUM_PRICE * 12).toFixed(
-      2,
-    );
+    const PREMIUM_PRICE = 9.99;
+    const CREATOR_PRO_PRICE = 9.99;
+
+    // Creator Pro subscribers
+    const proCreators = await User.countDocuments({
+      creatorPlan: "pro",
+      creatorPlanStatus: "active",
+    });
+
+    const premiumMRR = premiumUsers * PREMIUM_PRICE;
+    const creatorProMRR = proCreators * CREATOR_PRO_PRICE;
+    const monthlyRecurringRevenue = premiumMRR.toFixed(2);
+    const creatorProMonthlyRevenue = creatorProMRR.toFixed(2);
+    const combinedMRR = (premiumMRR + creatorProMRR).toFixed(2);
+    const annualRecurringRevenue = (premiumMRR * 12).toFixed(2);
+    const combinedARR = ((premiumMRR + creatorProMRR) * 12).toFixed(2);
 
     // Get total revenue from completed transactions
     const totalRevenueData = await SubscriptionTransaction.getTotalRevenue();
     const totalRevenue = totalRevenueData.totalRevenue || 0;
     const totalTransactions = totalRevenueData.totalTransactions || 0;
+
+    // Creator Pro total paid out
+    const CreatorPayout = (await import("../models/CreatorPayout.js")).default;
+    const creatorProRevenueAgg = await CreatorPayout.aggregate([
+      { $match: { status: "paid" } },
+      { $group: { _id: null, total: { $sum: "$payoutAmount" } } },
+    ]);
+    const creatorProTotalPaidOut = creatorProRevenueAgg[0]?.total || 0;
 
     // Calculate revenue from last 30 days
     const revenueByDateLast30Days =
@@ -171,9 +190,15 @@ export const getDashboardStats = async (req, res) => {
         // Earnings data (from actual transactions)
         monthlyRecurringRevenue: parseFloat(monthlyRecurringRevenue),
         annualRecurringRevenue: parseFloat(annualRecurringRevenue),
+        combinedMRR: parseFloat(combinedMRR),
+        combinedARR: parseFloat(combinedARR),
+        creatorProMRR: parseFloat(creatorProMonthlyRevenue),
+        proCreators,
+        creatorProTotalPaidOut: parseFloat(creatorProTotalPaidOut.toFixed(2)),
         revenueGrowth: parseFloat(revenueGrowth),
         revenueGrowthRate: parseFloat(revenueGrowthRate),
         totalRevenue: parseFloat(totalRevenue.toFixed(2)),
+        combinedTotalRevenue: parseFloat((totalRevenue + creatorProTotalPaidOut).toFixed(2)),
         totalTransactions,
         newPremiumUsersLast30Days,
         revenueByDate: revenueByDateLast30Days.map((item) => ({
@@ -216,7 +241,7 @@ export const getAllUsers = async (req, res) => {
 
     const users = await User.find(filter)
       .select(
-        "name email role accountStatus profileImage createdAt lastLogin subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining",
+        "name email role accountStatus profileImage createdAt lastLogin subscriptionPlan subscriptionStatus chatQueriesRemaining codeQueriesRemaining tutorialGenRemaining creatorPlan creatorPlanStatus stripeConnectPayoutsEnabled",
       )
       .limit(parseInt(limit))
       .skip(skip)
@@ -1481,5 +1506,182 @@ export const triggerMonthlyReset = async (req, res) => {
       message: "Failed to trigger monthly reset",
       error: error.message,
     });
+  }
+};
+
+export const getCreatorRevenue = async (req, res) => {
+  try {
+    const CreatorPayout = (await import("../models/CreatorPayout.js")).default;
+    const User = (await import("../models/User.js")).default;
+
+    // All creators
+    const creators = await User.find({ role: "creator" })
+      .select("name email profilePicture creatorPlan creatorPlanStatus stripeConnectAccountId stripeConnectOnboardingComplete stripeConnectPayoutsEnabled")
+      .lean();
+
+    // Aggregate payout stats per creator
+    const payoutStats = await CreatorPayout.aggregate([
+      {
+        $group: {
+          _id: "$creator",
+          totalEarned: { $sum: { $cond: [{ $eq: ["$status", "paid"] }, "$payoutAmount", 0] } },
+          pendingAmount: { $sum: { $cond: [{ $in: ["$status", ["pending", "processing"]] }, "$payoutAmount", 0] } },
+          payoutCount: { $sum: 1 },
+          lastPayout: { $max: "$paidAt" },
+        },
+      },
+    ]);
+
+    const statsMap = {};
+    payoutStats.forEach((s) => { statsMap[s._id.toString()] = s; });
+
+    const result = creators.map((c) => ({
+      ...c,
+      stats: statsMap[c._id.toString()] || { totalEarned: 0, pendingAmount: 0, payoutCount: 0, lastPayout: null },
+    }));
+
+    // Summary totals
+    const totalPaidOut = result.reduce((s, c) => s + (c.stats.totalEarned || 0), 0);
+    const totalPending = result.reduce((s, c) => s + (c.stats.pendingAmount || 0), 0);
+    const proCreators = result.filter((c) => c.creatorPlan === "pro" && c.creatorPlanStatus === "active").length;
+    const connectedCreators = result.filter((c) => c.stripeConnectPayoutsEnabled).length;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        creators: result,
+        summary: { totalPaidOut, totalPending, proCreators, connectedCreators, totalCreators: result.length },
+      },
+    });
+  } catch (error) {
+    console.error("Error getting creator revenue:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getCreatorPayoutHistory = async (req, res) => {
+  try {
+    const CreatorPayout = (await import("../models/CreatorPayout.js")).default;
+    const { creatorId } = req.params;
+    const payouts = await CreatorPayout.find({ creator: creatorId })
+      .sort({ year: -1, month: -1 })
+      .lean();
+    res.status(200).json({ success: true, data: payouts });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const adminTriggerCreatorPayouts = async (req, res) => {
+  try {
+    const { processMonthlyCreatorPayouts } = await import("../services/stripeService.js");
+    await processMonthlyCreatorPayouts();
+    res.status(200).json({ success: true, message: "Creator payouts processed successfully" });
+  } catch (error) {
+    console.error("Error triggering creator payouts:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const retryCreatorPayout = async (req, res) => {
+  try {
+    const CreatorPayout = (await import("../models/CreatorPayout.js")).default;
+    const User = (await import("../models/User.js")).default;
+    const stripe = (await import("../services/stripeService.js")).stripe;
+
+    const payout = await CreatorPayout.findById(req.params.payoutId);
+    if (!payout) return res.status(404).json({ success: false, message: "Payout not found" });
+    if (payout.status === "paid") return res.status(400).json({ success: false, message: "Payout already completed" });
+
+    const creator = await User.findById(payout.creator);
+    if (!creator?.stripeConnectAccountId || !creator?.stripeConnectPayoutsEnabled) {
+      return res.status(400).json({ success: false, message: "Creator has no active payout account" });
+    }
+
+    const isDevAccount = creator.stripeConnectAccountId.startsWith("acct_test_dev_");
+    if (isDevAccount) {
+      payout.stripeTransferId = `tr_dev_retry_${Date.now()}`;
+    } else {
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(payout.payoutAmount * 100),
+        currency: "usd",
+        destination: creator.stripeConnectAccountId,
+        description: `CodeHub creator payout retry ${payout.month}/${payout.year}`,
+      });
+      payout.stripeTransferId = transfer.id;
+    }
+    payout.status = "paid";
+    payout.paidAt = new Date();
+    payout.notes = null;
+    await payout.save();
+
+    res.status(200).json({ success: true, data: payout });
+  } catch (error) {
+    console.error("Error retrying payout:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+export const getSubscriptionTransactions = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type = "", status = "" } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const filter = {};
+    if (type) filter.type = type;
+    if (status) filter.status = status;
+
+    const [transactions, total] = await Promise.all([
+      SubscriptionTransaction.find(filter)
+        .populate("user", "name email subscriptionPlan")
+        .sort({ transactionDate: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      SubscriptionTransaction.countDocuments(filter),
+    ]);
+
+    // Summary stats
+    const totalRevenueData = await SubscriptionTransaction.getTotalRevenue();
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const revenueByDate = await SubscriptionTransaction.getRevenueByDateRange(thirtyDaysAgo, new Date());
+    const revenueThisMonth = revenueByDate.reduce((s, d) => s + parseFloat(d.revenue), 0);
+
+    const newSubs = await SubscriptionTransaction.countDocuments({
+      type: "subscription_created",
+      status: "completed",
+      transactionDate: { $gte: thirtyDaysAgo },
+    });
+    const renewals = await SubscriptionTransaction.countDocuments({
+      type: "subscription_renewed",
+      status: "completed",
+      transactionDate: { $gte: thirtyDaysAgo },
+    });
+    const cancellations = await SubscriptionTransaction.countDocuments({
+      type: "subscription_cancelled",
+      transactionDate: { $gte: thirtyDaysAgo },
+    });
+
+    const premiumUsers = await User.countDocuments({ subscriptionPlan: "premium", subscriptionStatus: "active" });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        transactions,
+        summary: {
+          totalRevenue: totalRevenueData.totalRevenue || 0,
+          totalTransactions: totalRevenueData.totalTransactions || 0,
+          revenueThisMonth: parseFloat(revenueThisMonth.toFixed(2)),
+          premiumUsers,
+          newSubsThisMonth: newSubs,
+          renewalsThisMonth: renewals,
+          cancellationsThisMonth: cancellations,
+          revenueByDate: revenueByDate.map(d => ({ date: d._id, revenue: parseFloat(d.revenue), count: d.count })),
+        },
+      },
+      pagination: { total, pages: Math.ceil(total / parseInt(limit)), currentPage: parseInt(page) },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };

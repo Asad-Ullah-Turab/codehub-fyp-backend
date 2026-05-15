@@ -13,6 +13,8 @@ import {
   getCourseRatings,
   getCourseReviewsForCreator,
   getCreatorReviewsSummary,
+  generateSectionWithAI,
+  getCourseAnalytics,
 } from "../controllers/creatorCourseController.js";
 import courseAdminController from "../controllers/courseAdminController.js";
 
@@ -32,6 +34,8 @@ router.patch("/:id/publish", auth, creatorMiddleware, togglePublishCourse);
 router.delete("/:id", auth, creatorMiddleware, deleteCourse);
 router.get("/:id/enrollments", auth, creatorMiddleware, getCourseEnrollments);
 router.get("/:id/ratings", auth, creatorMiddleware, getCourseRatings);
+
+router.get("/:courseId/analytics", auth, creatorMiddleware, getCourseAnalytics);
 
 // Section Management
 router.post(
@@ -125,6 +129,14 @@ router.get(
   auth,
   creatorMiddleware,
   getCreatorReviewsSummary,
+);
+
+// AI section generation (Creator Pro only)
+router.post(
+  "/:courseId/sections/generate-ai",
+  auth,
+  creatorMiddleware,
+  generateSectionWithAI,
 );
 
 export default router;

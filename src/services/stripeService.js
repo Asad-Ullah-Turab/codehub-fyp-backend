@@ -572,6 +572,25 @@ export async function processMonthlyCreatorPayouts() {
     const share = entry.count / totalEnrollments;
     const payoutAmount = parseFloat((share * sharePool).toFixed(2));
 
+    if (!creator.isCreatorPro || !creator.isCreatorPro()) {
+      // Record as skipped so admin can see it
+      await CreatorPayout.findOneAndUpdate(
+        { creator: creator._id, month, year },
+        {
+          totalPremiumRevenue,
+          creatorEnrollments: entry.count,
+          totalEnrollments,
+          enrollmentShare: share,
+          sharePool,
+          payoutAmount,
+          status: "skipped",
+          notes: "Creator does not have an active Creator Pro subscription",
+        },
+        { upsert: true, new: true },
+      );
+      continue;
+    }
+
     const payoutDoc = await CreatorPayout.findOneAndUpdate(
       { creator: creator._id, month, year },
       {

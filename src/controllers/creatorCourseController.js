@@ -3,6 +3,7 @@ import Quiz from "../models/Quiz.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import { createNotification } from "./notificationController.js";
 import CourseReview from "../models/CourseReview.js";
+import geminiService from "../services/geminiService.js";
 
 const allowedCourseFields = [
   "title",
@@ -33,6 +34,17 @@ export const createCourse = async (req, res) => {
       return res.status(403).json({
         success: false,
         message: "Only creators can create courses",
+      });
+    }
+
+    const courseCount = await Course.countDocuments({ instructor: req.user._id });
+    const isPro = req.user.isCreatorPro && req.user.isCreatorPro();
+    const FREE_COURSE_LIMIT = 3;
+    if (!isPro && courseCount >= FREE_COURSE_LIMIT) {
+      return res.status(403).json({
+        success: false,
+        message: `Free creators can only create ${FREE_COURSE_LIMIT} courses. Upgrade to Creator Pro for unlimited course uploads.`,
+        code: "COURSE_LIMIT_REACHED",
       });
     }
 
@@ -635,6 +647,122 @@ export const getCourseReviewsForCreator = async (req, res) => {
       message: "Error fetching reviews",
       error: error.message,
     });
+  }
+};
+
+export const generateSectionWithAI = async (req, res) => {
+  try {
+    if (!req.user.isCreatorPro || !req.user.isCreatorPro()) {
+      return res.status(403).json({
+        success: false,
+        message: "AI course generation requires Creator Pro subscription.",
+        code: "PRO_REQUIRED",
+      });
+    }
+
+    const { topic } = req.body;
+    if (!topic || !topic.trim()) {
+      return res.status(400).json({ success: false, message: "Topic is required" });
+    }
+
+    const course = await Course.findOne({
+      _id: req.params.courseId,
+      instructor: req.user._id,
+    });
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+
+    const generated = await geminiService.generateCourseSection(
+      topic.trim(),
+      course.language || "javascript",
+      course.difficulty || "beginner",
+    );
+
+    res.status(200).json({ success: true, data: generated });
+  } catch (error) {
+    console.error("Error generating section with AI:", error);
+    res.status(500).json({ success: false, message: error.message || "AI generation failed" });
+  }
+};
+
+export const getCourseAnalytics = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const course = await Course.findOne({ _id: courseId, instructor: req.user._id });
+    if (!course) return res.status(404).json({ success: false, message: "Course not found" });
+
+    const isPro = req.user.isCreatorPro && req.user.isCreatorPro();
+
+    // Basic stats available to all creators
+    const totalEnrollments = await CourseEnrollment.countDocuments({ course: courseId });
+    const completedEnrollments = await CourseEnrollment.countDocuments({ course: courseId, isCompleted: true });
+    const completionRate = totalEnrollments > 0 ? ((completedEnrollments / totalEnrollments) * 100).toFixed(1) : "0.0";
+
+    // Last 30 days enrollments
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const recentEnrollments = await CourseEnrollment.countDocuments({
+      course: courseId,
+      enrollmentDate: { $gte: thirtyDaysAgo },
+    });
+
+    const basicStats = { totalEnrollments, completedEnrollments, completionRate: parseFloat(completionRate), recentEnrollments };
+
+    if (!isPro) {
+      return res.status(200).json({
+        success: true,
+        isPro: false,
+        data: basicStats,
+      });
+    }
+
+    // Pro-only: enrollment trend over last 30 days grouped by day
+    const enrollmentTrend = await CourseEnrollment.aggregate([
+      { $match: { course: course._id, enrollmentDate: { $gte: thirtyDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$enrollmentDate" } },
+          count: { $sum: 1 },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Pro-only: review/rating stats
+    const reviewStats = await CourseReview.aggregate([
+      { $match: { course: course._id } },
+      {
+        $group: {
+          _id: null,
+          avgRating: { $avg: "$rating" },
+          totalReviews: { $sum: 1 },
+          fiveStar: { $sum: { $cond: [{ $eq: ["$rating", 5] }, 1, 0] } },
+          fourStar: { $sum: { $cond: [{ $eq: ["$rating", 4] }, 1, 0] } },
+          threeStar: { $sum: { $cond: [{ $gte: ["$rating", 3] }, 1, 0] } },
+        },
+      },
+    ]);
+
+    // Pro-only: payout earned for this course (approximate — based on creator payouts)
+    const CreatorPayout = (await import("../models/CreatorPayout.js")).default;
+    const payoutStats = await CreatorPayout.aggregate([
+      { $match: { creator: req.user._id, status: "paid" } },
+      { $group: { _id: null, totalEarned: { $sum: "$payoutAmount" }, payoutCount: { $sum: 1 } } },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      isPro: true,
+      data: {
+        ...basicStats,
+        enrollmentTrend,
+        reviewStats: reviewStats[0] || { avgRating: 0, totalReviews: 0 },
+        payoutStats: payoutStats[0] || { totalEarned: 0, payoutCount: 0 },
+      },
+    });
+  } catch (error) {
+    console.error("Error getting course analytics:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

@@ -44,11 +44,27 @@ export const getAllCourses = async (req, res) => {
 
     const skip = (page - 1) * limit;
 
+    // Get IDs of all active Creator Pro instructors for priority sorting
+    const User = (await import("../models/User.js")).default;
+    const proCreatorIds = await User.find(
+      { role: "creator", creatorPlan: "pro", creatorPlanStatus: "active" },
+      { _id: 1 }
+    ).lean().then(users => new Set(users.map(u => u._id.toString())));
+
     const courses = await Course.find(filter)
       .populate("instructor", "name email profilePicture role")
       .skip(skip)
       .limit(parseInt(limit))
       .sort({ createdAt: -1 });
+
+    // Pro creator courses appear first in the listing
+    courses.sort((a, b) => {
+      const aIsPro = proCreatorIds.has(a.instructor?._id?.toString() || a.instructor?.toString());
+      const bIsPro = proCreatorIds.has(b.instructor?._id?.toString() || b.instructor?.toString());
+      if (aIsPro && !bIsPro) return -1;
+      if (!aIsPro && bIsPro) return 1;
+      return 0;
+    });
 
     const total = await Course.countDocuments(filter);
 

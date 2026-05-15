@@ -155,6 +155,73 @@ class GeminiService {
     };
   }
 
+  async generateCourseSection(sectionTopic, courseLanguage, difficulty = "beginner") {
+    if (!GEMINI_API_KEY) throw new Error("Gemini API key is not configured");
+    const prompt = this.buildSectionPrompt(sectionTopic, courseLanguage, difficulty);
+    const response = await this.callGemini(prompt);
+    const text = this.extractText(response);
+    return this.parseSectionContent(text, sectionTopic, courseLanguage, difficulty);
+  }
+
+  buildSectionPrompt(topic, language, difficulty) {
+    return `You are creating a course section for a "${language}" programming course at ${difficulty} level.
+
+Generate a complete course section about: "${topic}"
+
+Return ONLY valid JSON in this exact format (no markdown, no explanation, just JSON):
+{
+  "sectionTitle": "Section title here",
+  "lessons": [
+    {
+      "title": "Lesson title",
+      "content": "Full lesson content in markdown with ## headers, explanations, bullet points. Minimum 200 words. No code blocks here.",
+      "codeExamples": [
+        { "code": "// example code here", "explanation": "What this demonstrates" },
+        { "code": "// second example", "explanation": "What this demonstrates" }
+      ],
+      "notes": ["Important note 1", "Important note 2"],
+      "tips": ["Practical tip 1", "Practical tip 2"]
+    }
+  ]
+}
+
+Rules:
+- Generate exactly 3 lessons
+- Each lesson content must be detailed markdown (no code blocks in content field)
+- Each lesson must have exactly 2 code examples
+- Language for code examples: ${language}
+- Difficulty: ${difficulty}
+- Return ONLY the JSON object, nothing else`;
+  }
+
+  parseSectionContent(text, topic, language, difficulty) {
+    try {
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const parsed = JSON.parse(jsonMatch[0]);
+        if (parsed.sectionTitle && Array.isArray(parsed.lessons)) {
+          return parsed;
+        }
+      }
+    } catch (_) {}
+    // Fallback if JSON parsing fails
+    return {
+      sectionTitle: `${topic} in ${language}`,
+      lessons: [
+        {
+          title: `Introduction to ${topic}`,
+          content: `## Introduction\n\nThis lesson covers ${topic} in ${language} at ${difficulty} level.\n\n## Key Concepts\n\n- Understanding the fundamentals\n- Practical application\n- Best practices`,
+          codeExamples: [
+            { code: `// ${topic} basic example in ${language}`, explanation: `Basic ${topic} example` },
+            { code: `// ${topic} advanced example`, explanation: `Advanced usage` },
+          ],
+          notes: [`Review ${language} documentation for more details`],
+          tips: [`Practice ${topic} with real projects`],
+        },
+      ],
+    };
+  }
+
   async testConnection() {
     if (!GEMINI_API_KEY) {
       return { success: false, message: "Gemini API key is not configured" };
