@@ -56,4 +56,21 @@ router.get(
   quizCertificateController.getQuizLeaderboard,
 );
 
+// ========== REVIEW ROUTES ==========
+router.post(
+  "/:courseId/reviews",
+  auth,
+  courseController.addCourseReview,
+);
+router.get(
+  "/:courseId/reviews",
+  generalLimiter,
+  courseController.getCourseReviews,
+);
+router.post(
+  "/reviews/:reviewId/helpful",
+  auth,
+  courseController.markReviewHelpful,
+);
+
 export default router;

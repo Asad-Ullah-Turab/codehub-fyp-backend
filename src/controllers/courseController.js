@@ -1,8 +1,7 @@
 import mongoose from "mongoose";
 import Course from "../models/Course.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
-import Quiz from "../models/Quiz.js";
-import Certificate from "../models/Certificate.js";
+import CourseReview from "../models/CourseReview.js";
 import { createNotification } from "./notificationController.js";
 
 // ========== PUBLIC ROUTES ==========
@@ -490,6 +489,187 @@ export const completeLessonProgress = async (req, res) => {
   }
 };
 
+// ========== REVIEW ROUTES ==========
+
+// Add or update a review for a course
+export const addCourseReview = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { rating, comment } = req.body;
+    const userId = req.user._id;
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({
+        success: false,
+        message: "Rating must be between 1 and 5",
+      });
+    }
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
+    }
+
+    // Check if user is enrolled in the course
+    const enrollment = await CourseEnrollment.findOne({
+      user: userId,
+      course: courseId,
+    });
+
+    const isVerifiedEnrollment = !!enrollment;
+
+    // Check if review already exists
+    let review = await CourseReview.findOne({ course: courseId, user: userId });
+
+    if (review) {
+      // Update existing review
+      review.rating = rating;
+      review.comment = comment || "";
+      await review.save();
+    } else {
+      // Create new review
+      review = new CourseReview({
+        course: courseId,
+        user: userId,
+        rating,
+        comment: comment || "",
+        isVerifiedEnrollment,
+      });
+      await review.save();
+    }
+
+    // Populate user data
+    await review.populate("user", "name profilePicture");
+
+    // Recalculate course average rating
+    const reviews = await CourseReview.find({ course: courseId });
+    const averageRating =
+      reviews.length > 0
+        ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(
+            1,
+          )
+        : 0;
+
+    await Course.findByIdAndUpdate(courseId, {
+      averageRating: parseFloat(averageRating),
+      ratingCount: reviews.length,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Review added successfully",
+      data: review,
+    });
+  } catch (error) {
+    console.error("Error adding course review:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error adding review",
+      error: error.message,
+    });
+  }
+};
+
+// Get all reviews for a course
+export const getCourseReviews = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { page = 1, limit = 10, sortBy = "recent" } = req.query;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
+    }
+
+    const skip = (page - 1) * limit;
+    let sortOption = { createdAt: -1 }; // default: recent
+
+    if (sortBy === "rating-high") {
+      sortOption = { rating: -1 };
+    } else if (sortBy === "rating-low") {
+      sortOption = { rating: 1 };
+    } else if (sortBy === "helpful") {
+      sortOption = { helpful: -1 };
+    }
+
+    const reviews = await CourseReview.find({ course: courseId })
+      .populate("user", "name profilePicture")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort(sortOption);
+
+    const total = await CourseReview.countDocuments({ course: courseId });
+
+    const ratingDistributionData = await CourseReview.aggregate([
+      { $match: { course: mongoose.Types.ObjectId.createFromHexString(courseId) } },
+      { $group: { _id: "$rating", count: { $sum: 1 } } },
+      { $sort: { _id: -1 } },
+    ]);
+
+    const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    ratingDistributionData.forEach((item) => {
+      if (item?._id >= 1 && item._id <= 5) {
+        ratingDistribution[item._id] = item.count;
+      }
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        reviews,
+        total,
+        pages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit),
+        ratingDistribution,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching course reviews:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching reviews",
+      error: error.message,
+    });
+  }
+};
+
+// Mark review as helpful
+export const markReviewHelpful = async (req, res) => {
+  try {
+    const { reviewId } = req.params;
+
+    const review = await CourseReview.findByIdAndUpdate(
+      reviewId,
+      { $inc: { helpful: 1 } },
+      { new: true },
+    ).populate("user", "name profilePicture");
+
+    if (!review) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Review not found" });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Review marked as helpful",
+      data: review,
+    });
+  } catch (error) {
+    console.error("Error marking review helpful:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error updating review",
+      error: error.message,
+    });
+  }
+};
+
 export default {
   getAllCourses,
   getCourseById,
@@ -498,4 +678,7 @@ export default {
   getUserEnrolledCourses,
   getEnrollmentDetails,
   completeLessonProgress,
+  addCourseReview,
+  getCourseReviews,
+  markReviewHelpful,
 };

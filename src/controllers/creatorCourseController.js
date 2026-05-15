@@ -2,6 +2,7 @@ import Course from "../models/Course.js";
 import Quiz from "../models/Quiz.js";
 import CourseEnrollment from "../models/CourseEnrollment.js";
 import { createNotification } from "./notificationController.js";
+import CourseReview from "../models/CourseReview.js";
 
 const allowedCourseFields = [
   "title",
@@ -563,6 +564,156 @@ export const reviewPublishRequest = async (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || "Error reviewing publish request",
+    });
+  }
+};
+
+// Get all reviews for creator's courses
+export const getCourseReviewsForCreator = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { page = 1, limit = 20 } = req.query;
+
+    const course = await Course.findById(courseId);
+    if (!course) {
+      return res
+        .status(404)
+        .json({ success: false, message: "Course not found" });
+    }
+
+    if (course.instructor.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only view reviews for your own courses",
+      });
+    }
+
+    const skip = (page - 1) * limit;
+    const reviews = await CourseReview.find({ course: courseId })
+      .populate("user", "name email profilePicture")
+      .skip(skip)
+      .limit(parseInt(limit))
+      .sort({ createdAt: -1 });
+
+    const total = await CourseReview.countDocuments({ course: courseId });
+
+    const ratingDistribution = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    const allReviews = await CourseReview.find({ course: courseId });
+    allReviews.forEach((review) => {
+      ratingDistribution[review.rating]++;
+    });
+
+    res.status(200).json({
+      success: true,
+      data: {
+        reviews,
+        ratingDistribution,
+        total,
+        pages: Math.ceil(total / limit),
+        currentPage: parseInt(page),
+        limit: parseInt(limit),
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching course reviews:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching reviews",
+      error: error.message,
+    });
+  }
+};
+
+// Get summary of all reviews for creator's courses
+export const getCreatorReviewsSummary = async (req, res) => {
+  try {
+    const creatorId = req.user._id;
+    const courses = await Course.find({ instructor: creatorId })
+      .select("title")
+      .sort({ createdAt: -1 });
+    const courseIds = courses.map((c) => c._id);
+
+    if (courseIds.length === 0) {
+      return res.status(200).json({
+        success: true,
+        data: {
+          summary: [],
+          totalReviews: 0,
+          averageRating: 0,
+        },
+      });
+    }
+
+    const reviews = await CourseReview.find({ course: { $in: courseIds } })
+      .populate("course", "title")
+      .populate("user", "name profilePicture")
+      .sort({ createdAt: -1 });
+
+    const reviewsByCourseId = {};
+
+    courses.forEach((course) => {
+      reviewsByCourseId[course._id.toString()] = {
+        courseId: course._id.toString(),
+        courseTitle: course.title,
+        reviews: [],
+        averageRating: 0,
+        totalReviews: 0,
+      };
+    });
+
+    reviews.forEach((review) => {
+      const courseId = review.course._id.toString();
+      if (!reviewsByCourseId[courseId]) {
+        reviewsByCourseId[courseId] = {
+          courseId,
+          courseTitle: review.course.title,
+          reviews: [],
+          averageRating: 0,
+          totalReviews: 0,
+        };
+      }
+      reviewsByCourseId[courseId].reviews.push(review);
+    });
+
+    Object.keys(reviewsByCourseId).forEach((courseId) => {
+      const courseReviews = reviewsByCourseId[courseId].reviews;
+      reviewsByCourseId[courseId].totalReviews = courseReviews.length;
+      reviewsByCourseId[courseId].averageRating =
+        courseReviews.length > 0
+          ? parseFloat(
+              (
+                courseReviews.reduce((sum, r) => sum + r.rating, 0) /
+                courseReviews.length
+              ).toFixed(1),
+            )
+          : 0;
+    });
+
+    const summary = Object.values(reviewsByCourseId);
+    const totalReviews = reviews.length;
+    const overallAverageRating =
+      reviews.length > 0
+        ? parseFloat(
+            (
+              reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+            ).toFixed(1),
+          )
+        : 0;
+
+    res.status(200).json({
+      success: true,
+      data: {
+        summary,
+        totalReviews,
+        averageRating: overallAverageRating,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching reviews summary:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching reviews summary",
+      error: error.message,
     });
   }
 };

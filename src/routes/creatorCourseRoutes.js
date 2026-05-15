@@ -11,6 +11,8 @@ import {
   getCourse,
   getCourseEnrollments,
   getCourseRatings,
+  getCourseReviewsForCreator,
+  getCreatorReviewsSummary,
 } from "../controllers/creatorCourseController.js";
 import courseAdminController from "../controllers/courseAdminController.js";
 
@@ -109,6 +111,20 @@ router.get(
   auth,
   creatorMiddleware,
   courseAdminController.getCourseSections,
+);
+
+// Review Management
+router.get(
+  "/:courseId/reviews",
+  auth,
+  creatorMiddleware,
+  getCourseReviewsForCreator,
+);
+router.get(
+  "/reviews/summary",
+  auth,
+  creatorMiddleware,
+  getCreatorReviewsSummary,
 );
 
 export default router;
