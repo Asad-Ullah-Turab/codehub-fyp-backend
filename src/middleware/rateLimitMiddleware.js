@@ -3,7 +3,9 @@ import rateLimit from "express-rate-limit";
 // General rate limiter for most routes
 export const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500,
+  // Skip rate limiting entirely in development (evaluated at request time, after dotenv loads)
+  skip: () => process.env.NODE_ENV === "development",
   message: {
     success: false,
     message: "Too many requests from this IP, please try again later.",
