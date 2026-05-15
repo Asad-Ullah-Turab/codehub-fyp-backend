@@ -466,6 +466,8 @@ export const addLesson = async (req, res) => {
       difficulty,
       estimatedHours,
       codeExamples,
+      notes,
+      tips,
     } = req.body;
 
     const course = await Course.findOne({ "sections._id": sectionId });
@@ -508,8 +510,8 @@ export const addLesson = async (req, res) => {
       difficulty,
       estimatedHours,
       codeExamples: codeExamples || [],
-      notes: [],
-      tips: [],
+      notes: notes || [],
+      tips: tips || [],
       resources: [],
     };
 

@@ -45,6 +45,8 @@ export async function handleWebhookEvent(event) {
   switch (event.type) {
     case "checkout.session.completed": {
       const session = event.data.object;
+      // Skip creator pro checkout sessions — handled by handleCreatorWebhookEvent
+      if (session.metadata?.type === "creator_pro") return null;
       // We can look up user by email
       const email = session.customer_email;
       const subscriptionId = session.subscription;

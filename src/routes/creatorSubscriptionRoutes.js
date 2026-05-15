@@ -8,6 +8,8 @@ import {
   getConnectStatus,
   getPayouts,
   triggerPayouts,
+  saveGeminiKey,
+  deleteGeminiKey,
 } from "../controllers/creatorSubscriptionController.js";
 
 const router = express.Router();
@@ -22,5 +24,7 @@ router.post("/connect/onboard", startConnectOnboarding);
 router.get("/connect/status", getConnectStatus);
 router.get("/payouts", getPayouts);
 router.post("/payouts/trigger", triggerPayouts);
+router.put("/gemini-key", saveGeminiKey);
+router.delete("/gemini-key", deleteGeminiKey);
 
 export default router;

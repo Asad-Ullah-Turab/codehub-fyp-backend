@@ -58,13 +58,33 @@ export const submitQuizAnswers = async (req, res) => {
         (course) => course?._id,
       ));
 
+    // Determine bypass: admins and course instructors can take quizzes without enrollment
+    let isBypass = req.user.role === "admin";
+    if (!isBypass && req.user.role === "creator") {
+      if (resolvedCourseId) {
+        const quizCourse = await Course.findById(resolvedCourseId).select("instructor");
+        if (quizCourse && quizCourse.instructor.toString() === userId.toString()) {
+          isBypass = true;
+        }
+      } else {
+        const ownedCourse = await Course.findOne({
+          instructor: userId,
+          $or: [
+            { "sections.sectionQuiz": quiz._id },
+            ...(quiz.section ? [{ "sections._id": quiz.section }] : []),
+          ],
+        }).select("_id");
+        if (ownedCourse) isBypass = true;
+      }
+    }
+
     // Get enrollment
     const enrollment = await CourseEnrollment.findOne({
       user: userId,
       course: resolvedCourseId,
     });
 
-    if (!enrollment) {
+    if (!enrollment && !isBypass) {
       return res.status(404).json({
         success: false,
         message: "Enrollment not found",
@@ -128,6 +148,23 @@ export const submitQuizAnswers = async (req, res) => {
 
     const scorePercentage = Math.round((earnedPoints / totalPoints) * 100);
     const passed = scorePercentage >= quiz.passingScore;
+
+    // Bypass users (admin / course instructor) get score feedback without enrollment tracking
+    if (isBypass) {
+      return res.status(200).json({
+        success: true,
+        message: "Quiz preview completed (no progress saved)",
+        data: {
+          enrollmentId: null,
+          score: scorePercentage,
+          maxScore: 100,
+          passed,
+          attemptCount: 1,
+          results,
+          certificate: null,
+        },
+      });
+    }
 
     // Declare sectionProgress outside the if block
     let sectionProgress = null;
@@ -291,48 +328,71 @@ export const getQuizDetails = async (req, res) => {
       }
     }
 
+    // Determine bypass: admins and course instructors can view quizzes without enrollment
+    let isBypass = req.user.role === "admin";
+    if (!isBypass && req.user.role === "creator") {
+      if (quizCourseId) {
+        const quizCourse = await Course.findById(quizCourseId).select("instructor");
+        if (quizCourse && quizCourse.instructor.toString() === userId.toString()) {
+          isBypass = true;
+        }
+      } else {
+        // quizCourseId couldn't be resolved — check if creator owns any course containing this quiz
+        const ownedCourse = await Course.findOne({
+          instructor: userId,
+          $or: [
+            { "sections.sectionQuiz": quiz._id },
+            ...(quiz.section ? [{ "sections._id": quiz.section }] : []),
+          ],
+        }).select("_id");
+        if (ownedCourse) isBypass = true;
+      }
+    }
+
     const enrollment = await CourseEnrollment.findOne({
       user: userId,
       course: quizCourseId,
     });
 
-    if (!enrollment) {
+    if (!enrollment && !isBypass) {
       return res.status(403).json({
         success: false,
         message: "You must be enrolled in the course to take this quiz",
       });
     }
 
-    // Check retakes limit
+    // For bypass users skip retake limits; they are previewing the quiz
     let quizScore;
-    if (quiz.type === "section-quiz") {
-      const sectionId =
-        typeof quiz.section === "object" ? quiz.section._id : quiz.section;
+    if (!isBypass) {
+      if (quiz.type === "section-quiz") {
+        const sectionId =
+          typeof quiz.section === "object" ? quiz.section._id : quiz.section;
 
-      if (!sectionId) {
-        return res.status(400).json({
-          success: false,
-          message: "Section quiz is missing its section reference",
-        });
+        if (!sectionId) {
+          return res.status(400).json({
+            success: false,
+            message: "Section quiz is missing its section reference",
+          });
+        }
+
+        const sectionProgress = enrollment.sectionProgress.find(
+          (sp) => sp.section.toString() === sectionId.toString(),
+        );
+        quizScore = sectionProgress?.sectionQuizScore;
+      } else {
+        quizScore = enrollment.finalQuizScore;
       }
 
-      const sectionProgress = enrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === sectionId.toString(),
-      );
-      quizScore = sectionProgress?.sectionQuizScore;
-    } else {
-      quizScore = enrollment.finalQuizScore;
-    }
-
-    if (
-      quizScore &&
-      quizScore.attemptCount >= quiz.maxRetakes &&
-      !quiz.retakeAllowed
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: `Maximum retakes (${quiz.maxRetakes}) reached`,
-      });
+      if (
+        quizScore &&
+        quizScore.attemptCount >= quiz.maxRetakes &&
+        !quiz.retakeAllowed
+      ) {
+        return res.status(403).json({
+          success: false,
+          message: `Maximum retakes (${quiz.maxRetakes}) reached`,
+        });
+      }
     }
 
     res.status(200).json({
@@ -340,7 +400,7 @@ export const getQuizDetails = async (req, res) => {
       data: {
         quiz,
         previousScore: quizScore,
-        canRetake: quizScore?.attemptCount < quiz.maxRetakes,
+        canRetake: isBypass ? true : quizScore?.attemptCount < quiz.maxRetakes,
       },
     });
   } catch (error) {

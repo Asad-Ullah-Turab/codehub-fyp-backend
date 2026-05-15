@@ -6,6 +6,8 @@ import {
   processMonthlyCreatorPayouts,
 } from "../services/stripeService.js";
 import CreatorPayout from "../models/CreatorPayout.js";
+import User from "../models/User.js";
+import geminiService from "../services/geminiService.js";
 
 // POST /api/creator-subscription/create-checkout-session
 export const createCheckoutSession = async (req, res) => {
@@ -27,18 +29,19 @@ export const createCheckoutSession = async (req, res) => {
 // GET /api/creator-subscription/status
 export const getCreatorStatus = async (req, res) => {
   try {
-    const user = req.user;
+    const userWithKey = await User.findById(req.user._id).select("+geminiApiKey");
     res.json({
       success: true,
       data: {
-        creatorPlan: user.creatorPlan,
-        creatorPlanStatus: user.creatorPlanStatus,
-        creatorPlanStart: user.creatorPlanStart,
-        creatorPlanEnd: user.creatorPlanEnd,
-        isCreatorPro: user.isCreatorPro(),
-        stripeConnectAccountId: user.stripeConnectAccountId,
-        stripeConnectOnboardingComplete: user.stripeConnectOnboardingComplete,
-        stripeConnectPayoutsEnabled: user.stripeConnectPayoutsEnabled,
+        creatorPlan: req.user.creatorPlan,
+        creatorPlanStatus: req.user.creatorPlanStatus,
+        creatorPlanStart: req.user.creatorPlanStart,
+        creatorPlanEnd: req.user.creatorPlanEnd,
+        isCreatorPro: req.user.isCreatorPro(),
+        stripeConnectAccountId: req.user.stripeConnectAccountId,
+        stripeConnectOnboardingComplete: req.user.stripeConnectOnboardingComplete,
+        stripeConnectPayoutsEnabled: req.user.stripeConnectPayoutsEnabled,
+        hasGeminiApiKey: !!userWithKey?.geminiApiKey,
       },
     });
   } catch (err) {
@@ -113,6 +116,35 @@ export const getPayouts = async (req, res) => {
       data: payouts,
       pagination: { total, page: parseInt(page), limit: parseInt(limit) },
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// PUT /api/creator-subscription/gemini-key
+export const saveGeminiKey = async (req, res) => {
+  try {
+    const { apiKey } = req.body;
+    if (!apiKey || !apiKey.trim()) {
+      return res.status(400).json({ success: false, message: "API key is required" });
+    }
+    const key = apiKey.trim();
+    // Basic format check: Google AI Studio keys start with "AIza" and are 39 chars
+    if (!key.startsWith("AIza") || key.length < 30) {
+      return res.status(400).json({ success: false, message: "That doesn't look like a valid Google AI Studio key. Keys start with 'AIza'." });
+    }
+    await User.findByIdAndUpdate(req.user._id, { geminiApiKey: key });
+    res.json({ success: true, message: "Gemini API key saved successfully" });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+// DELETE /api/creator-subscription/gemini-key
+export const deleteGeminiKey = async (req, res) => {
+  try {
+    await User.findByIdAndUpdate(req.user._id, { geminiApiKey: null });
+    res.json({ success: true, message: "Gemini API key removed" });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

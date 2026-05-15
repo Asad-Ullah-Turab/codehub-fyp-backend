@@ -194,6 +194,9 @@ const userSchema = new mongoose.Schema(
     stripeConnectAccountId: { type: String, default: null },
     stripeConnectOnboardingComplete: { type: Boolean, default: false },
     stripeConnectPayoutsEnabled: { type: Boolean, default: false },
+
+    // Creator's own Gemini API key (for free-tier AI generation)
+    geminiApiKey: { type: String, default: null, select: false },
   },
   { timestamps: true },
 );

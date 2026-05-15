@@ -4,6 +4,7 @@ import CourseEnrollment from "../models/CourseEnrollment.js";
 import { createNotification } from "./notificationController.js";
 import CourseReview from "../models/CourseReview.js";
 import geminiService from "../services/geminiService.js";
+import User from "../models/User.js";
 
 const allowedCourseFields = [
   "title",
@@ -39,7 +40,7 @@ export const createCourse = async (req, res) => {
 
     const courseCount = await Course.countDocuments({ instructor: req.user._id });
     const isPro = req.user.isCreatorPro && req.user.isCreatorPro();
-    const FREE_COURSE_LIMIT = 3;
+    const FREE_COURSE_LIMIT = 5;
     if (!isPro && courseCount >= FREE_COURSE_LIMIT) {
       return res.status(403).json({
         success: false,
@@ -652,12 +653,20 @@ export const getCourseReviewsForCreator = async (req, res) => {
 
 export const generateSectionWithAI = async (req, res) => {
   try {
-    if (!req.user.isCreatorPro || !req.user.isCreatorPro()) {
-      return res.status(403).json({
-        success: false,
-        message: "AI course generation requires Creator Pro subscription.",
-        code: "PRO_REQUIRED",
-      });
+    const isPro = req.user.isCreatorPro && req.user.isCreatorPro();
+
+    // Resolve API key: Pro uses platform key, free tier uses their own key
+    let apiKey = null;
+    if (!isPro) {
+      const userWithKey = await User.findById(req.user._id).select("+geminiApiKey");
+      if (!userWithKey?.geminiApiKey) {
+        return res.status(403).json({
+          success: false,
+          message: "AI section generation requires Creator Pro or your own Gemini API key. Add your key in Earnings settings.",
+          code: "PRO_OR_KEY_REQUIRED",
+        });
+      }
+      apiKey = userWithKey.geminiApiKey;
     }
 
     const { topic } = req.body;
@@ -677,6 +686,7 @@ export const generateSectionWithAI = async (req, res) => {
       topic.trim(),
       course.language || "javascript",
       course.difficulty || "beginner",
+      apiKey,
     );
 
     res.status(200).json({ success: true, data: generated });

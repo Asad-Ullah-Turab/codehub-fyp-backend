@@ -40,8 +40,9 @@ class GeminiService {
     }
   }
 
-  async callGemini(prompt) {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
+  async callGemini(prompt, apiKey = null) {
+    const key = apiKey || GEMINI_API_KEY;
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`;
     const body = {
       contents: [
         {
@@ -155,12 +156,23 @@ class GeminiService {
     };
   }
 
-  async generateCourseSection(sectionTopic, courseLanguage, difficulty = "beginner") {
-    if (!GEMINI_API_KEY) throw new Error("Gemini API key is not configured");
+  async generateCourseSection(sectionTopic, courseLanguage, difficulty = "beginner", apiKey = null) {
+    const key = apiKey || GEMINI_API_KEY;
+    if (!key) throw new Error("Gemini API key is not configured");
     const prompt = this.buildSectionPrompt(sectionTopic, courseLanguage, difficulty);
-    const response = await this.callGemini(prompt);
+    const response = await this.callGemini(prompt, key);
     const text = this.extractText(response);
     return this.parseSectionContent(text, sectionTopic, courseLanguage, difficulty);
+  }
+
+  async validateApiKey(apiKey) {
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+      const response = await fetch(url);
+      return response.ok;
+    } catch {
+      return false;
+    }
   }
 
   buildSectionPrompt(topic, language, difficulty) {
