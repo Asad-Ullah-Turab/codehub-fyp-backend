@@ -4,6 +4,31 @@ import Certificate from "../models/Certificate.js";
 import Course from "../models/Course.js";
 import { createNotification } from "./notificationController.js";
 
+const calculateOverallProgress = (course, enrollment) => {
+  const sections = course?.sections || [];
+  const totalUnits = sections.reduce((sum, section) => {
+    const lessonCount = Array.isArray(section.lessons) ? section.lessons.length : 0;
+    return sum + lessonCount + (section.sectionQuiz ? 1 : 0);
+  }, 0);
+
+  if (totalUnits === 0) {
+    return 0;
+  }
+
+  const completedUnits = sections.reduce((sum, section) => {
+    const sectionProgress = enrollment?.sectionProgress?.find(
+      (sp) => sp.section.toString() === section._id.toString(),
+    );
+
+    const completedLessons = sectionProgress?.lessons?.filter((lp) => lp.isCompleted).length || 0;
+    const quizCompleted = sectionProgress?.sectionQuizScore?.passed ? 1 : 0;
+
+    return sum + completedLessons + quizCompleted;
+  }, 0);
+
+  return Math.round((completedUnits / totalUnits) * 100);
+};
+
 // ========== QUIZ SUBMISSION ==========
 
 // Submit quiz answers
@@ -21,10 +46,22 @@ export const submitQuizAnswers = async (req, res) => {
       });
     }
 
+    const resolvedCourseId =
+      courseId ||
+      quiz.course ||
+      (quiz.section
+        ? await Course.findOne({ "sections._id": quiz.section }).then(
+            (course) => course?._id,
+          )
+        : null) ||
+      (await Course.findOne({ "sections.sectionQuiz": quiz._id }).then(
+        (course) => course?._id,
+      ));
+
     // Get enrollment
     const enrollment = await CourseEnrollment.findOne({
       user: userId,
-      course: courseId,
+      course: resolvedCourseId,
     });
 
     if (!enrollment) {
@@ -130,7 +167,7 @@ export const submitQuizAnswers = async (req, res) => {
 
     // Recalculate overall progress and check if all sections are completed
     try {
-      const course = await Course.findById(courseId).populate("sections");
+      const course = await Course.findById(resolvedCourseId).populate("sections");
 
       if (!course) {
         return res.status(404).json({
@@ -139,26 +176,34 @@ export const submitQuizAnswers = async (req, res) => {
         });
       }
 
-      let completedSections = 0;
+      enrollment.overallProgress = calculateOverallProgress(course, enrollment);
+      const sections = course.sections || [];
 
-      for (const section of course.sections) {
-        const sectionProgress = enrollment.sectionProgress.find(
-          (sp) => sp.section.toString() === section._id.toString(),
-        );
-        if (sectionProgress?.isCompleted) {
-          completedSections++;
-        }
-      }
+      const allSectionsCompleted =
+        sections.length > 0 &&
+        sections.every((section) => {
+          const sectionProgress = enrollment.sectionProgress.find(
+            (sp) => sp.section.toString() === section._id.toString(),
+          );
 
-      enrollment.overallProgress = Math.round(
-        (completedSections / course.sections.length) * 100,
-      );
+          const allLessonsCompleted =
+            Array.isArray(section.lessons) &&
+            section.lessons.length > 0 &&
+            section.lessons.every((lesson) =>
+              sectionProgress?.lessons?.some(
+                (lp) => lp.lesson.toString() === lesson._id.toString() && lp.isCompleted,
+              ),
+            );
+
+          const quizPassed = section.sectionQuiz
+            ? Boolean(sectionProgress?.sectionQuizScore?.passed)
+            : true;
+
+          return allLessonsCompleted && quizPassed;
+        });
 
       // Check if all sections are completed - if so, issue certificate
-      if (
-        completedSections === course.sections.length &&
-        !enrollment.certificateIssued
-      ) {
+      if (allSectionsCompleted && !enrollment.certificateIssued) {
         enrollment.status = "completed";
         enrollment.completionDate = new Date();
         enrollment.certificateIssued = true;
@@ -166,7 +211,7 @@ export const submitQuizAnswers = async (req, res) => {
         // Generate certificate
         const certificate = await generateCertificate(
           userId,
-          courseId,
+          resolvedCourseId,
           enrollment._id,
           scorePercentage,
         );
@@ -236,6 +281,13 @@ export const getQuizDetails = async (req, res) => {
       });
       if (containingCourse) {
         quizCourseId = containingCourse._id;
+      }
+    }
+
+    if (!quizCourseId) {
+      const courseByQuiz = await Course.findOne({ "sections.sectionQuiz": quiz._id });
+      if (courseByQuiz) {
+        quizCourseId = courseByQuiz._id;
       }
     }
 

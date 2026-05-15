@@ -4,6 +4,31 @@ import CourseEnrollment from "../models/CourseEnrollment.js";
 import CourseReview from "../models/CourseReview.js";
 import { createNotification } from "./notificationController.js";
 
+const calculateOverallProgress = (course, enrollment) => {
+  const sections = course?.sections || [];
+  const totalUnits = sections.reduce((sum, section) => {
+    const lessonCount = Array.isArray(section.lessons) ? section.lessons.length : 0;
+    return sum + lessonCount + (section.sectionQuiz ? 1 : 0);
+  }, 0);
+
+  if (totalUnits === 0) {
+    return 0;
+  }
+
+  const completedUnits = sections.reduce((sum, section) => {
+    const sectionProgress = enrollment?.sectionProgress?.find(
+      (sp) => sp.section.toString() === section._id.toString(),
+    );
+
+    const completedLessons = sectionProgress?.lessons?.filter((lp) => lp.isCompleted).length || 0;
+    const quizCompleted = sectionProgress?.sectionQuizScore?.passed ? 1 : 0;
+
+    return sum + completedLessons + quizCompleted;
+  }, 0);
+
+  return Math.round((completedUnits / totalUnits) * 100);
+};
+
 // ========== PUBLIC ROUTES ==========
 
 // Get all published courses with filters
@@ -442,27 +467,8 @@ export const completeLessonProgress = async (req, res) => {
       course: courseId,
     });
 
-    const course = await Course.findById(courseId);
-    let totalLessons = 0;
-    let completedLessons = 0;
-
-    for (const section of course.sections) {
-      totalLessons += Array.isArray(section.lessons)
-        ? section.lessons.length
-        : 0;
-
-      const userSectionProgress = updatedEnrollment.sectionProgress.find(
-        (sp) => sp.section.toString() === section._id.toString(),
-      );
-
-      if (userSectionProgress) {
-        completedLessons += userSectionProgress.lessons.filter(
-          (lp) => lp.isCompleted,
-        ).length;
-      }
-    }
-
-    const overallProgress = Math.round((completedLessons / totalLessons) * 100);
+    const course = await Course.findById(courseId).populate("sections");
+    const overallProgress = calculateOverallProgress(course, updatedEnrollment);
 
     await CourseEnrollment.updateOne(
       { user: userId, course: courseId },

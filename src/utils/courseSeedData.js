@@ -183,6 +183,8 @@ const seedCourses = async () => {
       return section;
     };
 
+    const primaryCreator = creators[0];
+
     // Create sections for a course
     const createCourseSections = async () => {
       const section1 = await createSection("Fundamentals", 1);
@@ -281,7 +283,7 @@ const seedCourses = async () => {
         language: "cpp",
         category: "programming-language",
         difficulty: "advanced",
-        instructor: creators[0]._id,
+        instructor: primaryCreator._id,
         isPublished: true,
         status: "published",
         hasAdminApprovedPublish: false,
@@ -318,7 +320,7 @@ const seedCourses = async () => {
         language: "sql",
         category: "databases",
         difficulty: "beginner",
-        instructor: creators[1]._id,
+        instructor: primaryCreator._id,
         isPublished: true,
         status: "published",
         hasAdminApprovedPublish: false,
@@ -355,7 +357,7 @@ const seedCourses = async () => {
         language: "cpp",
         category: "algorithms",
         difficulty: "intermediate",
-        instructor: creators[2]._id,
+        instructor: primaryCreator._id,
         isPublished: true,
         status: "published",
         hasAdminApprovedPublish: false,
@@ -396,6 +398,23 @@ const seedCourses = async () => {
 
     // Insert courses into database
     const createdCourses = await Course.insertMany(coursesData);
+
+    for (const course of createdCourses) {
+      for (const section of course.sections || []) {
+        if (section.sectionQuiz) {
+          await Quiz.updateOne(
+            { _id: section.sectionQuiz },
+            {
+              $set: {
+                course: course._id,
+                section: section._id,
+              },
+            },
+          );
+        }
+      }
+    }
+
     console.log(`\nSuccessfully seeded ${createdCourses.length} courses!\n`);
 
     // Display detailed course information

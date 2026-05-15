@@ -6,6 +6,31 @@ import { createNotification } from "./notificationController.js";
 import fs from "fs";
 import path from "path";
 
+const calculateOverallProgress = (course, enrollment) => {
+  const sections = course?.sections || [];
+  const totalUnits = sections.reduce((sum, section) => {
+    const lessonCount = Array.isArray(section.lessons) ? section.lessons.length : 0;
+    return sum + lessonCount + (section.sectionQuiz ? 1 : 0);
+  }, 0);
+
+  if (totalUnits === 0) {
+    return 0;
+  }
+
+  const completedUnits = sections.reduce((sum, section) => {
+    const sectionProgress = enrollment?.sectionProgress?.find(
+      (sp) => sp.section.toString() === section._id.toString(),
+    );
+
+    const completedLessons = sectionProgress?.lessons?.filter((lp) => lp.isCompleted).length || 0;
+    const quizCompleted = sectionProgress?.sectionQuizScore?.passed ? 1 : 0;
+
+    return sum + completedLessons + quizCompleted;
+  }, 0);
+
+  return Math.round((completedUnits / totalUnits) * 100);
+};
+
 // ========== PROFILE MANAGEMENT ==========
 
 // Get user profile
@@ -323,22 +348,20 @@ export const getCourseProgress = async (req, res) => {
       })
       .sort({ enrolledAt: -1 });
 
+    const activeEnrollments = enrollments.filter((enrollment) => enrollment.course);
+
     // Calculate progress for each course
-    const coursesWithProgress = enrollments.map((enrollment) => {
+    const coursesWithProgress = activeEnrollments.map((enrollment) => {
       const course = enrollment.course;
-      const totalSections = course.sections ? course.sections.length : 0;
+      const totalSections = course?.sections ? course.sections.length : 0;
       const completedSections = enrollment.sectionProgress
         ? enrollment.sectionProgress.filter((sp) => sp.isCompleted).length
         : 0;
-
-      const progressPercentage =
-        totalSections > 0
-          ? Math.round((completedSections / totalSections) * 100)
-          : 0;
+      const progressPercentage = calculateOverallProgress(course, enrollment);
 
       return {
         enrollmentId: enrollment._id,
-        course: course,
+        course: course || null,
         enrolledAt: enrollment.enrolledAt,
         progressPercentage,
         completedSections,
@@ -394,35 +417,31 @@ export const getDashboardStats = async (req, res) => {
       .default;
 
     // Get counts
-    const [enrolledCoursesCount, certificates, savedTutorialsCount] =
-      await Promise.all([
-        CourseEnrollment.countDocuments({ user: userId }),
-        Certificate.countDocuments({ user: userId }),
-        UserSavedTutorial.countDocuments({ userId: userId }),
-      ]);
+    const [certificates, savedTutorialsCount] = await Promise.all([
+      Certificate.countDocuments({ user: userId }),
+      UserSavedTutorial.countDocuments({ userId: userId }),
+    ]);
 
     // Get course completion stats
     const courseEnrollments = await CourseEnrollment.find({
       user: userId,
     }).populate("course", "sections");
 
+    const activeCourseEnrollments = courseEnrollments.filter(
+      (enrollment) => enrollment.course,
+    );
+
+    const enrolledCoursesCount = activeCourseEnrollments.length;
+
     let totalCourseProgress = 0;
     let completedCourses = 0;
 
-    courseEnrollments.forEach((enrollment) => {
-      const course = enrollment.course;
-      const totalSections = course.sections ? course.sections.length : 0;
-      const completedSections = enrollment.sectionProgress
-        ? enrollment.sectionProgress.filter((sp) => sp.isCompleted).length
-        : 0;
+    activeCourseEnrollments.forEach((enrollment) => {
+      const courseProgress = calculateOverallProgress(enrollment.course, enrollment);
+      totalCourseProgress += courseProgress;
 
-      if (totalSections > 0) {
-        const courseProgress = (completedSections / totalSections) * 100;
-        totalCourseProgress += courseProgress;
-
-        if (courseProgress === 100) {
-          completedCourses++;
-        }
+      if (courseProgress === 100) {
+        completedCourses++;
       }
     });
 
@@ -432,17 +451,17 @@ export const getDashboardStats = async (req, res) => {
         : 0;
 
     // Calculate total time spent (from course enrollments)
-    const totalTimeSpent = await CourseEnrollment.aggregate([
-      { $match: { user: userId } },
-      { $group: { _id: null, totalTime: { $sum: "$totalTimeSpentMinutes" } } },
-    ]);
+    const totalTimeSpent = activeCourseEnrollments.reduce(
+      (sum, enrollment) => sum + (enrollment.totalTimeSpentMinutes || 0),
+      0,
+    );
 
     const stats = {
       enrolledCourses: enrolledCoursesCount,
       completedCourses,
       certificates,
       averageCourseProgress,
-      totalTimeSpentMinutes: totalTimeSpent[0]?.totalTime || 0,
+      totalTimeSpentMinutes: totalTimeSpent,
       savedTutorials: savedTutorialsCount,
     };
 
@@ -483,19 +502,24 @@ export const getUserEnrollments = async (req, res) => {
       .limit(parseInt(limit))
       .sort({ enrolledAt: -1 });
 
-    const total = await CourseEnrollment.countDocuments(filter);
+    const activeEnrollments = enrollments
+      .filter((enrollment) => enrollment.course)
+      .sort((a, b) => b.enrolledAt - a.enrolledAt);
+
+    const total = activeEnrollments.length;
+    const pageNumber = parseInt(page);
+    const pageLimit = parseInt(limit);
+    const skip = (pageNumber - 1) * pageLimit;
+    const paginatedEnrollments = activeEnrollments.slice(skip, skip + pageLimit);
 
     // Add progress calculation
-    const enrollmentsWithProgress = enrollments.map((enrollment) => {
+    const enrollmentsWithProgress = paginatedEnrollments.map((enrollment) => {
       const course = enrollment.course;
-      const sections = course.sections || [];
+      const sections = course?.sections || [];
       const completedSections = enrollment.sectionProgress
         ? enrollment.sectionProgress.filter((sp) => sp.isCompleted).length
         : 0;
-      const progressPercentage =
-        sections.length > 0
-          ? Math.round((completedSections / sections.length) * 100)
-          : 0;
+      const progressPercentage = calculateOverallProgress(course, enrollment);
 
       return {
         ...enrollment.toObject(),
@@ -510,9 +534,9 @@ export const getUserEnrollments = async (req, res) => {
       data: enrollmentsWithProgress,
       pagination: {
         total,
-        pages: Math.ceil(total / limit),
-        currentPage: parseInt(page),
-        limit: parseInt(limit),
+        pages: Math.ceil(total / pageLimit),
+        currentPage: pageNumber,
+        limit: pageLimit,
       },
     });
   } catch (error) {
