@@ -101,7 +101,7 @@ const seedCourses = async () => {
           },
         ],
         totalPoints: 30,
-        passingScore: 18,
+        passingScore: 60,
         timeLimit: 30,
         shuffleQuestions: true,
         shuffleOptions: true,
