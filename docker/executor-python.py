@@ -2,94 +2,120 @@
 import asyncio
 import websockets
 import json
+import tempfile
+import os
 import sys
-import io
-import traceback
-from contextlib import redirect_stdout, redirect_stderr
 
-async def execute_code(websocket):
-    """Handle code execution requests via WebSocket"""
-    async for message in websocket:
-        try:
-            data = json.loads(message)
-            msg_type = data.get('type', 'execute')
-            
-            # Handle input response (skip execution, handled in InteractiveStdin)
-            if msg_type == 'input_response':
-                continue
-                
-            code = data.get('code', '')
-            input_data = data.get('input', '')
-            
-            # Prepare stdin if input is provided
-            if input_data:
-                sys.stdin = io.StringIO(input_data)
-            
-            # Capture stdout and stderr
-            stdout_capture = io.StringIO()
-            stderr_capture = io.StringIO()
-            
+
+async def stream_output(websocket, proc, fname):
+    """Read process stdout (merged stderr) and stream to WebSocket."""
+    try:
+        while True:
             try:
-                with redirect_stdout(stdout_capture), redirect_stderr(stderr_capture):
-                    # Execute the code
-                    exec(code, {'__builtins__': __builtins__})
-                
-                output = stdout_capture.getvalue()
-                error = stderr_capture.getvalue()
-                
-                response = {
-                    'type': 'result',
-                    'status': 'success',
-                    'output': output if output else (error if error else 'Code executed successfully with no output'),
-                    'error': error if error else None
-                }
-            except Exception as e:
-                response = {
-                    'type': 'result',
-                    'status': 'error',
-                    'output': '',
-                    'error': f"{type(e).__name__}: {str(e)}\n{traceback.format_exc()}"
-                }
-            finally:
-                # Reset stdin
-                sys.stdin = sys.__stdin__
-            
-            await websocket.send(json.dumps(response))
-            
-        except json.JSONDecodeError:
-            await websocket.send(json.dumps({
-                'type': 'result',
-                'status': 'error',
-                'output': '',
-                'error': 'Invalid JSON format'
-            }))
-        except Exception as e:
-            await websocket.send(json.dumps({
-                'type': 'result',
-                'status': 'error',
-                'output': '',
-                'error': f'Executor error: {str(e)}'
-            }))
-            
-        except json.JSONDecodeError:
-            await websocket.send(json.dumps({
-                'status': 'error',
-                'output': '',
-                'error': 'Invalid JSON format'
-            }))
-        except Exception as e:
-            await websocket.send(json.dumps({
-                'status': 'error',
-                'output': '',
-                'error': f'Executor error: {str(e)}'
-            }))
+                chunk = await asyncio.wait_for(proc.stdout.read(4096), timeout=30.0)
+                if chunk == b'':
+                    break
+                await websocket.send(json.dumps({
+                    'type': 'output',
+                    'data': chunk.decode('utf-8', errors='replace')
+                }))
+            except asyncio.TimeoutError:
+                proc.terminate()
+                break
+
+        await proc.wait()
+        await websocket.send(json.dumps({
+            'type': 'done',
+            'exit_code': proc.returncode if proc.returncode is not None else -1
+        }))
+    except Exception as e:
+        try:
+            await websocket.send(json.dumps({'type': 'error', 'data': str(e)}))
+        except Exception:
+            pass
+    finally:
+        try:
+            os.unlink(fname)
+        except Exception:
+            pass
+
+
+async def handle_client(websocket):
+    proc = None
+    stream_task = None
+
+    try:
+        async for raw in websocket:
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+
+            msg_type = msg.get('type')
+
+            if msg_type == 'execute':
+                if proc and proc.returncode is None:
+                    proc.terminate()
+                if stream_task and not stream_task.done():
+                    stream_task.cancel()
+
+                code = msg.get('code', '')
+
+                with tempfile.NamedTemporaryFile(suffix='.py', mode='w', delete=False) as f:
+                    f.write(code)
+                    fname = f.name
+
+                env = {**os.environ, 'PYTHONUNBUFFERED': '1'}
+
+                try:
+                    proc = await asyncio.create_subprocess_exec(
+                        'python3', '-u', fname,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.STDOUT,
+                        env=env
+                    )
+                    stream_task = asyncio.create_task(stream_output(websocket, proc, fname))
+                except Exception as e:
+                    await websocket.send(json.dumps({'type': 'error', 'data': f'Failed to start: {e}'}))
+                    await websocket.send(json.dumps({'type': 'done', 'exit_code': -1}))
+                    try:
+                        os.unlink(fname)
+                    except Exception:
+                        pass
+
+            elif msg_type == 'input':
+                if proc and proc.returncode is None and proc.stdin:
+                    try:
+                        data = msg.get('data', '') + '\n'
+                        proc.stdin.write(data.encode())
+                        await proc.stdin.drain()
+                    except Exception:
+                        pass
+
+            elif msg_type == 'stop':
+                if proc and proc.returncode is None:
+                    proc.terminate()
+                if stream_task and not stream_task.done():
+                    stream_task.cancel()
+
+    except websockets.exceptions.ConnectionClosed:
+        pass
+    except Exception as e:
+        print(f'Handler error: {e}', file=sys.stderr, flush=True)
+    finally:
+        if proc and proc.returncode is None:
+            proc.terminate()
+        if stream_task and not stream_task.done():
+            stream_task.cancel()
+
 
 async def main():
-    """Start the WebSocket server"""
-    print("Python executor starting on port 8765...", flush=True)
-    async with websockets.serve(execute_code, "0.0.0.0", 8765):
-        print("Python executor ready", flush=True)
-        await asyncio.Future()  # Run forever
+    print('Python executor starting on port 8765...', flush=True)
+    async with websockets.serve(handle_client, '0.0.0.0', 8765):
+        print('Python executor ready', flush=True)
+        await asyncio.Future()
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     asyncio.run(main())

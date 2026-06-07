@@ -144,6 +144,83 @@ class CodeExecutorWSService {
   }
 
   /**
+   * Execute code interactively, streaming output back to a client WebSocket.
+   * Creates a fresh container connection per execution for isolation.
+   */
+  async executeInteractive(code, language, clientWs) {
+    try {
+      const isRunning = await containerManager.isContainerRunning(language);
+      if (!isRunning) {
+        await containerManager.startContainer(language);
+      }
+
+      const port = await containerManager.getContainerPort(language);
+      const containerWs = new WebSocket(`ws://localhost:${port}`);
+
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(
+          () => reject(new Error(`Timeout connecting to ${language} executor`)),
+          5000,
+        );
+        containerWs.on("open", () => { clearTimeout(timeout); resolve(); });
+        containerWs.on("error", (err) => { clearTimeout(timeout); reject(err); });
+      });
+
+      // Kick off execution in the container
+      containerWs.send(JSON.stringify({ type: "execute", code }));
+
+      // Container → client relay
+      containerWs.on("message", (data) => {
+        if (clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(data instanceof Buffer ? data.toString() : data);
+        }
+      });
+
+      // Client input/stop → container relay
+      const handleClientMessage = (rawData) => {
+        try {
+          const msg = JSON.parse(rawData.toString());
+          if (
+            (msg.type === "input" || msg.type === "stop") &&
+            containerWs.readyState === WebSocket.OPEN
+          ) {
+            containerWs.send(rawData.toString());
+          }
+        } catch { /* ignore parse errors */ }
+      };
+      clientWs.on("message", handleClientMessage);
+
+      // Cleanup when client disconnects
+      const cleanup = () => {
+        clientWs.off("message", handleClientMessage);
+        if (containerWs.readyState === WebSocket.OPEN) {
+          try { containerWs.send(JSON.stringify({ type: "stop" })); } catch { /* ignore */ }
+          containerWs.close();
+        }
+      };
+      clientWs.on("close", cleanup);
+      clientWs.on("error", cleanup);
+
+      containerWs.on("close", () => {
+        clientWs.off("message", handleClientMessage);
+      });
+
+      containerWs.on("error", (err) => {
+        clientWs.off("message", handleClientMessage);
+        if (clientWs.readyState === WebSocket.OPEN) {
+          clientWs.send(JSON.stringify({ type: "error", data: `Container error: ${err.message}` }));
+          clientWs.send(JSON.stringify({ type: "done", exit_code: -1 }));
+        }
+      });
+    } catch (error) {
+      if (clientWs.readyState === WebSocket.OPEN) {
+        clientWs.send(JSON.stringify({ type: "error", data: `Failed to connect to executor: ${error.message}` }));
+        clientWs.send(JSON.stringify({ type: "done", exit_code: -1 }));
+      }
+    }
+  }
+
+  /**
    * Close all WebSocket connections
    */
   closeAllConnections() {

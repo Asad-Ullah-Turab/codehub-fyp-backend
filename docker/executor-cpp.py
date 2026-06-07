@@ -2,98 +2,137 @@
 import asyncio
 import websockets
 import json
-import subprocess
-import os
 import tempfile
-import traceback
+import os
+import sys
+import shutil
 
-async def execute_code(websocket):
-    """Handle C++ code execution requests via WebSocket"""
-    async for message in websocket:
+
+async def stream_output(websocket, proc, tmpdir):
+    """Stream process stdout to WebSocket, clean up temp dir when done."""
+    try:
+        while True:
+            try:
+                chunk = await asyncio.wait_for(proc.stdout.read(4096), timeout=30.0)
+                if chunk == b'':
+                    break
+                await websocket.send(json.dumps({
+                    'type': 'output',
+                    'data': chunk.decode('utf-8', errors='replace')
+                }))
+            except asyncio.TimeoutError:
+                proc.terminate()
+                break
+
+        await proc.wait()
+        await websocket.send(json.dumps({
+            'type': 'done',
+            'exit_code': proc.returncode if proc.returncode is not None else -1
+        }))
+    except Exception as e:
         try:
-            data = json.loads(message)
-            code = data.get('code', '')
-            input_data = data.get('input', '')
-            
-            # Create temporary files for code and input
-            with tempfile.TemporaryDirectory() as tmpdir:
+            await websocket.send(json.dumps({'type': 'error', 'data': str(e)}))
+        except Exception:
+            pass
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+async def handle_client(websocket):
+    proc = None
+    stream_task = None
+
+    try:
+        async for raw in websocket:
+            try:
+                msg = json.loads(raw)
+            except json.JSONDecodeError:
+                continue
+
+            msg_type = msg.get('type')
+
+            if msg_type == 'execute':
+                if proc and proc.returncode is None:
+                    proc.terminate()
+                if stream_task and not stream_task.done():
+                    stream_task.cancel()
+
+                code = msg.get('code', '')
+                tmpdir = tempfile.mkdtemp()
                 cpp_file = os.path.join(tmpdir, 'main.cpp')
                 exe_file = os.path.join(tmpdir, 'main')
-                
-                # Write code to file
+
                 with open(cpp_file, 'w') as f:
                     f.write(code)
-                
-                # Compile the code
-                compile_process = subprocess.run(
-                    ['g++', '-o', exe_file, cpp_file],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
-                )
-                
-                if compile_process.returncode != 0:
-                    response = {
-                        'status': 'error',
-                        'output': '',
-                        'error': f'Compilation error:\n{compile_process.stderr}'
-                    }
-                    await websocket.send(json.dumps(response))
-                    continue
-                
-                # Run the compiled program
+
                 try:
-                    run_process = subprocess.run(
-                        [exe_file],
-                        input=input_data,
-                        capture_output=True,
-                        text=True,
-                        timeout=10
+                    # Compile
+                    compile_proc = await asyncio.create_subprocess_exec(
+                        'g++', '-o', exe_file, cpp_file,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
                     )
-                    
-                    output = run_process.stdout
-                    error = run_process.stderr
-                    
-                    response = {
-                        'status': 'success' if run_process.returncode == 0 else 'error',
-                        'output': output if output else (error if error else 'Code executed successfully with no output'),
-                        'error': error if run_process.returncode != 0 else None
-                    }
-                    
-                except subprocess.TimeoutExpired:
-                    response = {
-                        'status': 'error',
-                        'output': '',
-                        'error': 'Execution timeout (10 seconds). Your code may have an infinite loop.'
-                    }
+                    _, compile_err = await asyncio.wait_for(compile_proc.communicate(), timeout=15.0)
+
+                    if compile_proc.returncode != 0:
+                        await websocket.send(json.dumps({
+                            'type': 'output',
+                            'data': f'Compilation error:\n{compile_err.decode()}'
+                        }))
+                        await websocket.send(json.dumps({'type': 'done', 'exit_code': 1}))
+                        shutil.rmtree(tmpdir, ignore_errors=True)
+                        continue
+
+                    # Run with output buffering disabled
+                    proc = await asyncio.create_subprocess_exec(
+                        'stdbuf', '-o0', '-e0', exe_file,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.STDOUT
+                    )
+                    stream_task = asyncio.create_task(stream_output(websocket, proc, tmpdir))
+
+                except asyncio.TimeoutError:
+                    await websocket.send(json.dumps({'type': 'output', 'data': 'Compilation timed out\n'}))
+                    await websocket.send(json.dumps({'type': 'done', 'exit_code': 1}))
+                    shutil.rmtree(tmpdir, ignore_errors=True)
                 except Exception as e:
-                    response = {
-                        'status': 'error',
-                        'output': '',
-                        'error': f'Runtime error: {str(e)}'
-                    }
-                
-                await websocket.send(json.dumps(response))
-                
-        except json.JSONDecodeError:
-            await websocket.send(json.dumps({
-                'status': 'error',
-                'output': '',
-                'error': 'Invalid JSON format'
-            }))
-        except Exception as e:
-            await websocket.send(json.dumps({
-                'status': 'error',
-                'output': '',
-                'error': f'Executor error: {str(e)}\n{traceback.format_exc()}'
-            }))
+                    await websocket.send(json.dumps({'type': 'error', 'data': f'Failed to start: {e}'}))
+                    await websocket.send(json.dumps({'type': 'done', 'exit_code': -1}))
+                    shutil.rmtree(tmpdir, ignore_errors=True)
+
+            elif msg_type == 'input':
+                if proc and proc.returncode is None and proc.stdin:
+                    try:
+                        data = msg.get('data', '') + '\n'
+                        proc.stdin.write(data.encode())
+                        await proc.stdin.drain()
+                    except Exception:
+                        pass
+
+            elif msg_type == 'stop':
+                if proc and proc.returncode is None:
+                    proc.terminate()
+                if stream_task and not stream_task.done():
+                    stream_task.cancel()
+
+    except websockets.exceptions.ConnectionClosed:
+        pass
+    except Exception as e:
+        print(f'Handler error: {e}', file=sys.stderr, flush=True)
+    finally:
+        if proc and proc.returncode is None:
+            proc.terminate()
+        if stream_task and not stream_task.done():
+            stream_task.cancel()
+
 
 async def main():
-    """Start the WebSocket server"""
-    print("C++ executor starting on port 8765...", flush=True)
-    async with websockets.serve(execute_code, "0.0.0.0", 8765):
-        print("C++ executor ready", flush=True)
-        await asyncio.Future()  # Run forever
+    print('C++ executor starting on port 8765...', flush=True)
+    async with websockets.serve(handle_client, '0.0.0.0', 8765):
+        print('C++ executor ready', flush=True)
+        await asyncio.Future()
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     asyncio.run(main())

@@ -2,68 +2,86 @@ const { WebSocketServer } = require('ws');
 const { spawn } = require('child_process');
 
 const wss = new WebSocketServer({ port: 8765, host: '0.0.0.0' });
-
 console.log('JavaScript executor starting on port 8765...');
 
 wss.on('connection', (ws) => {
-    ws.on('message', async (message) => {
+    let proc = null;
+    let execTimeout = null;
+
+    const cleanup = () => {
+        if (execTimeout) { clearTimeout(execTimeout); execTimeout = null; }
+        if (proc) { proc.kill(); proc = null; }
+    };
+
+    ws.on('message', (rawMsg) => {
+        let msg;
         try {
-            const data = JSON.parse(message);
-            const code = data.code || '';
-            const input = data.input || '';
+            msg = JSON.parse(rawMsg.toString());
+        } catch {
+            return;
+        }
 
-            // Create a temporary process to execute the code
-            const nodeProcess = spawn('node', ['-e', code], {
-                timeout: 10000,
-                maxBuffer: 1024 * 1024
+        if (msg.type === 'execute') {
+            cleanup();
+
+            const code = msg.code || '';
+
+            proc = spawn('node', ['-e', code], {
+                stdio: ['pipe', 'pipe', 'pipe']
             });
 
-            let output = '';
-            let errorOutput = '';
+            execTimeout = setTimeout(() => {
+                if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({ type: 'output', data: '\nExecution timed out (30s limit)\n' }));
+                }
+                cleanup();
+            }, 30000);
 
-            // If input is provided, write it to stdin
-            if (input) {
-                nodeProcess.stdin.write(input);
-                nodeProcess.stdin.end();
+            proc.stdout.on('data', (chunk) => {
+                if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({ type: 'output', data: chunk.toString('utf8') }));
+                }
+            });
+
+            proc.stderr.on('data', (chunk) => {
+                if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({ type: 'output', data: chunk.toString('utf8') }));
+                }
+            });
+
+            proc.on('close', (exitCode) => {
+                if (execTimeout) { clearTimeout(execTimeout); execTimeout = null; }
+                if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({ type: 'done', exit_code: exitCode ?? -1 }));
+                }
+                proc = null;
+            });
+
+            proc.on('error', (err) => {
+                if (execTimeout) { clearTimeout(execTimeout); execTimeout = null; }
+                if (ws.readyState === 1) {
+                    ws.send(JSON.stringify({ type: 'error', data: `Execution error: ${err.message}` }));
+                    ws.send(JSON.stringify({ type: 'done', exit_code: -1 }));
+                }
+                proc = null;
+            });
+        }
+
+        else if (msg.type === 'input' && proc) {
+            try {
+                proc.stdin.write((msg.data || '') + '\n');
+            } catch (err) {
+                console.error('stdin write error:', err.message);
             }
+        }
 
-            nodeProcess.stdout.on('data', (data) => {
-                output += data.toString();
-            });
-
-            nodeProcess.stderr.on('data', (data) => {
-                errorOutput += data.toString();
-            });
-
-            nodeProcess.on('close', (code) => {
-                const response = {
-                    status: code === 0 ? 'success' : 'error',
-                    output: output || errorOutput || 'Code executed successfully with no output',
-                    error: code !== 0 ? errorOutput : null
-                };
-                ws.send(JSON.stringify(response));
-            });
-
-            nodeProcess.on('error', (error) => {
-                ws.send(JSON.stringify({
-                    status: 'error',
-                    output: '',
-                    error: `Execution error: ${error.message}`
-                }));
-            });
-
-        } catch (error) {
-            ws.send(JSON.stringify({
-                status: 'error',
-                output: '',
-                error: `Executor error: ${error.message}`
-            }));
+        else if (msg.type === 'stop') {
+            cleanup();
         }
     });
 
-    ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
-    });
+    ws.on('close', cleanup);
+    ws.on('error', (err) => console.error('WebSocket error:', err.message));
 });
 
 console.log('JavaScript executor ready');
