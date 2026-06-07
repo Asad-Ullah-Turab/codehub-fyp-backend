@@ -23,7 +23,7 @@ const router = express.Router();
 
 // Public routes - with rate limiting
 router.post("/signup", authLimiter, signup);
-router.post("/signin", authLimiter, signin);
+router.post("/signin", signin);
 router.post("/logout", logout);
 
 // Email verification routes - with strict rate limiting
