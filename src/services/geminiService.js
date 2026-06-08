@@ -42,30 +42,28 @@ class GeminiService {
 
   async callGemini(prompt, apiKey = null) {
     const key = apiKey || GEMINI_API_KEY;
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${key}`;
+    const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
     const body = {
-      contents: [
-        {
-          parts: [{ text: prompt }],
-        },
-      ],
+      contents: [{ parts: [{ text: prompt }] }],
     };
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    let lastError;
+    for (const model of models) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
 
-    if (!response.ok) {
+      if (response.ok) return await response.json();
+
       const error = await response.json();
-      throw new Error(
-        `Gemini API error: ${error.error?.message || JSON.stringify(error)}`,
-      );
+      lastError = error.error?.message || JSON.stringify(error);
+      if (response.status !== 429 && response.status !== 503) break;
     }
-    return await response.json();
+
+    throw new Error(`Gemini API error: ${lastError}`);
   }
 
   extractText(data) {
@@ -258,35 +256,33 @@ Rules:
       throw new Error("Gemini API key is not configured");
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${GEMINI_API_KEY}`;
-    const body = {
-      contents: [
-        {
-          parts: [
-            {
-              text: `You are an AI coding tutor. Use markdown formatting (##, -, **bold**). Keep answers concise, beginner-friendly, and focus on teaching. Help users debug code, explain concepts, and provide practical coding advice.\n\n${prompt}`,
-            },
-          ],
-        },
-      ],
-    };
+    const models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-2.0-flash-lite"];
+    let lastError;
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    for (const model of models) {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`;
+      const body = {
+        contents: [{ parts: [{ text: prompt }] }],
+      };
 
-    if (!response.ok) {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      }
+
       const error = await response.json();
-      throw new Error(
-        `Gemini API error: ${error.error?.message || JSON.stringify(error)}`,
-      );
+      lastError = error.error?.message || JSON.stringify(error);
+
+      if (response.status !== 429 && response.status !== 503) break;
     }
 
-    return await response.json();
+    throw new Error(`Gemini API error: ${lastError}`);
   }
 }
 

@@ -43,9 +43,7 @@ class AIChatController {
         }
       }
 
-      // Call Gemini API
-      const response = await geminiService.chatMessage(prompt);
-      const aiResponse = geminiService.extractText(response);
+      const aiResponse = await geminiService.chatMessage(prompt);
 
       // Save to database (optional)
       try {

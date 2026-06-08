@@ -46,8 +46,7 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ""}`;
         }
       }
 
-      const response = await geminiService.chatMessage(prompt);
-      const explanation = geminiService.extractText(response);
+      let explanation = await geminiService.chatMessage(prompt);
 
       if (!explanation || explanation.trim() === "") {
         explanation = `Let me help you understand this error:
@@ -140,8 +139,7 @@ ${attempt ? `What they've tried so far:\n\`\`\`${language}\n${attempt}\n\`\`\`` 
         }
       }
 
-      const response = await geminiService.chatMessage(prompt);
-      let hint = geminiService.extractText(response);
+      let hint = await geminiService.chatMessage(prompt);
 
       // Fallback hint if response is empty
       if (!hint || hint.trim() === "") {
@@ -255,8 +253,7 @@ ${code ? `Their code:\n\`\`\`${language}\n${code}\n\`\`\`` : ""}`;
         }
       }
 
-      const response = await geminiService.chatMessage(prompt);
-      let answer = geminiService.extractText(response);
+      let answer = await geminiService.chatMessage(prompt);
 
       if (!answer || answer.trim() === "") {
         answer = `Great question! Let me guide you through this:
