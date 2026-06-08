@@ -24,7 +24,11 @@ server.on("upgrade", (request, socket, head) => {
     return;
   }
 
-  const token = parseCookieToken(request.headers.cookie);
+  const url = new URL(request.url, `http://${request.headers.host}`);
+  const token =
+    parseCookieToken(request.headers.cookie) ||
+    url.searchParams.get("token");
+
   if (!token) {
     socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
     socket.destroy();
