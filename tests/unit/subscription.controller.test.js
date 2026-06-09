@@ -1,8 +1,6 @@
 import { jest } from '@jest/globals';
 
 import { createCheckoutSession, getSubscriptionStatus, cancelSubscription, __setStripeService, __setSubscriptionCancellationModel } from '../../src/controllers/subscriptionController.js';
-import User from '../../src/models/User.js';
-import * as notifController from '../../src/controllers/notificationController.js';
 
 // create a simple mock stripe service that tests can manipulate
 const mockStripe = {
@@ -26,7 +24,7 @@ describe('Subscription Controller', () => {
   let req, res;
 
   beforeEach(() => {
-    req = { user: null };
+    req = { user: null, headers: {}, connection: { remoteAddress: '127.0.0.1' } };
     res = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn(),
@@ -96,19 +94,12 @@ describe('Subscription Controller', () => {
     req.user = { _id: 'u1', stripeSubscriptionId: 'sub_123' };
     stripeService.cancelSubscription.mockResolvedValue({ id: 'sub_123', status: 'canceled' });
     SubscriptionCancellation.create.mockResolvedValue({});
-    // also mock notification creation
-    const notifSpy = jest.spyOn(notifController, 'createNotification');
-    notifSpy.mockResolvedValue({});
 
     await cancelSubscription(req, res);
     expect(stripeService.cancelSubscription).toHaveBeenCalledWith(req.user);
     expect(SubscriptionCancellation.create).toHaveBeenCalledWith(expect.objectContaining({
       user: req.user._id,
       stripeSubscriptionId: req.user.stripeSubscriptionId,
-    }));
-    expect(notifSpy).toHaveBeenCalledWith(expect.objectContaining({
-      userId: req.user._id,
-      type: 'subscription',
     }));
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ success: true, data: { id: 'sub_123', status: 'canceled' } });

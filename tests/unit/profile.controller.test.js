@@ -1,4 +1,4 @@
-// Unit tests for Profile Controller
+﻿// Unit tests for Profile Controller
 import { jest } from '@jest/globals';
 import {
   getProfile,
@@ -46,7 +46,7 @@ describe('Profile Controller', () => {
     const user = await User.create({
       name: 'Test User',
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Test@1234',
       isEmailVerified: true,
       accountStatus: 'active'
     });

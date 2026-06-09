@@ -1,4 +1,4 @@
-// Unit tests for Course Model
+﻿// Unit tests for Course Model
 import Course from '../../src/models/Course.js';
 import User from '../../src/models/User.js';
 
@@ -10,7 +10,7 @@ describe('Course Model', () => {
     testInstructor = new User({
       name: 'Test Instructor',
       email: 'instructor@test.com',
-      password: 'password123'
+      password: 'Test@1234'
     });
     await testInstructor.save();
   });

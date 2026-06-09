@@ -1,4 +1,6 @@
+import { jest } from '@jest/globals';
 import { getNotifications, markAsRead } from '../../src/controllers/notificationController.js';
+import Notification from '../../src/models/Notification.js';
 
 describe('Notification Controller', () => {
   let req, res;
@@ -18,7 +20,6 @@ describe('Notification Controller', () => {
 
   it('should return notifications list', async () => {
     req.user = { _id: 'u1' };
-    const Notification = require('../../src/models/Notification.js').default;
     Notification.find = jest.fn().mockReturnValue({ sort: () => ({ limit: () => Promise.resolve(['n1']) }) });
     await getNotifications(req, res);
     expect(Notification.find).toHaveBeenCalledWith({ user: req.user._id });
@@ -29,7 +30,6 @@ describe('Notification Controller', () => {
   it('should mark a notification read', async () => {
     req.user = { _id: 'u1' };
     req.body = { id: 'notif1' };
-    const Notification = require('../../src/models/Notification.js').default;
     Notification.findOne = jest.fn().mockResolvedValue({ isRead: false, save: jest.fn() });
     await markAsRead(req, res);
     expect(Notification.findOne).toHaveBeenCalledWith({ _id: 'notif1', user: req.user._id });

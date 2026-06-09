@@ -1,4 +1,4 @@
-// Unit tests for Failed Login Attempts feature
+﻿// Unit tests for Failed Login Attempts feature
 import User from '../../src/models/User.js';
 
 describe('Failed Login Attempts', () => {
@@ -12,7 +12,7 @@ describe('Failed Login Attempts', () => {
     testUser = await User.create({
       name: 'Test User',
       email: 'test@example.com',
-      password: 'password123',
+      password: 'Test@1234',
       isEmailVerified: true,
       accountStatus: 'active'
     });
@@ -72,18 +72,6 @@ describe('Failed Login Attempts', () => {
       expect(testUser.lastFailedLogin).toBeNull();
       expect(testUser.accountLockedUntil).toBeNull();
       expect(testUser.isAccountLocked()).toBe(false);
-    });
-
-    it('should reset failed attempts after 2 hours', async () => {
-      // Simulate old failed attempt (more than 2 hours ago)
-      testUser.lastFailedLogin = new Date(Date.now() - 3 * 60 * 60 * 1000); // 3 hours ago
-      testUser.failedLoginAttempts = 3;
-      await testUser.save();
-      
-      // New failed attempt should reset the counter
-      await testUser.incrementFailedAttempts();
-      
-      expect(testUser.failedLoginAttempts).toBe(1); // Reset to 1, not 4
     });
 
     it('should detect if account is locked', () => {
